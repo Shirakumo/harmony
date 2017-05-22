@@ -19,4 +19,5 @@
                (:file "documentation"))
   :depends-on (:cl-mixed
                :cl-out123
+               :flow
                :bordeaux-threads))

@@ -4,5 +4,5 @@
  Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
-(in-package #:org.shirakumo.fraf.harmony.cffi)
+(in-package #:org.shirakumo.fraf.harmony)
 
