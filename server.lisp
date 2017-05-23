@@ -6,3 +6,17 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
+(defclass server ()
+  (thread
+   lock
+   device
+   mixer
+   buffers))
+
+(defgeneric start (server))
+(defgeneric stop (server))
+
+(defclass pipeline ()
+  (nodes))
+
+(defgeneric compile-pipeline (pipeline server))
