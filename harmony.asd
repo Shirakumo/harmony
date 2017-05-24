@@ -16,6 +16,7 @@
   :components ((:file "package")
                (:file "toolkit")
                (:file "server")
+               (:file "pipeline")
                (:file "documentation"))
   :depends-on (:cl-mixed
                :cl-out123

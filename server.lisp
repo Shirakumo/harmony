@@ -7,8 +7,8 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defclass server ()
-  ((buffersize :initarg :buffersize :accessor buffersize)
-   (samplerate :initarg :samplerate :accessor samplerate)
+  ((buffersize :initarg :buffersize :reader buffersize)
+   (samplerate :initarg :samplerate :reader samplerate)
    (device :initform NIL :accessor device)
    (channel :initform NIL :accessor channel)
    (mixer :initform NIL :accessor mixer)
@@ -25,10 +25,11 @@
    :buffersize 441
    :samplerate 44100))
 
-(defmethod initialize-instance :after ((server server) &key driver)
+(defmethod initialize-instance :after ((server server) &key driver name)
   (check-type (buffersize server) (integer 1))
   (check-type (samplerate server) (integer 1))
-  (setf (device server) (cl-out123:make-output driver))
+  (setf (device server) (cl-out123:make-output driver :name (or name (cl-out123:device-default-name
+                                                                      #.(package-name *package*)))))
   (setf (channel server) (cl-mixed:make-channel NIL (* 4 (buffersize server)) :float 2 :alternating (samplerate server)))
   (setf (mixer server) (cl-mixed:make-mixer))
   (setf (access-lock server) (bt:make-lock (format NIL "~a access lock." server)))
@@ -41,7 +42,11 @@
   (when (thread server)
     (error "~a is already running." server))
   (setf (thread server) T)
-  (let ((thread (bt:make-thread (lambda () (process server)))))
+  (let ((thread (bt:make-thread (lambda () (process server))
+                                :name (format NIL "~a process thread." server)
+                                :initial-bindings `((*standard-output* . ,*standard-output*)
+                                                    (*error-output* . ,*error-output*)
+                                                    (*query-io* . ,*query-io*)))))
     (setf (thread server) thread)
     thread))
 
@@ -72,7 +77,6 @@
         (samples (buffersize server))
         (process-lock (process-lock server))
         (process-monitor (process-monitor server))
-        (request-lock (request-lock server))
         (request-monitor (request-monitor server)))
     (cl-out123:connect device)
     (cl-out123:start device :rate (cl-mixed:samplerate channel)
@@ -83,32 +87,54 @@
       (bt:with-lock-held (process-lock)
         (unwind-protect
              (loop while (thread server)
-                   do (when (access-wanted-p server)
-                        (loop while (access-wanted-p server)
-                              do (bt:condition-notify request-monitor)
-                                 (bt:condition-wait (process-monitor) (process-lock))))
-                      (cl-mixed:mix mixer samples)
-                      (cl-out123:play-directly device buffer bytes))
+                   do (cond ((access-wanted-p server)
+                             (loop while (access-wanted-p server)
+                                   do (bt:condition-notify request-monitor)
+                                      (bt:condition-wait process-monitor process-lock
+                                                         :timeout 0.01))
+                             ;; Mixer might have changed.
+                             (setf mixer (mixer server)))
+                            ((cl-out123:playing device)
+                             (cl-mixed:mix mixer samples)
+                             (cl-out123:play-directly device buffer bytes))
+                            (T
+                             (bt:thread-yield))))
           (cl-mixed:end mixer)
-          (cl-out123:stop out)
-          (cl-out123:disconnect out))))))
+          (cl-out123:stop device)
+          (cl-out123:disconnect device))))))
 
 (defun call-with-server-lock (function server &key timeout)
   (bt:with-lock-held ((access-lock server))
-    (setf (access-wanted-p server) T)
-    (unwind-protect
-         (bt:with-lock-held ((request-lock server))
-           (unless (bt:condition-wait (request-monitor server) (request-lock server) :timeout timeout)
-             (unwind-protect
-                  (bt:with-lock-held ((process-lock server))
-                    (funcall function))
-               (bt:condition-notify (process-monitor)))))
-      (setf (access-wanted-p server) NIL))))
+    (cond ((thread server)
+           (setf (access-wanted-p server) T)
+           (unwind-protect
+                (bt:with-lock-held ((request-lock server))
+                  (unless (bt:condition-wait (request-monitor server) (request-lock server)
+                                             :timeout timeout)
+                    (unwind-protect
+                         (bt:with-lock-held ((process-lock server))
+                           (funcall function))
+                      (bt:condition-notify (process-monitor server)))))
+             (setf (access-wanted-p server) NIL)))
+          (T
+           (funcall function)))))
 
 (defmacro with-server-lock ((server &key timeout) &body body)
   `(call-with-server-lock (lambda () ,@body) ,server :timeout ,timeout))
 
-(defclass pipeline ()
-  (nodes))
+(defmethod paused-p ((server server))
+  (cl-out123:playing (device server)))
 
-(defgeneric compile-pipeline (pipeline server))
+(defmethod (setf paused-p) (value (server server))
+  (with-server-lock (server)
+    (if value
+        (cl-out123:pause (device server))
+        (cl-out123:resume (device server)))))
+
+(defmethod pause ((server server))
+  (with-server-lock (server)
+    (cl-out123:pause (device server))))
+
+(defmethod resume ((server server))
+  (with-server-lock (server)
+    (cl-out123:resume (device server))))
