@@ -31,7 +31,6 @@
   (setf (device server) (cl-out123:make-output driver :name (or name (cl-out123:device-default-name
                                                                       #.(package-name *package*)))))
   (setf (channel server) (cl-mixed:make-channel NIL (* 4 (buffersize server)) :float 2 :alternating (samplerate server)))
-  (setf (mixer server) (cl-mixed:make-mixer))
   (setf (access-lock server) (bt:make-lock (format NIL "~a access lock." server)))
   (setf (process-lock server) (bt:make-lock (format NIL "~a process lock." server)))
   (setf (request-lock server) (bt:make-lock (format NIL "~a request lock." server)))

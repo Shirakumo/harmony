@@ -91,6 +91,19 @@
                   'flow:directed-connection)
     pipeline))
 
+(defmethod disconnect ((pipeline pipeline)
+                       (source cl-mixed:segment) source-output
+                       (target cl-mixed:segment) target-input)
+  (let ((source (ensure-node source pipeline))
+        (target (ensure-node target pipeline)))
+    (flow:disconnect (nth-out source-output source)
+                     (nth-in target-input target))
+    pipeline))
+
+(defmethod sever ((pipeline pipeline) (segment cl-mixed:segment))
+  (flow:sever (ensure-node segment pipeline))
+  pipeline)
+
 (defun allocate-buffers (nodes buffersize)
   (let* ((buffer-count (loop for node in nodes
                              when (flow:ports node)
@@ -100,16 +113,16 @@
          (buffers (make-array buffer-count)))
     (dotimes (i buffer-count)
       (setf (aref buffers i) (cl-mixed:make-buffer buffersize)))
-    (dolist (node nodes nodes)
+    (dolist (node nodes buffers)
       (loop for port in (flow:ports node)
             for buffer = (flow:attribute port 'buffer)
             do (when buffer
                  (setf (flow:attribute port 'buffer) (aref buffers buffer)))))))
 
 (defmethod compile-pipeline ((pipeline pipeline) (server server))
-  (let ((nodes (flow:allocate-ports (nodes pipeline) :attribute 'buffer))
-        (mixer (cl-mixed:make-mixer)))
-    (allocate-buffers nodes (buffersize server))
+  (let* ((nodes (flow:allocate-ports (nodes pipeline) :attribute 'buffer))
+         (mixer (cl-mixed:make-mixer))
+         (buffers (allocate-buffers nodes (buffersize server))))
     (dolist (node nodes)
       (cl-mixed:add (finalize-segment node) mixer))
     (with-server-lock (server)
@@ -118,4 +131,7 @@
         (dolist (segment (cl-mixed:segments mixer))
           (cl-mixed:free segment))
         (cl-mixed:free (mixer server)))
+      (dolist (buffer (buffers server))
+        (cl-mixed:free buffer))
+      (setf (buffers server) buffers)
       (setf (mixer server) mixer))))
