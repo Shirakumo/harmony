@@ -20,11 +20,14 @@
    (segment :initarg :segment :accessor segment)))
 
 (defmethod make-node ((segment cl-mixed:segment))
-  (destructuring-bind (&key max-inputs outputs &allow-other-keys)
+  (destructuring-bind (&key max-inputs outputs flags &allow-other-keys)
       (cl-mixed:info segment)
     (let ((node (make-instance 'node :segment segment)))
-      (dotimes (i outputs)
-        (push (make-instance 'out-port :output i) (flow:ports node)))
+      (loop for i from 0 below outputs
+            for port = (make-instance 'out-port :output i)
+            do (when (find :inplace flags)
+                 (setf (flow:attribute port :in-place) T))
+               (push port (flow:ports node)))
       (if (< (expt 2 32) max-inputs)
           (push (make-instance 'in-ports) (flow:ports node))
           (dotimes (i max-inputs)
