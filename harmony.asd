@@ -15,6 +15,8 @@
   :serial T
   :components ((:file "package")
                (:file "toolkit")
+               (:file "source")
+               (:file "drain")
                (:file "server")
                (:file "pipeline")
                (:file "documentation"))
