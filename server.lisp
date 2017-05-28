@@ -6,6 +6,8 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
+(defvar *in-processing-thread* NIL)
+
 (defclass server ()
   ((buffersize :initarg :buffersize :reader buffersize)
    (samplerate :initarg :samplerate :reader samplerate)
@@ -82,7 +84,8 @@
                             :channels (cl-mixed:channels channel)
                             :encoding (cl-mixed:encoding channel))
     (cl-mixed:start mixer)
-    (let ((bytes (* samples (cl-mixed:samplesize (cl-out123:encoding device)))))
+    (let ((bytes (* samples (cl-mixed:samplesize (cl-out123:encoding device))))
+          (*in-processing-thread* T))
       (bt:with-lock-held (process-lock)
         (unwind-protect
              (loop while (thread server)
@@ -103,20 +106,22 @@
           (cl-out123:disconnect device))))))
 
 (defun call-with-server-lock (function server &key timeout)
-  (bt:with-lock-held ((access-lock server))
-    (cond ((thread server)
-           (setf (access-wanted-p server) T)
-           (unwind-protect
-                (bt:with-lock-held ((request-lock server))
-                  (unless (bt:condition-wait (request-monitor server) (request-lock server)
-                                             :timeout timeout)
-                    (unwind-protect
-                         (bt:with-lock-held ((process-lock server))
-                           (funcall function))
-                      (bt:condition-notify (process-monitor server)))))
-             (setf (access-wanted-p server) NIL)))
-          (T
-           (funcall function)))))
+  (if *in-processing-thread*
+      (funcall function)
+      (bt:with-lock-held ((access-lock server))
+        (cond ((thread server)
+               (setf (access-wanted-p server) T)
+               (unwind-protect
+                    (bt:with-lock-held ((request-lock server))
+                      (unless (bt:condition-wait (request-monitor server) (request-lock server)
+                                                 :timeout timeout)
+                        (unwind-protect
+                             (bt:with-lock-held ((process-lock server))
+                               (funcall function))
+                          (bt:condition-notify (process-monitor server)))))
+                 (setf (access-wanted-p server) NIL)))
+              (T
+               (funcall function))))))
 
 (defmacro with-server-lock ((server &key timeout) &body body)
   `(call-with-server-lock (lambda () ,@body) ,server :timeout ,timeout))
