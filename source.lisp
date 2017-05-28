@@ -13,7 +13,8 @@
    (decoder :initform (lambda (samples source)) :accessor decoder)
    (server :initarg :server :initform NIL :accessor server)
    (sample-position :initform 0 :accessor sample-position)
-   (remix-factor :initform 0 :accessor remix-factor)))
+   (remix-factor :initform 0 :accessor remix-factor)
+   (channel-function :initform NIL :accessor channel-function)))
 
 (defmethod initialize-instance ((source source) &rest args &key server)
   (unless server
@@ -25,8 +26,11 @@
          args))
 
 (defmethod initialize-instance :after ((source source) &key)
-  (setf (remix-factor source) (/ (samplerate (server source))
-                                 (cl-mixed:samplerate (cl-mixed:channel source)))))
+  (setf (remix-factor source) (coerce (/ (cl-mixed:samplerate (cl-mixed:channel source))
+                                         (samplerate (server source)))
+                                      'single-float))
+  (setf (channel-function source) (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle source)))
+  (setf (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle source)) (cffi:callback source-mix)))
 
 (defgeneric initialize-channel (source))
 
@@ -72,7 +76,7 @@
 
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let* ((source (cl-mixed:pointer->object segment))
-         (real-samples (* samples (remix-factor source))))
+         (real-samples (floor samples (remix-factor source))))
     (unless (paused-p source)
       ;; We need to handle ended-p like this in order to make
       ;; sure that the last samples that were processed before
@@ -85,7 +89,7 @@
              (funcall (decoder source) real-samples source)
              ;; Process the channel to get the samples into buffers
              (cffi:foreign-funcall-pointer
-              (chan-function source) ()
+              (channel-function source) ()
               cl-mixed-cffi:size_t samples
               :pointer segment
               :void)

@@ -15,6 +15,9 @@
   ((file :initform NIL :accessor file)
    (samplesize :initform NIL :accessor samplesize)))
 
+(defmethod initialize-instance :after ((source mp3-source))
+  (setf (decoder source) #'decode))
+
 (defmethod initialize-channel ((source mp3-source))
   (let ((file (cl-mpg123:make-file file :accepted-format (list (samplerate (server mp3))
                                                                2 :float))))
