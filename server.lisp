@@ -11,8 +11,7 @@
 (defclass server ()
   ((buffersize :initarg :buffersize :reader buffersize)
    (samplerate :initarg :samplerate :reader samplerate)
-   (device :initform NIL :accessor device)
-   (channel :initform NIL :accessor channel)
+   (device :initarg :device :accessor device)
    (mixer :initform NIL :accessor mixer)
    (buffers :initform NIL :accessor buffers)
    (thread :initform NIL :accessor thread)
@@ -30,9 +29,6 @@
 (defmethod initialize-instance :after ((server server) &key driver name)
   (check-type (buffersize server) (integer 1))
   (check-type (samplerate server) (integer 1))
-  (setf (device server) (cl-out123:make-output driver :name (or name (cl-out123:device-default-name
-                                                                      #.(package-name *package*)))))
-  (setf (channel server) (cl-mixed:make-channel NIL (* 4 (buffersize server)) :float 2 :alternating (samplerate server)))
   (setf (access-lock server) (bt:make-lock (format NIL "~a access lock." server)))
   (setf (process-lock server) (bt:make-lock (format NIL "~a process lock." server)))
   (setf (request-lock server) (bt:make-lock (format NIL "~a request lock." server)))
@@ -73,19 +69,12 @@
 (defmethod process ((server server))
   (let ((mixer (mixer server))
         (device (device server))
-        (channel (channel server))
-        (buffer (cl-mixed:data (channel server)))
         (samples (buffersize server))
         (process-lock (process-lock server))
         (process-monitor (process-monitor server))
         (request-monitor (request-monitor server)))
-    (cl-out123:connect device)
-    (cl-out123:start device :rate (cl-mixed:samplerate channel)
-                            :channels (cl-mixed:channels channel)
-                            :encoding (cl-mixed:encoding channel))
     (cl-mixed:start mixer)
-    (let ((bytes (* samples (cl-mixed:samplesize (cl-out123:encoding device))))
-          (*in-processing-thread* T))
+    (let ((*in-processing-thread* T))
       (bt:with-lock-held (process-lock)
         (unwind-protect
              (loop while (thread server)
@@ -96,14 +85,11 @@
                                                          :timeout 0.01))
                              ;; Mixer might have changed.
                              (setf mixer (mixer server)))
-                            ((cl-out123:playing device)
-                             (cl-mixed:mix mixer samples)
-                             (cl-out123:play-directly device buffer bytes))
+                            ((paused-p device)
+                             (bt:thread-yield))
                             (T
-                             (bt:thread-yield))))
-          (cl-mixed:end mixer)
-          (cl-out123:stop device)
-          (cl-out123:disconnect device))))))
+                             (cl-mixed:mix mixer samples))))
+          (cl-mixed:end mixer))))))
 
 (defun call-with-server-lock (function server &key timeout)
   (if *in-processing-thread*
@@ -127,18 +113,13 @@
   `(call-with-server-lock (lambda () ,@body) ,server :timeout ,timeout))
 
 (defmethod paused-p ((server server))
-  (cl-out123:playing (device server)))
+  (paused-p (device server)))
 
 (defmethod (setf paused-p) (value (server server))
-  (with-server-lock (server)
-    (if value
-        (cl-out123:pause (device server))
-        (cl-out123:resume (device server)))))
+  (setf (paused-p (device server)) value))
 
 (defmethod pause ((server server))
-  (with-server-lock (server)
-    (cl-out123:pause (device server))))
+  (pause (device server)))
 
 (defmethod resume ((server server))
-  (with-server-lock (server)
-    (cl-out123:resume (device server))))
+  (resume (device server)))
