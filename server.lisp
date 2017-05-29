@@ -35,6 +35,10 @@
   (setf (process-monitor server) (bt:make-condition-variable :name (format NIL "~a process monitor." server)))
   (setf (request-monitor server) (bt:make-condition-variable :name (format NIL "~a request monitor." server))))
 
+(defmethod print-object ((server server) stream)
+  (print-unreadable-object (server stream :type T)
+    (format stream "~@[~*running~]" (thread server))))
+
 (defmethod start (server)
   (when (thread server)
     (error "~a is already running." server))
