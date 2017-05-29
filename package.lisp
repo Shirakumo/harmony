@@ -53,6 +53,7 @@
    #:resume)
   ;; source.lisp
   (:export
+   #:source
    #:looping-p
    #:paused-p
    #:ended-p

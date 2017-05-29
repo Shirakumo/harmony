@@ -88,8 +88,9 @@
                             ((paused-p device)
                              (bt:thread-yield))
                             (T
-                             (cl-mixed:mix mixer samples))))
-          (cl-mixed:end mixer))))))
+                             (cl-mixed:mix samples mixer))))
+          (cl-mixed:end mixer)
+          (setf (thread server) NIL))))))
 
 (defun call-with-server-lock (function server &key timeout)
   (if *in-processing-thread*

@@ -19,11 +19,12 @@
 (defmethod initialize-instance ((source source) &rest args &key server)
   (unless server
     (error "The SERVER initarg is required, but not given."))
-  (setf (server source) server)
   (apply #'call-next-method
-         :channel (initialize-channel source)
+         source
+         :channel NIL
          :samplerate (samplerate server)
-         args))
+         args)
+  (setf (slot-value source 'cl-mixed:channel) (initialize-channel source)))
 
 (defmethod initialize-instance :after ((source source) &key)
   (setf (remix-factor source) (coerce (/ (cl-mixed:samplerate (cl-mixed:channel source))

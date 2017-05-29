@@ -15,18 +15,19 @@
 (defmethod initialize-instance ((drain drain) &rest args &key server)
   (unless server
     (error "The SERVER initarg is required, but not given."))
-  (setf (server drain) server)
   (apply #'call-next-method
-         :channel (initialize-channel drain)
+         drain
+         :channel NIL
          :samplerate (samplerate server)
-         args))
+         args)
+  (setf (slot-value drain 'cl-mixed:channel) (initialize-channel drain)))
 
 (defmethod initialize-instance :after ((drain drain) &key)
-  (setf (remix-factor source) (coerce (/ (samplerate (server source))
-                                         (cl-mixed:samplerate (cl-mixed:channel source)))
+  (setf (remix-factor drain) (coerce (/ (samplerate (server drain))
+                                         (cl-mixed:samplerate (cl-mixed:channel drain)))
                                       'single-float))
-  (setf (channel-function source) (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle source)))
-  (setf (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle source)) (cffi:callback drain-mix)))
+  (setf (channel-function drain) (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle drain)))
+  (setf (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle drain)) (cffi:callback drain-mix)))
 
 (cffi:defcallback drain-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let* ((drain (cl-mixed:pointer->object segment))

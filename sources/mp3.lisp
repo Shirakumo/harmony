@@ -10,17 +10,20 @@
   (:use #:cl #:harmony)
   (:export
    #:mp3-source))
+(in-package #:org.shirakumo.fraf.harmony.sources.mp3)
 
 (defclass mp3-source (source)
   ((file :initform NIL :accessor file)
+   (source-file :initarg :file :accessor source-file)
    (samplesize :initform NIL :accessor samplesize)))
 
 (defmethod initialize-instance :after ((source mp3-source) &key)
   (setf (decoder source) #'decode))
 
 (defmethod initialize-channel ((source mp3-source))
-  (let ((file (cl-mpg123:make-file file :accepted-format (list (samplerate (server mp3))
-                                                               2 :float))))
+  (let ((file (cl-mpg123:make-file (source-file source)
+                                   :accepted-format (list (samplerate (server source))
+                                                          2 :float))))
     (cl-mpg123:connect file)
     (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)
       (cl-mixed:make-channel NIL

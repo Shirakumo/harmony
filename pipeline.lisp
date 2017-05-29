@@ -15,7 +15,7 @@
 (defclass in-ports (flow:in-port flow:n-port)
   ())
 
-(defclass node ()
+(flow:define-node node ()
   ((ports :initarg :ports :initform () :accessor flow:ports)
    (segment :initarg :segment :accessor segment)))
 
@@ -31,7 +31,7 @@
       (if (< (expt 2 32) max-inputs)
           (push (make-instance 'in-ports) (flow:ports node))
           (dotimes (i max-inputs)
-            (push (make-instance 'in-ports :input i) (flow:ports node))))
+            (push (make-instance 'in-port :input i) (flow:ports node))))
       (setf (flow:ports node) (nreverse (flow:ports node)))
       node)))
 
@@ -41,7 +41,7 @@
           for port in (flow:ports node)
           do (cond ((typep port 'out-port)
                     (setf (cl-mixed:output out segment)
-                          (flow:attribute node 'buffer))
+                          (flow:attribute port 'buffer))
                     (incf out))
                    ((typep port 'in-port)
                     (let ((port (flow:left (first (flow:connections port)))))
@@ -108,11 +108,11 @@
   pipeline)
 
 (defun allocate-buffers (nodes buffersize)
-  (let* ((buffer-count (loop for node in nodes
-                             when (flow:ports node)
-                             maximize (loop for port in (flow:ports node)
-                                            when (flow:attribute port 'buffer)
-                                            maximize (flow:attribute port 'buffer))))
+  (let* ((buffer-count (1+ (loop for node in nodes
+                                 when (flow:ports node)
+                                 maximize (loop for port in (flow:ports node)
+                                                when (flow:attribute port 'buffer)
+                                                maximize (flow:attribute port 'buffer)))))
          (buffers (make-array buffer-count)))
     (dotimes (i buffer-count)
       (setf (aref buffers i) (cl-mixed:make-buffer buffersize)))
@@ -123,7 +123,9 @@
                  (setf (flow:attribute port 'buffer) (aref buffers buffer)))))))
 
 (defmethod compile-pipeline ((pipeline pipeline) (server server))
-  (let* ((nodes (flow:allocate-ports (nodes pipeline) :attribute 'buffer))
+  (let* ((nodes (loop for node being the hash-values of (nodes pipeline)
+                      collect node))
+         (nodes (flow:allocate-ports nodes :attribute 'buffer))
          (mixer (cl-mixed:make-mixer))
          (buffers (allocate-buffers nodes (buffersize server))))
     (dolist (node nodes)
