@@ -32,7 +32,7 @@
             do (when (find :inplace flags)
                  (setf (flow:attribute port :in-place) T))
                (push port (flow:ports node)))
-      (if (< (expt 2 32) max-inputs)
+      (if (< (expt 2 32) max-inputs) ;; "infinity-large"
           (push (make-instance 'in-ports :node node :slot 'n) (flow:ports node))
           (dotimes (i max-inputs)
             (push (make-instance 'in-port :node node :slot i) (flow:ports node))))

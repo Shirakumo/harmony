@@ -25,6 +25,7 @@
                                    :accepted-format (list (samplerate (server source))
                                                           2 :float))))
     (cl-mpg123:connect file)
+    (setf (file source) file)
     (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)
       (cl-mixed:make-channel NIL
                              (* (buffersize (server source))
@@ -40,8 +41,8 @@
 (defun decode (samples source)
   (let* ((file (file source))
          (channel (cl-mixed:channel source))
-         (buffer (cl-mixed-cffi:channel-data channel))
-         (bytes (* samples (cl-mixed:samplesize (cl-mixed-cffi:channel-encoding channel))))
+         (buffer (cl-mixed:data channel))
+         (bytes (* samples (cl-mixed:samplesize (cl-mixed:encoding channel))))
          (read (cl-mpg123:read-directly file buffer bytes)))
     (when (< read bytes)
       (cond ((looping-p source)

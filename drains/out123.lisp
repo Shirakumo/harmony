@@ -39,7 +39,7 @@
 (defun decode (samples drain)
   (let* ((channel (cl-mixed:channel drain))
          (buffer (cl-mixed:data channel))
-         (bytes (* samples (cl-mixed:samplesize (cl-mixed-cffi:channel-encoding channel)))))
+         (bytes (* samples (cl-mixed:samplesize (cl-mixed:encoding channel)))))
     (cl-out123:play-directly (device drain) buffer bytes)))
 
 (defmethod paused-p ((drain out123-drain))
