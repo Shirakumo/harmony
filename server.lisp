@@ -67,13 +67,13 @@
     thread))
 
 (defmethod process ((server server))
-  (let ((mixer (mixer server))
+  (let ((mixer (cl-mixed:handle (mixer server)))
         (device (device server))
         (samples (buffersize server))
         (process-lock (process-lock server))
         (process-monitor (process-monitor server))
         (request-monitor (request-monitor server)))
-    (cl-mixed:start mixer)
+    (cl-mixed-cffi:mixer-start mixer)
     (let ((*in-processing-thread* T))
       (bt:with-lock-held (process-lock)
         (unwind-protect
@@ -88,8 +88,8 @@
                             ((paused-p device)
                              (bt:thread-yield))
                             (T
-                             (cl-mixed:mix samples mixer))))
-          (cl-mixed:end mixer)
+                             (cl-mixed-cffi:mixer-mix samples mixer))))
+          (cl-mixed-cffi:mixer-end mixer)
           (setf (thread server) NIL))))))
 
 (defun call-with-server-lock (function server &key timeout)
