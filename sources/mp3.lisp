@@ -5,8 +5,8 @@
 |#
 
 (in-package #:org.shirakumo.fraf.harmony)
-(defpackage #:org.shirakumo.fraf.harmony.sources.mp3
-  (:nicknames #:harmony-mp3)
+(defpackage #:harmony-mp3
+  (:nicknames #:org.shirakumo.fraf.harmony.sources.mp3)
   (:use #:cl #:harmony)
   (:export
    #:mp3-source))
@@ -29,7 +29,8 @@
     (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)
       (cl-mixed:make-channel NIL
                              (* (buffersize (server source))
-                                (cl-mixed:samplesize encoding))
+                                (cl-mixed:samplesize encoding)
+                                channels)
                              encoding
                              channels
                              :alternating
@@ -42,7 +43,9 @@
   (let* ((file (file source))
          (channel (cl-mixed:channel source))
          (buffer (cl-mixed:data channel))
-         (bytes (* samples (cl-mixed:samplesize (cl-mixed:encoding channel))))
+         (bytes (* samples
+                   (cl-mixed:samplesize (cl-mixed:encoding channel))
+                   (cl-mixed:channels channel)))
          (read (cl-mpg123:read-directly file buffer bytes)))
     (when (< read bytes)
       (cond ((looping-p source)

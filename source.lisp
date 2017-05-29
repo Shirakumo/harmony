@@ -38,7 +38,7 @@
 (defmethod (setf paused-p) :before (value (source source))
   (when value
     (unless (paused-p source)
-      (with-server-lock ((server source))
+      (with-body-in-server-thread ((server source))
         (map NIL #'cl-mixed:clear (cl-mixed:outputs source))))))
 
 (defmethod pause ((source source))

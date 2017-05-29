@@ -46,8 +46,8 @@
    #:start
    #:stop
    #:process
-   #:call-with-server-lock
-   #:with-server-lock
+   #:call-in-server-thread
+   #:with-body-in-server-thread
    #:paused-p
    #:pause
    #:resume)

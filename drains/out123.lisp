@@ -5,8 +5,8 @@
 |#
 
 (in-package #:org.shirakumo.fraf.harmony)
-(defpackage #:org.shirakumo.fraf.harmony.drains.out123
-  (:nicknames #:harmony-out123)
+(defpackage #:harmony-out123
+  (:nicknames #:org.shirakumo.fraf.harmony.drains.out123)
   (:use #:cl #:harmony)
   (:export
    #:out123-drain))
@@ -17,7 +17,9 @@
    (device :initform NIL :accessor device)))
 
 (defmethod initialize-instance :after ((drain out123-drain) &key)
-  (setf (decoder drain) #'decode))
+  (setf (decoder drain) #'decode)
+  (setf (cl-mixed-cffi:direct-segment-start (cl-mixed:handle drain)) (cffi:callback start))
+  (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
 (defmethod initialize-channel ((drain out123-drain))
   (let ((out (cl-out123:make-output NIL :name (or (name drain)
@@ -30,7 +32,8 @@
       (cl-out123:stop out)
       (cl-mixed:make-channel NIL
                              (* (buffersize (server drain))
-                                (cl-mixed:samplesize encoding))
+                                (cl-mixed:samplesize encoding)
+                                channels)
                              encoding
                              channels
                              :alternating
@@ -39,24 +42,26 @@
 (defun decode (samples drain)
   (let* ((channel (cl-mixed:channel drain))
          (buffer (cl-mixed:data channel))
-         (bytes (* samples (cl-mixed:samplesize (cl-mixed:encoding channel)))))
+         (bytes (* samples
+                   (cl-mixed:samplesize (cl-mixed:encoding channel))
+                   (cl-mixed:channels channel))))
     (cl-out123:play-directly (device drain) buffer bytes)))
 
 (defmethod paused-p ((drain out123-drain))
-  (cl-out123:playing (device drain)))
+  (not (cl-out123:playing (device drain))))
 
 (defmethod (setf paused-p) (value (drain out123-drain))
-  (with-server-lock ((server drain))
+  (with-body-in-server-thread ((server drain))
     (if value
         (cl-out123:pause (device drain))
         (cl-out123:resume (device drain)))))
 
 (defmethod pause ((drain out123-drain))
-  (with-server-lock ((server drain))
+  (with-body-in-server-thread ((server drain))
     (cl-out123:pause (device drain))))
 
 (defmethod resume ((drain out123-drain))
-  (with-server-lock ((server drain))
+  (with-body-in-server-thread ((server drain))
     (cl-out123:resume (device drain))))
 
 (cffi:defcallback start :int ((segment :pointer))
