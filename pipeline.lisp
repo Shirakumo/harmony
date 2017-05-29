@@ -7,10 +7,10 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defclass out-port (flow:out-port flow:n-port)
-  ((output :initarg :output :accessor output)))
+  ())
 
 (defclass in-port (flow:in-port flow:1-port)
-  ((input :initarg :input :accessor input)))
+  ())
 
 (defclass in-ports (flow:in-port flow:n-port)
   ())
@@ -19,35 +19,37 @@
   ((ports :initarg :ports :initform () :accessor flow:ports)
    (segment :initarg :segment :accessor segment)))
 
+(defmethod print-object ((node node) stream)
+  (print-unreadable-object (node stream :type T)
+    (format stream "~a" (segment node))))
+
 (defmethod make-node ((segment cl-mixed:segment))
   (destructuring-bind (&key max-inputs outputs flags &allow-other-keys)
       (cl-mixed:info segment)
     (let ((node (make-instance 'node :segment segment)))
       (loop for i from 0 below outputs
-            for port = (make-instance 'out-port :output i)
+            for port = (make-instance 'out-port :node node :slot i)
             do (when (find :inplace flags)
                  (setf (flow:attribute port :in-place) T))
                (push port (flow:ports node)))
       (if (< (expt 2 32) max-inputs)
-          (push (make-instance 'in-ports) (flow:ports node))
+          (push (make-instance 'in-ports :node node :slot 'n) (flow:ports node))
           (dotimes (i max-inputs)
-            (push (make-instance 'in-port :input i) (flow:ports node))))
+            (push (make-instance 'in-port :node node :slot i) (flow:ports node))))
       (setf (flow:ports node) (nreverse (flow:ports node)))
       node)))
 
 (defmethod finalize-segment ((node node))
   (let ((segment (segment node)))
-    (loop with in = 0 with out = 0
+    (loop with in = 0
           for port in (flow:ports node)
           do (cond ((typep port 'out-port)
-                    (setf (cl-mixed:output out segment)
-                          (flow:attribute port 'buffer))
-                    (incf out))
+                    (setf (cl-mixed:output (flow:slot port) segment)
+                          (flow:attribute port 'buffer)))
                    ((typep port 'in-port)
                     (let ((port (flow:left (first (flow:connections port)))))
-                      (setf (cl-mixed:input in segment)
-                            (flow:attribute port 'buffer)))
-                    (incf in))
+                      (setf (cl-mixed:input (flow:slot port) segment)
+                            (flow:attribute port 'buffer))))
                    ((typep port 'in-ports)
                     (dolist (connection (flow:connections port))
                       (setf (cl-mixed:input in segment)
@@ -75,6 +77,10 @@
 
 (defclass pipeline ()
   ((nodes :initform (make-hash-table :test 'eq) :accessor nodes)))
+
+(defmethod print-object ((pipeline pipeline) stream)
+  (print-unreadable-object (pipeline stream :type T)
+    (format stream "~a nodes" (hash-table-count (nodes pipeline)))))
 
 (defmethod ensure-node ((node node) pipeline)
   node)
