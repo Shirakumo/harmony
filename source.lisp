@@ -39,7 +39,7 @@
   (when value
     (unless (paused-p source)
       (with-server-lock ((server source))
-        (mapc #'cl-mixed:clear (cl-mixed:outputs source))))))
+        (map NIL #'cl-mixed:clear (cl-mixed:outputs source))))))
 
 (defmethod pause ((source source))
   (setf (paused-p source) T))
