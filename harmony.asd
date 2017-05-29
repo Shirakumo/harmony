@@ -15,9 +15,9 @@
   :serial T
   :components ((:file "package")
                (:file "toolkit")
+               (:file "server")
                (:file "source")
                (:file "drain")
-               (:file "server")
                (:file "pipeline")
                (:file "documentation"))
   :depends-on (:cl-mixed

@@ -65,14 +65,14 @@
   (setf (ended-p source) NIL)
   (setf (sample-position source) position))
 
-(defmethod position ((source source))
-  (values (sample-position source)
-          (coerce (/ (sample-position source)
-                     (cl-mixed:samplerate (cl-mixed:channel source)))
-                  'single-float)))
+;; (defmethod position ((source source))
+;;   (values (sample-position source)
+;;           (coerce (/ (sample-position source)
+;;                      (cl-mixed:samplerate (cl-mixed:channel source)))
+;;                   'single-float)))
 
-(defmethod (setf position) (value (source source))
-  (seek source value :mode :absolute :by :sample))
+;; (defmethod (setf position) (value (source source))
+;;   (seek source value :mode :absolute :by :sample))
 
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let* ((source (cl-mixed:pointer->object segment))

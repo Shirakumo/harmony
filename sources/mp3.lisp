@@ -15,7 +15,7 @@
   ((file :initform NIL :accessor file)
    (samplesize :initform NIL :accessor samplesize)))
 
-(defmethod initialize-instance :after ((source mp3-source))
+(defmethod initialize-instance :after ((source mp3-source) &key)
   (setf (decoder source) #'decode))
 
 (defmethod initialize-channel ((source mp3-source))

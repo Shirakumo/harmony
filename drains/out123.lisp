@@ -15,7 +15,7 @@
 (defclass out123-drain (drain)
   ((device :initform NIL :accessor device)))
 
-(defmethod initialize-instance :after ((drain out123-drain))
+(defmethod initialize-instance :after ((drain out123-drain) &key)
   (setf (decoder drain) #'decode))
 
 (defmethod initialize-channel ((drain out123-drain))
