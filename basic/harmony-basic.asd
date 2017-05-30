@@ -5,20 +5,17 @@
 |#
 
 (in-package #:cl-user)
-(asdf:defsystem harmony-core
+(asdf:defsystem harmony-basic
   :version "1.0.0"
   :license "Artistic"
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
-  :description "Base components of the Harmony sound system."
+  :description "An easy to use common lisp sound system."
   :homepage "https://github.com/Shirakumo/harmony"
   :serial T
   :components ((:file "package")
-               (:file "server")
-               (:file "source")
-               (:file "drain")
-               (:file "pipeline")
+               (:file "default")
                (:file "documentation"))
-  :depends-on (:cl-mixed
-               :flow
-               :bordeaux-threads))
+  :depends-on (:harmony
+               :harmony-out123
+               :documentation-utils))

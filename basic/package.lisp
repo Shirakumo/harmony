@@ -4,5 +4,8 @@
  Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
-(in-package #:org.shirakumo.fraf.harmony.core)
-
+(in-package #:cl-user)
+(defpackage #:harmony
+  (:nicknames #:org.shirakumo.fraf.harmony)
+  (:use #:cl #:harmony-core)
+  )

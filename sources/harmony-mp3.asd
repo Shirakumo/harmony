@@ -14,5 +14,5 @@
   :homepage "https://github.com/Shirakumo/harmony"
   :serial T
   :components ((:file "mp3"))
-  :depends-on (:harmony-core
+  :depends-on (:harmony
                :cl-mpg123))

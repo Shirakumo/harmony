@@ -4,7 +4,7 @@
  Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
-(in-package #:org.shirakumo.fraf.harmony.core)
+(in-package #:org.shirakumo.fraf.harmony)
 
 (defclass drain (cl-mixed:drain)
   ((decoder :initform (lambda (samples drain)) :accessor decoder)

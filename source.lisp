@@ -4,7 +4,7 @@
  Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
-(in-package #:org.shirakumo.fraf.harmony.core)
+(in-package #:org.shirakumo.fraf.harmony)
 
 (defclass source (cl-mixed:source fadable)
   ((looping-p :initarg :loop :initform NIL :accessor looping-p)

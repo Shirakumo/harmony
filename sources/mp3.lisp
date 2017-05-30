@@ -7,7 +7,7 @@
 (in-package #:cl-user)
 (defpackage #:harmony-mp3
   (:nicknames #:org.shirakumo.fraf.harmony.sources.mp3)
-  (:use #:cl #:harmony-core)
+  (:use #:cl #:harmony)
   (:export
    #:mp3-source))
 (in-package #:org.shirakumo.fraf.harmony.sources.mp3)
