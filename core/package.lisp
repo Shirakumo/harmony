@@ -18,6 +18,9 @@
    #:pause
    #:resume
    #:initialize-channel)
+  ;; fadable.lisp
+  (:export
+   #:fade)
   ;; pipeline.lisp
   (:export
    #:out-port

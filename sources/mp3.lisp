@@ -4,7 +4,7 @@
  Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
-(in-package #:org.shirakumo.fraf.harmony)
+(in-package #:cl-user)
 (defpackage #:harmony-mp3
   (:nicknames #:org.shirakumo.fraf.harmony.sources.mp3)
   (:use #:cl #:harmony-core)

@@ -13,15 +13,15 @@
    (fade-end :initform 0 :accessor fade-end)
    (easing-function :initform #'ease-linear :accessor easing-function)))
 
-(defmethod fade ((fadable fadable) to time &key (by (easing-function fadable)))
-  (let ((target (floor (* time (samplerate (server source))))))
-    (setf (fade-count fadable) 0)
-    (setf (fade-end fadable) target)
-    (setf (easing-function fadable) by)
-    ;; Set target volume last to avoid having to synchronise.
-    ;; Might still mean things get screwed for a bit if you
-    ;; are unlucky.
-    (setf (target-volume fadable) to)))
+(defmethod fade ((fadable fadable) to time &key (by (easing-function fadable)) from)
+  (let ((target (floor (* time (samplerate (server source)))))
+        (from  (or from (volume fadable))))
+    (with-body-in-server-thread ((server fadable))
+      (setf (fade-count fadable) 0)
+      (setf (fade-end fadable) target)
+      (setf (easing-function fadable) by)
+      (setf (volume fadable) from)
+      (setf (target-volume fadable) to))))
 
 (declaim (inline perform-fading))
 (defun perform-fading (fadable samples)
