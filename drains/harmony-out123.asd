@@ -14,5 +14,5 @@
   :homepage "https://github.com/Shirakumo/harmony"
   :serial T
   :components ((:file "out123"))
-  :depends-on (:harmony
+  :depends-on (:harmony-core
                :cl-out123))

@@ -52,8 +52,6 @@
 (defmethod stop ((source source))
   (setf (ended-p source) T))
 
-(defgeneric seek (source position &key mode by))
-
 (defmethod seek :around ((source source) position &key (mode :absolute) (by :sample))
   (ecase by
     (:second
