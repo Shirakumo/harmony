@@ -4,7 +4,7 @@
  Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
-(in-package #:org.shirakumo.fraf.harmony)
+(in-package #:org.shirakumo.fraf.harmony.core)
 
 (defclass fadable (cl-mixed:c-object)
   ((start-volume :initform 1.0 :accessor start-volume)
