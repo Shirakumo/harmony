@@ -20,17 +20,17 @@
          :channel NIL
          :samplerate (samplerate server)
          args)
-  (setf (slot-value drain 'cl-mixed:channel) (initialize-channel drain)))
+  (setf (slot-value drain 'channel) (initialize-channel drain)))
 
 (defmethod initialize-instance :after ((drain drain) &key)
   (setf (remix-factor drain) (coerce (/ (samplerate (server drain))
-                                         (cl-mixed:samplerate (cl-mixed:channel drain)))
+                                         (samplerate (channel drain)))
                                       'single-float))
-  (setf (channel-function drain) (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle drain)))
-  (setf (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle drain)) (cffi:callback drain-mix)))
+  (setf (channel-function drain) (cl-mixed-cffi:direct-segment-mix (handle drain)))
+  (setf (cl-mixed-cffi:direct-segment-mix (handle drain)) (cffi:callback drain-mix)))
 
 (cffi:defcallback drain-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
-  (let* ((drain (cl-mixed:pointer->object segment))
+  (let* ((drain (pointer->object segment))
          (real-samples (floor samples (remix-factor drain))))
     ;; Process the channel to get the samples from the buffers
     (cffi:foreign-funcall-pointer

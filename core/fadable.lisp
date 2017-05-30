@@ -6,7 +6,7 @@
 
 (in-package #:org.shirakumo.fraf.harmony.core)
 
-(defclass fadable (cl-mixed:c-object)
+(defclass fadable (c-object)
   ((start-volume :initform 1.0 :accessor start-volume)
    (target-volume :initform 1.0 :accessor target-volume)
    (fade-count :initform 0 :accessor fade-count)
@@ -15,14 +15,16 @@
 
 (defmethod fade ((fadable fadable) to time &key (by (easing-function fadable)))
   (let ((target (floor (* time (samplerate (server source))))))
-    (with-body-in-server-thread ((server source))
-      (setf (target-volume fadable) to)
-      (setf (fade-count fadable) 0)
-      (setf (fade-end fadable) target)
-      (setf (easing-function fadable) by))))
+    (setf (fade-count fadable) 0)
+    (setf (fade-end fadable) target)
+    (setf (easing-function fadable) by)
+    ;; Set target volume last to avoid having to synchronise.
+    ;; Might still mean things get screwed for a bit if you
+    ;; are unlucky.
+    (setf (target-volume fadable) to)))
 
-(declaim (inline adjust-volume))
-(defun adjust-volume (fadable samples)
+(declaim (inline perform-fading))
+(defun perform-fading (fadable samples)
   (let ((current (volume fadable))
         (target (target-volume fadable)))
     (when (/= current target)
@@ -34,3 +36,14 @@
 
 (defun ease-linear (x)
   x)
+
+(defun ease-cubic-in (x)
+  (expt x 3))
+
+(defun ease-cubic-out (x)
+  (1+ (expt (1- x) 3)))
+
+(defun ease-cubic-in-out (x)
+  (if (< x 0.5)
+      (/ (expt (* 2 x) 3) 2)
+      (1+ (/ (expt (* 2 (1- x)) 3) 2))))

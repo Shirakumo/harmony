@@ -64,7 +64,7 @@
     thread))
 
 (defmethod process ((server server))
-  (let ((mixer (cl-mixed:handle (mixer server)))
+  (let ((mixer (handle (mixer server)))
         (device (device server))
         (samples (buffersize server))
         (evaluation-lock (evaluation-lock server))
@@ -80,7 +80,7 @@
                                       (setf (aref evaluation-queue i) NIL))
                              (setf (fill-pointer evaluation-queue) 0))
                            ;; Mixer might have changed.
-                           (setf mixer (cl-mixed:handle (mixer server))))
+                           (setf mixer (handle (mixer server))))
                           ((paused-p device)
                            (bt:thread-yield))
                           (T

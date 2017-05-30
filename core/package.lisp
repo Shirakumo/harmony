@@ -7,7 +7,8 @@
 (in-package #:cl-user)
 (defpackage #:harmony-core
   (:nicknames #:org.shirakumo.fraf.harmony.core)
-  (:use #:cl)
+  (:use #:cl #:cl-mixed)
+  (:shadow #:source #:drain #:space)
   ;; drain.lisp
   (:export
    #:drain
@@ -65,5 +66,7 @@
    #:resume
    #:stop
    #:seek)
-  ;; toolkit.lisp
-  (:export))
+  ;; re-exports from cl-mixed
+  (:export
+   #:volume
+   #:bypass))

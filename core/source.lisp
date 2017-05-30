@@ -24,14 +24,14 @@
          :channel NIL
          :samplerate (samplerate server)
          args)
-  (setf (slot-value source 'cl-mixed:channel) (initialize-channel source)))
+  (setf (slot-value source 'channel) (initialize-channel source)))
 
 (defmethod initialize-instance :after ((source source) &key)
-  (setf (remix-factor source) (coerce (/ (cl-mixed:samplerate (cl-mixed:channel source))
+  (setf (remix-factor source) (coerce (/ (samplerate (channel source))
                                          (samplerate (server source)))
                                       'single-float))
-  (setf (channel-function source) (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle source)))
-  (setf (cl-mixed-cffi:direct-segment-mix (cl-mixed:handle source)) (cffi:callback source-mix)))
+  (setf (channel-function source) (cl-mixed-cffi:direct-segment-mix (handle source)))
+  (setf (cl-mixed-cffi:direct-segment-mix (handle source)) (cffi:callback source-mix)))
 
 (defgeneric initialize-channel (source))
 
@@ -39,7 +39,7 @@
   (when value
     (unless (paused-p source)
       (with-body-in-server-thread ((server source))
-        (map NIL #'cl-mixed:clear (cl-mixed:outputs source))))))
+        (map NIL #'clear (outputs source))))))
 
 (defmethod pause ((source source))
   (setf (paused-p source) T))
@@ -55,7 +55,7 @@
 (defmethod seek :around ((source source) position &key (mode :absolute) (by :sample))
   (ecase by
     (:second
-     (setf position (round (* position (cl-mixed:samplerate (cl-mixed:channel source)))))))
+     (setf position (round (* position (samplerate (channel source)))))))
   (ecase mode
     (:relative
      (setf mode :absolute)
@@ -67,14 +67,14 @@
 ;; (defmethod position ((source source))
 ;;   (values (sample-position source)
 ;;           (coerce (/ (sample-position source)
-;;                      (cl-mixed:samplerate (cl-mixed:channel source)))
+;;                      (samplerate (channel source)))
 ;;                   'single-float)))
 
 ;; (defmethod (setf position) (value (source source))
 ;;   (seek source value :mode :absolute :by :sample))
 
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
-  (let* ((source (cl-mixed:pointer->object segment))
+  (let* ((source (pointer->object segment))
          (real-samples (floor samples (remix-factor source))))
     (unless (paused-p source)
       ;; We need to handle ended-p like this in order to make
@@ -93,4 +93,5 @@
               :pointer segment
               :void)
              ;; Count current stream position
+             (perform-fading source samples)
              (incf (sample-position source) real-samples))))))
