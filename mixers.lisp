@@ -24,10 +24,9 @@
 
 (defmethod withdraw ((segment segment) (mixer mixer))
   (with-body-in-server-thread ((server mixer) :synchronize T)
-    (dotimes (i (length (buffers mixer)))
-      (setf (cl-mixed:output-field :buffer i segment) NIL))
     (call-next-method)
-    (when (= 0 (length (inputs mixer))))))
+    (dotimes (i (length (buffers mixer)))
+      (setf (cl-mixed:output-field :buffer i segment) NIL))))
 
 (defmethod sources ((mixer mixer))
   (loop for v being the hash-values of (cl-mixed:sources mixer)

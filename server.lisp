@@ -85,18 +85,19 @@
     (let ((*in-processing-thread* T))
       (unwind-protect
            (loop while (thread server)
-                 do (cond ((< 0 (fill-pointer evaluation-queue))
-                           (bt:with-lock-held (evaluation-lock)
-                             (loop for i from 0 below (fill-pointer evaluation-queue)
-                                   do (funcall (aref evaluation-queue i))
-                                      (setf (aref evaluation-queue i) NIL))
-                             (setf (fill-pointer evaluation-queue) 0))
-                           ;; Mixer might have changed.
-                           (setf mixer (handle (mixer server))))
-                          ((paused-p device)
-                           (bt:thread-yield))
-                          (T
-                           (cl-mixed-cffi:mixer-mix samples mixer))))
+                 do (with-simple-restart (continue "Continue with fingers crossed.")
+                      (cond ((< 0 (fill-pointer evaluation-queue))
+                             (bt:with-lock-held (evaluation-lock)
+                               (loop for i from 0 below (fill-pointer evaluation-queue)
+                                     do (funcall (aref evaluation-queue i))
+                                        (setf (aref evaluation-queue i) NIL))
+                               (setf (fill-pointer evaluation-queue) 0))
+                             ;; Mixer might have changed.
+                             (setf mixer (handle (mixer server))))
+                            ((paused-p device)
+                             (bt:thread-yield))
+                            (T
+                             (cl-mixed-cffi:mixer-mix samples mixer)))))
         (cl-mixed-cffi:mixer-end mixer)
         (setf (thread server) NIL)))))
 

@@ -13,7 +13,7 @@
 (in-package #:org.shirakumo.fraf.harmony.drains.out123)
 
 (defclass out123-drain (drain)
-  ((name :initform NIL :initarg :name :accessor name)
+  ((program-name :initform NIL :initarg :program-name :accessor program-name)
    (device :initform NIL :accessor device)))
 
 (defmethod initialize-instance :after ((drain out123-drain) &key)
@@ -22,7 +22,7 @@
   (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
 (defmethod initialize-channel ((drain out123-drain))
-  (let ((out (cl-out123:make-output NIL :name (or (name drain)
+  (let ((out (cl-out123:make-output NIL :name (or (program-name drain)
                                                   (cl-out123:device-default-name "Harmony")))))
     (cl-out123:connect out)
     (cl-out123:start out :rate (samplerate (server drain))
