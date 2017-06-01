@@ -47,7 +47,7 @@
                                  paused
                                  loop
                                  fade
-                                 volume)
+                                 (volume 1.0))
   (let* ((mixer (ensure-segment mixer server))
          (file (pathname file))
          (segment (make-instance (source-type (pathname-type file))
@@ -56,10 +56,9 @@
                                  :file file
                                  :paused paused
                                  :loop loop)))
-    (cond (fade
-           (fade segment volume fade :from 0.0))
-          (volume
-           (setf (volume segment) volume)))
+    (setf (volume segment) volume)
+    (when fade
+      (fade segment volume fade :from 0.0))
     (add segment mixer)
     segment))
 
