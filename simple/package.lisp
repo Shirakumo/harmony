@@ -40,4 +40,6 @@
    #:ended-p
    #:location
    #:velocity
-   #:direction))
+   #:direction
+   #:volume
+   #:segment))
