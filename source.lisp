@@ -67,6 +67,10 @@
 (defmethod withdraw :after ((source source) (mixer mixer))
   (setf (mixer source) NIL))
 
+(defmethod (setf ended-p) :after (value (source source))
+  (when (and value (mixer source))
+    (withdraw source (mixer source))))
+
 (defmethod stop ((source source))
   (setf (ended-p source) T))
 
@@ -100,9 +104,7 @@
       ;; ended-p was set still get out before we clear the
       ;; buffers (by setting paused-p to T).
       (cond ((ended-p source)
-             (setf (paused-p source) T)
-             (when (mixer source)
-               (withdraw source (mixer source))))
+             (setf (paused-p source) T))
             (T
              ;; Decode samples from the source
              (funcall (decoder source) real-samples source)
