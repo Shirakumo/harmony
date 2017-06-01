@@ -88,6 +88,18 @@
 
 (defgeneric seek-to-sample (source position))
 
+(defmethod location ((source source))
+  (cl-mixed:input-location (aref (outputs source) 0) (mixer source)))
+
+(defmethod (setf location) (vec (source source))
+  (setf (cl-mixed:input-location (aref (outputs source) 0) (mixer source)) vec))
+
+(defmethod velocity ((source source))
+  (input-velocity (aref (outputs source) 0) (mixer source)))
+
+(defmethod (setf velocity) (vec (source source))
+  (setf (input-velocity (aref (outputs source) 0) (mixer source)) vec))
+
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let* ((source (pointer->object segment))
          (real-samples (floor samples (remix-factor source))))

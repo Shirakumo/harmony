@@ -37,4 +37,7 @@
    #:fade
    #:looping-p
    #:paused-p
-   #:ended-p))
+   #:ended-p
+   #:location
+   #:velocity
+   #:direction))

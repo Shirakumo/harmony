@@ -32,12 +32,22 @@
   ;; mixers.lisp
   (:export
    #:mixer
-   #:linear-mixer
-   #:space-mixer
    #:add
    #:withdraw
    #:sources
-   #:channels)
+   #:channels
+   #:linear-mixer
+   #:space-mixer
+   #:location
+   #:velocity
+   #:direction
+   #:up
+   #:soundspeed
+   #:doppler-factor
+   #:min-distance
+   #:max-distance
+   #:rolloff
+   #:attenuation)
   ;; pipeline.lisp
   (:export
    #:out-port
@@ -90,4 +100,6 @@
    #:resume
    #:stop
    #:seek
-   #:seek-to-sample))
+   #:seek-to-sample
+   #:location
+   #:velocity))
