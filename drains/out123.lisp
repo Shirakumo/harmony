@@ -22,8 +22,9 @@
   (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
 (defmethod initialize-channel ((drain out123-drain))
-  (let ((out (cl-out123:make-output NIL :name (or (program-name drain)
-                                                  (cl-out123:device-default-name "Harmony")))))
+  (let ((out (cl-out123:make-output #+linux "pulse" #-linux NIL
+                                    :name (or (program-name drain)
+                                              (cl-out123:device-default-name "Harmony")))))
     (cl-out123:connect out)
     (cl-out123:start out :rate (samplerate (server drain))
                          :channels 2)
