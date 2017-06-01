@@ -82,18 +82,11 @@
     (:relative
      (setf mode :absolute)
      (incf position (sample-position source))))
-  (call-next-method source position :mode :absolute :by :sample)
+  (seek-to-sample source position)
   (setf (ended-p source) NIL)
   (setf (sample-position source) position))
 
-;; (defmethod position ((source source))
-;;   (values (sample-position source)
-;;           (coerce (/ (sample-position source)
-;;                      (samplerate (channel source)))
-;;                   'single-float)))
-
-;; (defmethod (setf position) (value (source source))
-;;   (seek source value :mode :absolute :by :sample))
+(defgeneric seek-to-sample (source position))
 
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let* ((source (pointer->object segment))

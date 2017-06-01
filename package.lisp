@@ -89,4 +89,5 @@
    #:pause
    #:resume
    #:stop
-   #:seek))
+   #:seek
+   #:seek-to-sample))

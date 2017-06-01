@@ -38,8 +38,8 @@
                              :alternating
                              rate))))
 
-(defmethod seek ((source mp3-source) position &key mode by)
-  (cl-mpg123:seek (file source) position :mode mode :by by))
+(defmethod seek-to-sample ((source mp3-source) position)
+  (cl-mpg123:seek (file source) position :mode :absolute :by :sample))
 
 (defun decode (samples source)
   (let* ((file (file source))
