@@ -14,7 +14,9 @@
   :homepage "https://github.com/Shirakumo/harmony"
   :serial T
   :components ((:file "package")
+               (:file "segment")
                (:file "server")
+               (:file "mixers")
                (:file "fadable")
                (:file "source")
                (:file "drain")

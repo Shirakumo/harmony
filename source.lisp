@@ -8,17 +8,21 @@
 
 (defclass source (cl-mixed:source fadable)
   ((looping-p :initarg :loop :initform NIL :accessor looping-p)
-   (paused-p :initarg :paused-p :initform NIL :accessor paused-p)
+   (paused-p :initarg :paused :initform NIL :accessor paused-p)
    (ended-p :initform NIL :accessor ended-p)
-   (decoder :initform (lambda (samples source)) :accessor decoder)
-   (server :initarg :server :initform NIL :accessor server)
+   (decoder :initform (constantly T) :accessor decoder)
    (sample-position :initform 0 :accessor sample-position)
    (remix-factor :initform 0 :accessor remix-factor)
-   (channel-function :initform NIL :accessor channel-function)))
+   (channel-function :initform NIL :accessor channel-function)
+   (mixer :initform NIL :accessor mixer)))
+
+(defmethod print-object ((source source) stream)
+  (print-unreadable-object (source stream :type T)
+    (format stream "~:[~; looping~]~:[~; paused~]~:[~; ended~]~:[~; playing~]"
+            (looping-p source) (paused-p source) (ended-p source)
+            (and (not (paused-p source)) (not (ended-p source))))))
 
 (defmethod initialize-instance ((source source) &rest args &key server)
-  (unless server
-    (error "The SERVER initarg is required, but not given."))
   (apply #'call-next-method
          source
          :channel NIL
@@ -48,6 +52,20 @@
   (when (ended-p source)
     (seek source 0))
   (setf (paused-p source) NIL))
+
+(defmethod add :before ((source source) (mixer mixer))
+  (when (mixer source)
+    (error "~a is already attached to ~a." source mixer)))
+
+(defmethod add :after ((source source) (mixer mixer))
+  (setf (mixer source) mixer))
+
+(defmethod withdraw :before ((source source) (mixer mixer))
+  (unless (eq mixer (mixer source))
+    (error "~a is not attached to ~a." source mixer)))
+
+(defmethod withdraw :after ((source source) (mixer mixer))
+  (setf (mixer source) NIL))
 
 (defmethod stop ((source source))
   (setf (ended-p source) T))
@@ -82,7 +100,9 @@
       ;; ended-p was set still get out before we clear the
       ;; buffers (by setting paused-p to T).
       (cond ((ended-p source)
-             (setf (paused-p source) T))
+             (setf (paused-p source) T)
+             (when (mixer source)
+               (withdraw source (mixer source))))
             (T
              ;; Decode samples from the source
              (funcall (decoder source) real-samples source)

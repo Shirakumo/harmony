@@ -6,15 +6,12 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
-(defclass drain (cl-mixed:drain)
-  ((decoder :initform (lambda (samples drain)) :accessor decoder)
-   (server :initarg :server :initform NIL :accessor server)
+(defclass drain (cl-mixed:drain segment)
+  ((decoder :initform (constantly T) :accessor decoder)
    (channel-function :initform NIL :accessor channel-function)
    (remix-factor :initform 0 :accessor remix-factor)))
 
 (defmethod initialize-instance ((drain drain) &rest args &key server)
-  (unless server
-    (error "The SERVER initarg is required, but not given."))
   (apply #'call-next-method
          drain
          :channel NIL

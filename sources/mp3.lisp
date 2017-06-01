@@ -15,6 +15,7 @@
 (defclass mp3-source (source)
   ((file :initform NIL :accessor file)
    (source-file :initarg :file :accessor source-file)
+   (channels :initarg :channels :accessor channels)
    (samplesize :initform NIL :accessor samplesize)))
 
 (defmethod initialize-instance :after ((source mp3-source) &key)
@@ -23,7 +24,8 @@
 (defmethod initialize-channel ((source mp3-source))
   (let ((file (cl-mpg123:make-file (source-file source)
                                    :accepted-format (list (samplerate (server source))
-                                                          2 :float))))
+                                                          (channels source)
+                                                          :float))))
     (cl-mpg123:connect file)
     (setf (file source) file)
     (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)

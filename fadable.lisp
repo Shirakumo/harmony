@@ -6,7 +6,7 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
-(defclass fadable (c-object)
+(defclass fadable (segment)
   ((start-volume :initform 1.0 :accessor start-volume)
    (target-volume :initform 1.0 :accessor target-volume)
    (fade-count :initform 0 :accessor fade-count)

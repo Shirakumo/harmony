@@ -7,8 +7,16 @@
 (in-package #:cl-user)
 (defpackage #:harmony
   (:nicknames #:org.shirakumo.fraf.harmony)
-  (:use #:cl #:cl-mixed)
-  (:shadow #:source #:drain #:space)
+  (:use #:cl)
+  (:import-from #:cl-mixed
+                #:inputs #:outputs #:input #:output #:segments
+                #:channel #:add #:withdraw #:clear #:end #:info
+                #:handle #:pointer->object #:free
+                #:samplerate #:channels #:encoding #:channels
+                #:volume #:bypass #:location #:velocity
+                #:direction #:up #:input-location #:input-velocity
+                #:soundspeed #:doppler-factor #:min-distance
+                #:max-distance #:rolloff #:attenuation)
   ;; drain.lisp
   (:export
    #:drain
@@ -21,6 +29,15 @@
   ;; fadable.lisp
   (:export
    #:fade)
+  ;; mixers.lisp
+  (:export
+   #:mixer
+   #:linear-mixer
+   #:space-mixer
+   #:add
+   #:withdraw
+   #:sources
+   #:channels)
   ;; pipeline.lisp
   (:export
    #:out-port
@@ -41,6 +58,9 @@
    #:sever
    #:allocate-buffers
    #:compile-pipeline)
+  ;; segment.lisp
+  (:export
+   #:volume)
   ;; server.lisp
   (:export
    #:server
@@ -63,13 +83,10 @@
    #:ended-p
    #:decoder
    #:server
+   #:mixer
    #:sample-position
    #:initialize-channel
    #:pause
    #:resume
    #:stop
-   #:seek)
-  ;; re-exports from cl-mixed
-  (:export
-   #:volume
-   #:bypass))
+   #:seek))

@@ -9,7 +9,8 @@
 (defvar *in-processing-thread* NIL)
 
 (defclass server ()
-  ((buffersize :initarg :buffersize :reader buffersize)
+  ((segment-map :initform NIL :accessor segment-map)
+   (buffersize :initarg :buffersize :reader buffersize)
    (samplerate :initarg :samplerate :reader samplerate)
    (device :initarg :device :accessor device)
    (mixer :initform NIL :accessor mixer)
@@ -22,15 +23,26 @@
    :buffersize 441
    :samplerate 44100))
 
-(defmethod initialize-instance :after ((server server) &key driver name)
+(defmethod initialize-instance :after ((server server) &key)
   (check-type (buffersize server) (integer 1))
   (check-type (samplerate server) (integer 1))
+  (setf (segment-map server) (make-hash-table :test 'eql))
   (setf (evaluation-queue server) (make-array 32 :adjustable T :fill-pointer 0 :initial-element NIL))
   (setf (evaluation-lock server) (bt:make-lock (format NIL "~a evaluation lock." server))))
 
 (defmethod print-object ((server server) stream)
   (print-unreadable-object (server stream :type T)
     (format stream "~@[~*running~]" (thread server))))
+
+(defmethod segment ((name symbol) (server server))
+  (gethash name (segment-map server)))
+
+(defmethod (setf segment) ((segment segment) (name symbol) (server server))
+  (setf (gethash name (segment-map server)) segment))
+
+(defmethod segments ((server server))
+  (loop for v being the hash-values of (segment-map server)
+        collect v))
 
 (defmethod start (server)
   (when (thread server)
@@ -88,7 +100,7 @@
         (cl-mixed-cffi:mixer-end mixer)
         (setf (thread server) NIL)))))
 
-(defun call-in-server-thread (function server &key synchronize timeout)
+(defun call-in-server-thread (function server &key synchronize timeout values)
   (cond ((or *in-processing-thread*
              (not (thread server)))
          (funcall function))
@@ -98,10 +110,15 @@
                (values ()))
            (bt:with-lock-held (lock)
              (bt:with-lock-held ((evaluation-lock server))
-               (vector-push-extend (lambda ()
-                                     (unwind-protect
-                                          (setf values (multiple-value-list (funcall function)))
-                                       (bt:condition-notify monitor)))
+               (vector-push-extend (if values
+                                       (lambda ()
+                                         (unwind-protect
+                                              (setf values (multiple-value-list (funcall function)))
+                                           (bt:condition-notify monitor)))
+                                       (lambda ()
+                                         (unwind-protect
+                                              (funcall function)
+                                           (bt:condition-notify monitor))))
                                    (evaluation-queue server)))
              (bt:condition-wait monitor lock :timeout timeout)
              (values-list values))))

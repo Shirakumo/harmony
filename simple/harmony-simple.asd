@@ -5,7 +5,7 @@
 |#
 
 (in-package #:cl-user)
-(asdf:defsystem harmony-basic
+(asdf:defsystem harmony-simple
   :version "1.0.0"
   :license "Artistic"
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
@@ -14,8 +14,10 @@
   :homepage "https://github.com/Shirakumo/harmony"
   :serial T
   :components ((:file "package")
+               (:file "files")
                (:file "default")
                (:file "documentation"))
   :depends-on (:harmony
                :harmony-out123
+               :harmony-mp3
                :documentation-utils))

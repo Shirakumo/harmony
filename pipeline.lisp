@@ -16,12 +16,14 @@
   ())
 
 (flow:define-node node ()
-  ((ports :initarg :ports :initform () :accessor flow:ports)
-   (segment :initarg :segment :accessor segment)))
+  ((ports :initarg :ports :initform () :accessor flow:ports)))
 
 (defmethod print-object ((node node) stream)
   (print-unreadable-object (node stream :type T)
-    (format stream "~a" (segment node))))
+    (format stream "~a" (flow:attribute node 'segment))))
+
+(defmethod initialize-instance :after ((node node) &key segment)
+  (setf (flow:attribute node 'segment) segment))
 
 (defmethod make-node ((segment segment))
   (destructuring-bind (&key max-inputs outputs flags &allow-other-keys)
@@ -39,8 +41,8 @@
       (setf (flow:ports node) (nreverse (flow:ports node)))
       node)))
 
-(defmethod finalize-segment ((node node))
-  (let ((segment (segment node)))
+(defmethod complete-segment ((node node))
+  (let ((segment (flow:attribute node 'segment)))
     (loop with in = 0
           for port in (flow:ports node)
           do (cond ((typep port 'out-port)
@@ -62,7 +64,9 @@
         do (when (typep port 'out-port)
              (when (= i n)
                (return port))
-             (incf i))))
+             (incf i))
+        finally (error "There is no output at index ~a on ~a."
+                       n node)))
 
 (defmethod nth-in (n (node node))
   (loop with i = 0
@@ -72,7 +76,9 @@
                  ((typep port 'in-port)
                   (when (= i n)
                     (return port))
-                  (incf i)))))
+                  (incf i)))
+        finally (error "There is no input at index ~a on ~a."
+                       n node)))
 
 (defclass pipeline ()
   ((nodes :initform (make-hash-table :test 'eq) :accessor nodes)))
@@ -112,15 +118,16 @@
   (flow:sever (ensure-node segment pipeline))
   pipeline)
 
-(defun allocate-buffers (nodes buffersize)
+(defun allocate-buffers (nodes buffersize &optional old-buffers)
   (let* ((buffer-count (1+ (loop for node in nodes
                                  when (flow:ports node)
                                  maximize (loop for port in (flow:ports node)
                                                 when (flow:attribute port 'buffer)
                                                 maximize (flow:attribute port 'buffer)))))
          (buffers (make-array buffer-count)))
-    (dotimes (i buffer-count)
-      (setf (aref buffers i) (make-buffer buffersize)))
+    (map-into buffers #'identity old-buffers)
+    (loop for i from (length old-buffers) below buffer-count
+          do (setf (aref buffers i) (cl-mixed:make-buffer buffersize)))
     (dolist (node nodes buffers)
       (loop for port in (flow:ports node)
             for buffer = (flow:attribute port 'buffer)
@@ -131,15 +138,24 @@
   (let* ((nodes (loop for node being the hash-values of (nodes pipeline)
                       collect node))
          (nodes (flow:allocate-ports nodes :attribute 'buffer))
-         (mixer (make-mixer))
-         (buffers (allocate-buffers nodes (buffersize server))))
-    (dolist (node nodes)
-      (add (finalize-segment node) mixer))
+         (device)
+         (old-mixer (mixer server))
+         (mixer (cl-mixed:make-mixer))
+         (old-buffers (buffers server))
+         (buffers (allocate-buffers nodes (buffersize server) old-buffers)))
+    (clrhash (segment-map server))
+    (loop for node in nodes
+          for segment = (complete-segment node)
+          do (add (complete-segment node) mixer)
+             (setf (segment (name segment) server) segment)
+          finally (setf device segment))
     (with-body-in-server-thread (server)
-      (when (mixer server)
-        (end mixer)
-        (map NIL #'free (segments mixer))
-        (free (mixer server)))
-      (map NIL #'free (buffers server))
+      (setf (device server) device)
       (setf (buffers server) buffers)
-      (setf (mixer server) mixer))))
+      (setf (mixer server) mixer))
+    (when old-mixer
+      (free old-mixer))
+    (when old-buffers
+      ;; Free buffers that were not re-used
+      (loop for i from (length buffers) below (length old-buffers)
+            do (free (aref old-buffers i))))))
