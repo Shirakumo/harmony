@@ -25,7 +25,7 @@
 (defmethod initialize-instance :after ((node node) &key segment)
   (setf (flow:attribute node 'segment) segment))
 
-(defmethod make-node ((segment segment))
+(defmethod make-node ((segment cl-mixed:segment))
   (destructuring-bind (&key max-inputs outputs flags &allow-other-keys)
       (info segment)
     (let ((node (make-instance 'node :segment segment)))
@@ -90,7 +90,7 @@
 (defmethod ensure-node ((node node) pipeline)
   node)
 
-(defmethod ensure-node ((segment segment) (pipeline pipeline))
+(defmethod ensure-node ((segment cl-mixed:segment) (pipeline pipeline))
   (or (gethash segment (nodes pipeline))
       (setf (gethash segment (nodes pipeline))
             (make-node segment))))
@@ -106,15 +106,15 @@
     pipeline))
 
 (defmethod disconnect ((pipeline pipeline)
-                       (source segment) source-output
-                       (target segment) target-input)
+                       (source cl-mixed:segment) source-output
+                       (target cl-mixed:segment) target-input)
   (let ((source (ensure-node source pipeline))
         (target (ensure-node target pipeline)))
     (flow:disconnect (nth-out source-output source)
                      (nth-in target-input target))
     pipeline))
 
-(defmethod sever ((pipeline pipeline) (segment segment))
+(defmethod sever ((pipeline pipeline) (segment cl-mixed:segment))
   (flow:sever (ensure-node segment pipeline))
   pipeline)
 
@@ -149,7 +149,7 @@
           do (add (complete-segment node) mixer)
              (setf (segment (name segment) server) segment)
           finally (setf device segment))
-    (with-body-in-server-thread (server)
+    (with-body-in-server-thread (server :synchronize T)
       (setf (device server) device)
       (setf (buffers server) buffers)
       (setf (mixer server) mixer))
