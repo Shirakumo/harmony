@@ -13,7 +13,7 @@
    (buffersize :initarg :buffersize :reader buffersize)
    (samplerate :initarg :samplerate :reader samplerate)
    (device :initarg :device :accessor device)
-   (mixer :initform NIL :accessor mixer)
+   (pipeline-mixer :initform NIL :accessor pipeline-mixer)
    (buffers :initform NIL :accessor buffers)
    (thread :initform NIL :accessor thread)
    ;; Synchronisation state
@@ -40,17 +40,13 @@
 (defmethod (setf segment) ((segment segment) (name symbol) (server server))
   (setf (gethash name (segment-map server)) segment))
 
-(defmethod segments ((server server))
-  (loop for v being the hash-values of (segment-map server)
-        collect v))
-
 (defmethod start ((server server))
   (when (thread server)
     (error "~a is already running." server))
   (unless (device server)
     (error "No device has been assigned to ~a yet.~
             Did you compile a pipeline?" server))
-  (unless (mixer server)
+  (unless (pipeline-mixer server)
     (error "No mixer object has been assigned to ~a yet.~
             Did you compile a pipeline?" server))
   (setf (thread server) T)
@@ -82,7 +78,7 @@
     thread))
 
 (defmethod process ((server server))
-  (let ((mixer (handle (mixer server)))
+  (let ((mixer (handle (pipeline-mixer server)))
         (device (device server))
         (samples (buffersize server))
         (evaluation-lock (evaluation-lock server))
@@ -99,7 +95,7 @@
                                         (setf (aref evaluation-queue i) NIL))
                                (setf (fill-pointer evaluation-queue) 0))
                              ;; Properties might have changed.
-                             (setf mixer (handle (mixer server)))
+                             (setf mixer (handle (pipeline-mixer server)))
                              (setf device (device server)))
                             ((paused-p device)
                              (bt:thread-yield))

@@ -139,7 +139,7 @@
                       collect node))
          (nodes (flow:allocate-ports nodes :attribute 'buffer))
          (device)
-         (old-mixer (mixer server))
+         (old-mixer (pipeline-mixer server))
          (mixer (cl-mixed:make-mixer))
          (old-buffers (buffers server))
          (buffers (allocate-buffers nodes (buffersize server) old-buffers)))
@@ -152,7 +152,7 @@
     (with-body-in-server-thread (server :synchronize T)
       (setf (device server) device)
       (setf (buffers server) buffers)
-      (setf (mixer server) mixer))
+      (setf (pipeline-mixer server) mixer))
     (when old-mixer
       (free old-mixer))
     (when old-buffers
