@@ -15,8 +15,8 @@
 (defclass in-ports (flow:in-port flow:n-port)
   ())
 
-(flow:define-node node ()
-  ((ports :initarg :ports :initform () :accessor flow:ports)))
+(defclass node (flow:dynamic-node)
+  ())
 
 (defmethod print-object ((node node) stream)
   (print-unreadable-object (node stream :type T)

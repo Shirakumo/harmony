@@ -44,7 +44,7 @@
   (loop for v being the hash-values of (segment-map server)
         collect v))
 
-(defmethod start (server)
+(defmethod start ((server server))
   (when (thread server)
     (error "~a is already running." server))
   (setf (thread server) T)
@@ -56,7 +56,7 @@
     (setf (thread server) thread)
     thread))
 
-(defmethod stop (server)
+(defmethod stop ((server server))
   (unless (thread server)
     (error "~a is not running." server))
   (let ((thread (thread server)))
@@ -92,8 +92,9 @@
                                      do (funcall (aref evaluation-queue i))
                                         (setf (aref evaluation-queue i) NIL))
                                (setf (fill-pointer evaluation-queue) 0))
-                             ;; Mixer might have changed.
-                             (setf mixer (handle (mixer server))))
+                             ;; Properties might have changed.
+                             (setf mixer (handle (mixer server)))
+                             (setf device (device server)))
                             ((paused-p device)
                              (bt:thread-yield))
                             (T
