@@ -47,6 +47,12 @@
 (defmethod start ((server server))
   (when (thread server)
     (error "~a is already running." server))
+  (unless (device server)
+    (error "No device has been assigned to ~a yet.~
+            Did you compile a pipeline?" server))
+  (unless (mixer server)
+    (error "No mixer object has been assigned to ~a yet.~
+            Did you compile a pipeline?" server))
   (setf (thread server) T)
   (let ((thread (bt:make-thread (lambda () (process server))
                                 :name (format NIL "~a process thread." server)
