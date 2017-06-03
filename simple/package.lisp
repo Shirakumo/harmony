@@ -8,7 +8,7 @@
 (defpackage #:harmony-simple
   (:nicknames #:org.shirakumo.fraf.harmony.simple)
   (:use #:cl #:harmony #:harmony-out123 #:harmony-mp3)
-  (:shadow #:start #:stop #:pause #:paused-p #:resume)
+  (:shadow #:start #:stop #:pause #:paused-p #:resume #:play)
   ;; default.lisp
   (:export
    #:*server*

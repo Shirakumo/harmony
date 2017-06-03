@@ -12,6 +12,8 @@
    #:mp3-source))
 (in-package #:org.shirakumo.fraf.harmony.sources.mp3)
 
+(define-source-type "mp3" mp3-source)
+
 (defclass mp3-source (source)
   ((file :initform NIL :accessor file)
    (source-file :initarg :file :accessor source-file)

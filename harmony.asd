@@ -10,7 +10,7 @@
   :license "Artistic"
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
-  :description "Base components of the Harmony sound system."
+  :description "A common lisp sound server and sound processing library."
   :homepage "https://github.com/Shirakumo/harmony"
   :serial T
   :components ((:file "package")

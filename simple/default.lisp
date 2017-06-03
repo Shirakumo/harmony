@@ -43,24 +43,19 @@
                 (error "No segment called ~a on ~a"
                        segment-ish server)))))
 
-(defmethod play (file mixer &key (server *server*)
+(defun play (file mixer &key (server *server*)
                                  paused
                                  loop
                                  fade
                                  (volume 1.0))
-  (let* ((mixer (ensure-segment mixer server))
-         (file (pathname file))
-         (segment (make-instance (source-type (pathname-type file))
-                                 :server server
-                                 :channels (channels mixer)
-                                 :file file
-                                 :paused paused
-                                 :loop loop)))
-    (setf (volume segment) volume)
-    (when fade
-      (fade segment volume fade :from 0.0))
-    (add segment mixer)
-    segment))
+  (harmony:play server file mixer
+                :paused paused :loop loop :fade fade :volume volume))
+
+(defmethod add ((source source) (name symbol))
+  (add source (ensure-segment name *server*)))
+
+(defmethod withdraw ((source source) (name symbol))
+  (add source (ensure-segment name *server*)))
 
 (setf *server* (make-instance 'default-server))
 

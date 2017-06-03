@@ -6,6 +6,8 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
+(defvar *filetype-source-map* (make-hash-table :test 'equalp))
+
 (defclass source (cl-mixed:source fadable)
   ((looping-p :initarg :loop :initform NIL :accessor looping-p)
    (paused-p :initarg :paused :initform NIL :accessor paused-p)
@@ -100,6 +102,16 @@
 (defmethod (setf velocity) (vec (source source))
   (setf (input-velocity (aref (outputs source) 0) (mixer source)) vec))
 
+(defun source-type (name)
+  (or (gethash name *filetype-source-map*)
+      (error "Unknown file type ~a." name)))
+
+(defun (setf source-type) (type name)
+  (setf (gethash name *filetype-source-map*) type))
+
+(defmacro define-source-type (name type)
+  `(setf (source-type ,(string name)) ',type))
+
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let* ((source (pointer->object segment))
          (real-samples (floor samples (remix-factor source))))
@@ -122,3 +134,23 @@
              ;; Count current stream position
              (perform-fading source samples)
              (incf (sample-position source) real-samples))))))
+
+(defun play (server file mixer &key paused
+                                    loop
+                                    fade
+                                    (volume 1.0))
+  (let* ((mixer (etypecase mixer
+                  (segment mixer)
+                  (symbol (segment mixer server))))
+         (file (pathname file))
+         (segment (make-instance (source-type (pathname-type file))
+                                 :server server
+                                 :channels (channels mixer)
+                                 :file file
+                                 :paused paused
+                                 :loop loop)))
+    (setf (volume segment) volume)
+    (when fade
+      (fade segment volume fade :from 0.0))
+    (add segment mixer)
+    segment))

@@ -102,4 +102,7 @@
    #:seek
    #:seek-to-sample
    #:location
-   #:velocity))
+   #:velocity
+   #:source-type
+   #:define-source-type
+   #:play))

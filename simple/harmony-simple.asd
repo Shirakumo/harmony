@@ -14,7 +14,6 @@
   :homepage "https://github.com/Shirakumo/harmony"
   :serial T
   :components ((:file "package")
-               (:file "files")
                (:file "default")
                (:file "documentation"))
   :depends-on (:harmony
