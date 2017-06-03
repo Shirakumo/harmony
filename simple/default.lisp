@@ -44,12 +44,14 @@
                        segment-ish server)))))
 
 (defun play (file mixer &key (server *server*)
-                                 paused
-                                 loop
-                                 fade
-                                 (volume 1.0))
+                             paused
+                             loop
+                             fade
+                             (volume 1.0)
+                             (type (source-type (pathname-type file))))
   (harmony:play server file mixer
-                :paused paused :loop loop :fade fade :volume volume))
+                :paused paused :loop loop :fade fade
+                :volume volume :type type))
 
 (defmethod add ((source source) (name symbol))
   (add source (ensure-segment name *server*)))
