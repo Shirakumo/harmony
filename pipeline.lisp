@@ -30,14 +30,14 @@
       (info segment)
     (let ((node (make-instance 'node :segment segment)))
       (loop for i from 0 below outputs
-            for port = (make-instance 'out-port :node node :slot i)
+            for port = (make-instance 'out-port :node node :name i)
             do (when (find :inplace flags)
                  (setf (flow:attribute port :in-place) T))
                (push port (flow:ports node)))
       (if (< (expt 2 32) max-inputs) ;; "infinity-large"
-          (push (make-instance 'in-ports :node node :slot 'n) (flow:ports node))
+          (push (make-instance 'in-ports :node node :name 'n) (flow:ports node))
           (dotimes (i max-inputs)
-            (push (make-instance 'in-port :node node :slot i) (flow:ports node))))
+            (push (make-instance 'in-port :node node :name i) (flow:ports node))))
       (setf (flow:ports node) (nreverse (flow:ports node)))
       node)))
 
@@ -46,11 +46,11 @@
     (loop with in = 0
           for port in (flow:ports node)
           do (cond ((typep port 'out-port)
-                    (setf (output (flow:slot port) segment)
+                    (setf (output (flow:name port) segment)
                           (flow:attribute port 'buffer)))
                    ((typep port 'in-port)
                     (let ((buffer (flow:attribute (flow:left (first (flow:connections port))) 'buffer)))
-                      (setf (input (flow:slot port) segment) buffer)))
+                      (setf (input (flow:name port) segment) buffer)))
                    ((typep port 'in-ports)
                     (dolist (connection (flow:connections port))
                       (setf (input in segment)
