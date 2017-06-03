@@ -642,6 +642,11 @@ See CALL-IN-SERVER-THREAD"))
 
 ;; source.lisp
 (docs:define-docs
+  (variable *filetype-source-map*
+    "This map stores the associations of file type extensions to source class names.
+
+See SOURCE-TYPE")
+  
   (type source
     "Superclass for all of Harmony's source segments.
 
@@ -800,4 +805,36 @@ This position is absolute. Every source
 must implement a method for this function.
 
 See SEEK
-See SOURCE"))
+See SOURCE")
+
+  (function source-type
+    "Accessor to the file type extension to source type mapping.
+
+The name should be a string designating the file
+type, and the value a source class name.
+
+See *FILETYPE-SOURCE-MAP*
+See DEFINE-SOURCE-TYPE")
+
+  (function define-source-type
+    "Conveniently define a source type mapping.
+
+See SOURCE-TYPE")
+
+  (function play
+    "Conveniently play back a file on the designated mixer of the server.
+
+By default the source type to use is determined by
+the file type extension in the given path. If no
+corresponding source type is known, an error is
+signalled.
+
+The given mixer may either be a segment, or the name
+of a registered segment on the server to add the
+constructed source to.
+
+See SEGMENT
+See SOURCE-TYPE
+See VOLUME
+See FADE
+See ADD"))
