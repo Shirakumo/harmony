@@ -77,4 +77,7 @@ If your source does indeed read from a file, you'll probably also want to regist
 ## Extending Harmony's Drains
 Drains function almost completely analogous to sources, with the exception that they don't fill the c-buffer, but rather read it out. Thus, drains would be useful to write to a file, or output them to a sound server on your operating system. The standard `harmony-out123:out123-drain` already provides the latter for you, so unless you need special support for that, there is no need to create additional ones.
 
+## Also See
 
+* [cl-mixed](https://shirakumo.github.io/cl-mixed) For the mixing and sound processing library.
+* [flow](https://shinmera.github.io/flow) For the pipeline construction and graph handling.
