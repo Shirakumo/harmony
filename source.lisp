@@ -140,15 +140,15 @@
                                     fade
                                     (volume 1.0)
                                     (type (source-type (pathname-type file))))
-  (let ((mixer (etypecase mixer
-                 (segment mixer)
-                 (symbol (segment mixer server))))
-        (segment (make-instance type
-                                :server server
-                                :channels (channels mixer)
-                                :file (pathname file)
-                                :paused paused
-                                :loop loop)))
+  (let* ((mixer (etypecase mixer
+                  (segment mixer)
+                  (symbol (segment mixer server))))
+         (segment (make-instance type
+                                 :server server
+                                 :channels (channels mixer)
+                                 :file (pathname file)
+                                 :paused paused
+                                 :loop loop)))
     (setf (volume segment) volume)
     (when fade
       (fade segment volume fade :from 0.0))
