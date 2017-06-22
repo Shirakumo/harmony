@@ -115,27 +115,27 @@
   `(setf (source-type ,(string name)) ',type))
 
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
-  (let* ((source (pointer->object segment))
-         (real-samples (floor samples (remix-factor source))))
-    (unless (paused-p source)
-      ;; We need to handle ended-p like this in order to make
-      ;; sure that the last samples that were processed before
-      ;; ended-p was set still get out before we clear the
-      ;; buffers (by setting paused-p to T).
-      (cond ((ended-p source)
-             (setf (paused-p source) T))
-            (T
-             ;; Decode samples from the source
-             (funcall (decoder source) real-samples source)
-             ;; Process the channel to get the samples into buffers
-             (cffi:foreign-funcall-pointer
-              (channel-function source) ()
-              cl-mixed-cffi:size_t samples
-              :pointer segment
-              :void)
-             ;; Count current stream position
-             (perform-fading source samples)
-             (incf (sample-position source) real-samples))))))
+  (let ((source (pointer->object segment)))
+    (when (and source (not (paused-p source)))
+      (let ((real-samples (floor samples (remix-factor source))))
+        ;; We need to handle ended-p like this in order to make
+        ;; sure that the last samples that were processed before
+        ;; ended-p was set still get out before we clear the
+        ;; buffers (by setting paused-p to T).
+        (cond ((ended-p source)
+               (setf (paused-p source) T))
+              (T
+               ;; Decode samples from the source
+               (funcall (decoder source) real-samples source)
+               ;; Process the channel to get the samples into buffers
+               (cffi:foreign-funcall-pointer
+                (channel-function source) ()
+                cl-mixed-cffi:size_t samples
+                :pointer segment
+                :void)
+               ;; Count current stream position
+               (perform-fading source samples)
+               (incf (sample-position source) real-samples)))))))
 
 (defun play (server file mixer &key paused
                                     loop
