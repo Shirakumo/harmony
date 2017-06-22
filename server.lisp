@@ -100,7 +100,8 @@
                             ((paused-p device)
                              (bt:thread-yield))
                             (T
-                             (cl-mixed-cffi:mixer-mix samples mixer)))))
+                             (let ((*in-processing-thread* NIL))
+                               (cl-mixed-cffi:mixer-mix samples mixer))))))
         (cl-mixed-cffi:mixer-end mixer)
         (setf (thread server) NIL)))))
 

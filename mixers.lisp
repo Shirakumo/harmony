@@ -16,14 +16,14 @@
     (setf (buffers segment) buffers)))
 
 (defmethod add ((segment segment) (mixer mixer))
-  (with-body-in-server-thread ((server mixer) :synchronize T)
+  (with-body-in-server-thread ((server mixer))
     (let ((buffers (buffers mixer)))
       (dotimes (i (length buffers))
         (setf (cl-mixed:output-field :buffer i segment) (aref buffers i))))
     (call-next-method)))
 
 (defmethod withdraw ((segment segment) (mixer mixer))
-  (with-body-in-server-thread ((server mixer) :synchronize T)
+  (with-body-in-server-thread ((server mixer))
     (call-next-method)))
 
 (defmethod sources ((mixer mixer))
