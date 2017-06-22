@@ -59,23 +59,22 @@
     thread))
 
 (defmethod stop ((server server))
-  (unless (thread server)
-    (error "~a is not running." server))
-  (let ((thread (thread server)))
-    (setf (thread server) NIL)
-    (restart-case
-        (loop for i from 0
-              while (bt:thread-alive-p thread)
-              do (sleep 0.01)
-                 (when (= i 100)
-                   (with-simple-restart (continue "Continue waiting.")
-                     (error "~a's thread is not shutting down." server))))
-      (abort ()
-        :report "Attempt to forcibly terminate the thread."
-        (bt:destroy-thread thread))
-      (ignore ()
-        :report "Return and ignore the running thread."))
-    thread))
+  (when (thread server)    
+    (let ((thread (thread server)))
+      (setf (thread server) NIL)
+      (restart-case
+          (loop for i from 0
+                while (bt:thread-alive-p thread)
+                do (sleep 0.01)
+                   (when (= i 100)
+                     (with-simple-restart (continue "Continue waiting.")
+                       (error "~a's thread is not shutting down." server))))
+        (abort ()
+          :report "Attempt to forcibly terminate the thread."
+          (bt:destroy-thread thread))
+        (ignore ()
+          :report "Return and ignore the running thread."))
+      thread)))
 
 (defmethod process ((server server))
   (let ((mixer (handle (pipeline-mixer server)))

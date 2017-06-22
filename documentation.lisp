@@ -582,7 +582,7 @@ See STOP")
 
 When the server is stopped, its background processing
 thread is shut down. If no thread is currently
-running, an error is signalled.
+running, nothing happens.
 
 When a source is stopped, its ENDED-P property is
 set to T.
