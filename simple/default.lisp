@@ -34,6 +34,8 @@
     (connect pipeline sfx 1 master 3)
     (connect pipeline voice 0 master 4)
     (connect pipeline voice 1 master 5)
+    (setf (volume master) 0.8)
+    (setf (volume sfx) 0.8)
     pipeline))
 
 (defun ensure-segment (segment-ish server)
