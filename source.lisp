@@ -59,16 +59,14 @@
   (when (mixer source)
     (error "~a is already attached to ~a." source mixer)))
 
-(defmethod add ((source source) (mixer mixer))
-  (call-next-method)
+(defmethod add :after ((source source) (mixer mixer))
   (setf (mixer source) mixer))
 
 (defmethod withdraw :before ((source source) (mixer mixer))
   (unless (eq mixer (mixer source))
     (error "~a is not attached to ~a." source mixer)))
 
-(defmethod withdraw ((source source) (mixer mixer))
-  (call-next-method)
+(defmethod withdraw :after ((source source) (mixer mixer))
   (setf (mixer source) NIL))
 
 (defmethod (setf ended-p) :after (value (source source))
