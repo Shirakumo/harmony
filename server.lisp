@@ -57,7 +57,8 @@
                                 :name (format NIL "~a process thread." server)
                                 :initial-bindings `((*standard-output* . ,*standard-output*)
                                                     (*error-output* . ,*error-output*)
-                                                    (*query-io* . ,*query-io*)))))
+                                                    (*query-io* . ,*query-io*)
+                                                    (*trace-output* . ,*trace-output*)))))
     (setf (thread server) thread)
     thread))
 
