@@ -17,6 +17,11 @@
                 #:direction #:up #:input-location #:input-velocity
                 #:soundspeed #:doppler-factor #:min-distance
                 #:max-distance #:rolloff #:attenuation)
+  ;; sources/buffer.lisp
+  (:export
+   #:buffer-source
+   #:data
+   #:size)
   ;; drain.lisp
   (:export
    #:drain

@@ -21,6 +21,8 @@
                (:file "source")
                (:file "drain")
                (:file "pipeline")
+               (:module "sources"
+                :components ((:file "buffer")))
                (:file "documentation"))
   :depends-on (:cl-mixed
                :flow
