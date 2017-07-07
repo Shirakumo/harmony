@@ -16,7 +16,9 @@
    (sample-position :initform 0 :accessor sample-position)
    (remix-factor :initform 0 :accessor remix-factor)
    (channel-function :initform NIL :accessor channel-function)
-   (mixer :initform NIL :accessor mixer)))
+   (mixer :initform NIL :accessor mixer)
+   (location :initform (make-array 3 :element-type 'single-float) :accessor location)
+   (velocity :initform (make-array 3 :element-type 'single-float) :accessor velocity)))
 
 (defmethod print-object ((source source) stream)
   (print-unreadable-object (source stream :type T)
@@ -24,13 +26,15 @@
             (looping-p source) (paused-p source) (ended-p source)
             (and (not (paused-p source)) (not (ended-p source))))))
 
-(defmethod initialize-instance ((source source) &rest args &key server)
+(defmethod initialize-instance ((source source) &rest args &key server location velocity)
   (apply #'call-next-method
          source
          :channel NIL
          :samplerate (samplerate server)
          args)
-  (setf (slot-value source 'channel) (initialize-channel source)))
+  (setf (slot-value source 'channel) (initialize-channel source))
+  (map-into (location source) #'float (or location '(0 0 0)))
+  (map-into (velocity source) #'float (or velocity '(0 0 0))))
 
 (defmethod initialize-instance :after ((source source) &key)
   (setf (remix-factor source) (coerce (/ (samplerate (channel source))
@@ -62,6 +66,10 @@
 (defmethod add :after ((source source) (mixer mixer))
   (setf (mixer source) mixer))
 
+(defmethod add :after ((source source) (mixer space-mixer))
+  (setf (cl-mixed:input-location source mixer) (location source))
+  (setf (cl-mixed:input-velocity source mixer) (velocity source)))
+
 (defmethod withdraw :before ((source source) (mixer mixer))
   (unless (eq mixer (mixer source))
     (error "~a is not attached to ~a." source mixer)))
@@ -90,17 +98,13 @@
 
 (defgeneric seek-to-sample (source position))
 
-(defmethod location ((source source))
-  (cl-mixed:input-location (aref (outputs source) 0) (mixer source)))
+(defmethod (setf location) :after (vec (source source))
+  (with-body-in-server-thread ((server (mixer source)) :synchronize T)
+    (setf (cl-mixed:input-location source (mixer source)) vec)))
 
-(defmethod (setf location) (vec (source source))
-  (setf (cl-mixed:input-location (aref (outputs source) 0) (mixer source)) vec))
-
-(defmethod velocity ((source source))
-  (input-velocity (aref (outputs source) 0) (mixer source)))
-
-(defmethod (setf velocity) (vec (source source))
-  (setf (input-velocity (aref (outputs source) 0) (mixer source)) vec))
+(defmethod (setf velocity) :after (vec (source source))
+  (with-body-in-server-thread ((server (mixer source)) :synchronize T)
+    (setf (cl-mixed:input-velocity source (mixer source)) vec)))
 
 (defun source-type (name)
   (or (gethash name *filetype-source-map*)
@@ -139,7 +143,8 @@
                                     loop
                                     fade
                                     (volume 1.0)
-                                    (type (source-type (pathname-type file))))
+                                    (type (source-type (pathname-type file)))
+                                    location velocity)
   (let* ((mixer (etypecase mixer
                   (segment mixer)
                   (symbol (segment mixer server))))
@@ -148,7 +153,9 @@
                                  :channels (channels mixer)
                                  :file (pathname file)
                                  :paused paused
-                                 :loop loop)))
+                                 :loop loop
+                                 :location location
+                                 :velocity velocity)))
     (setf (volume segment) volume)
     (when fade
       (fade segment volume fade :from 0.0))

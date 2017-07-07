@@ -50,10 +50,13 @@
                              loop
                              fade
                              (volume 1.0)
-                             (type (source-type (pathname-type file))))
+                             (type (source-type (pathname-type file)))
+                             location
+                             velocity)
   (harmony:play server file mixer
                 :paused paused :loop loop :fade fade
-                :volume volume :type type))
+                :volume volume :type type
+                :location location :velocity velocity))
 
 (defmethod add ((source source) (name symbol))
   (add source (ensure-segment name *server*)))
