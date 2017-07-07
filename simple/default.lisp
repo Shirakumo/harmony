@@ -80,3 +80,6 @@
 
 (defun resume (&optional (thing *server*))
   (harmony:resume thing))
+
+(defun segment (name &optional (thing *server*))
+  (harmony:segment name thing))

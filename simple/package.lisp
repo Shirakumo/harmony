@@ -8,13 +8,14 @@
 (defpackage #:harmony-simple
   (:nicknames #:org.shirakumo.fraf.harmony.simple)
   (:use #:cl #:harmony #:harmony-out123 #:harmony-mp3)
-  (:shadow #:start #:stop #:pause #:paused-p #:resume #:play)
+  (:shadow #:start #:stop #:pause #:paused-p #:resume #:play #:segment)
   ;; default.lisp
   (:export
    #:*server*
    #:default-server
    #:make-pipeline
-   #:play)
+   #:play
+   #:segment)
   ;; files.lisp
   (:export
    #:source-type
@@ -41,5 +42,4 @@
    #:location
    #:velocity
    #:direction
-   #:volume
-   #:segment))
+   #:volume))
