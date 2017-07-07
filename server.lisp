@@ -17,7 +17,8 @@
    (buffers :initform NIL :accessor buffers)
    (thread :initform NIL :accessor thread)
    ;; Synchronisation state
-   (evaluation-queue :initform NIL :accessor evaluation-queue)
+   (evaluation-queue-head :initform NIL :accessor evaluation-queue-head)
+   (evaluation-queue-tail :initform NIL :accessor evaluation-queue-tail)
    (evaluation-lock :initform NIL :accessor evaluation-lock))
   (:default-initargs
    :buffersize 441
@@ -27,7 +28,9 @@
   (check-type (buffersize server) (integer 1))
   (check-type (samplerate server) (integer 1))
   (setf (segment-map server) (make-hash-table :test 'eql))
-  (setf (evaluation-queue server) (make-array 32 :adjustable T :fill-pointer 0 :initial-element NIL))
+  (let ((cons (cons T NIL)))
+    (setf (evaluation-queue-head server) cons)
+    (setf (evaluation-queue-tail server) cons))
   (setf (evaluation-lock server) (bt:make-lock (format NIL "~a evaluation lock." server))))
 
 (defmethod print-object ((server server) stream)
@@ -81,23 +84,23 @@
         (device (device server))
         (samples (buffersize server))
         (evaluation-lock (evaluation-lock server))
-        (back-queue (make-array 32 :adjustable T :fill-pointer 0 :initial-element NIL)))
+        (evaluation-queue (evaluation-queue-head server)))
     (cl-mixed-cffi:mixer-start mixer)
     (let ((*in-processing-thread* T))
       (unwind-protect
            (loop while (thread server)
                  do (with-simple-restart (continue "Continue with fingers crossed.")
-                      (cond ((< 0 (fill-pointer (evaluation-queue server)))
-                             (bt:with-lock-held (evaluation-lock)
-                               (rotatef back-queue (evaluation-queue server)))
-                             (loop for i from 0 below (fill-pointer back-queue)
-                                   do (funcall (aref back-queue i))
-                                      (setf (aref back-queue i) NIL))
-                             (setf (fill-pointer back-queue) 0)
-                             ;; Properties might have changed.
-                             (setf mixer (handle (pipeline-mixer server)))
-                             (setf device (device server)))
-                            ((paused-p device)
+                      (when (cdr evaluation-queue)
+                        (bt:with-lock-held (evaluation-lock)
+                          ;; Process first one and remove it from the queue.
+                          (funcall (cadr evaluation-queue))
+                          (setf (cdr evaluation-queue) (cddr evaluation-queue))
+                          (unless (cdr evaluation-queue)
+                            (setf (evaluation-queue-tail server) evaluation-queue)))
+                        ;; Properties might have changed.
+                        (setf mixer (handle (pipeline-mixer server)))
+                        (setf device (device server)))
+                      (cond ((paused-p device)
                              (bt:thread-yield))
                             (T
                              (cl-mixed-cffi:mixer-mix samples mixer)))))
@@ -105,32 +108,37 @@
         (setf (thread server) NIL)))))
 
 (defun call-in-server-thread (function server &key synchronize timeout values)
-  (cond ((not (thread server))
-         (funcall function))
-        ((and synchronize (not *in-processing-thread*))
-         (let ((lock (bt:make-lock))
-               (monitor (bt:make-condition-variable))
-               (values-list ()))
-           (bt:with-lock-held (lock)
-             (bt:with-lock-held ((evaluation-lock server))
-               (vector-push-extend (if values
-                                       (lambda ()
-                                         (unwind-protect
-                                              (setf values-list (multiple-value-list (funcall function)))
-                                           (bt:condition-notify monitor)))
-                                       (lambda ()
-                                         (unwind-protect
-                                              (funcall function)
-                                           (bt:condition-notify monitor))))
-                                   (evaluation-queue server)))
-             (bt:condition-wait monitor lock :timeout timeout)
-             (values-list values-list))))
-        (T
-         (bt:with-lock-held ((evaluation-lock server))
-           (vector-push-extend function (evaluation-queue server))))))
+  (flet ((push-function (function)
+           (let ((cons (cons function NIL)))
+             (setf (cdr (evaluation-queue-tail server)) cons)
+             (setf (evaluation-queue-tail server) cons))))
+    (cond ((not (thread server))
+           (funcall function))
+          ((and synchronize (not *in-processing-thread*))
+           (let* ((lock (bt:make-lock))
+                  (monitor (bt:make-condition-variable))
+                  (values-list ()))
+             (bt:with-lock-held (lock)
+               (bt:with-lock-held ((evaluation-lock server))
+                 (push-function (if values
+                                    (lambda ()
+                                      (unwind-protect
+                                           (setf values-list (multiple-value-list (funcall function)))
+                                        (bt:condition-notify monitor)))
+                                    (lambda ()
+                                      (unwind-protect
+                                           (funcall function)
+                                        (bt:condition-notify monitor))))))
+               (bt:condition-wait monitor lock :timeout timeout)
+               (values-list values-list))))
+          (T
+           (bt:with-lock-held ((evaluation-lock server))
+             (push-function function))))))
 
-(defmacro with-body-in-server-thread ((server &key synchronize timeout) &body body)
-  `(call-in-server-thread (lambda () ,@body) ,server :synchronize ,synchronize :timeout ,timeout))
+(defmacro with-body-in-server-thread ((server &key synchronize timeout values) &body body)
+  `(call-in-server-thread (lambda () ,@body) ,server :synchronize ,synchronize
+                                                     :timeout ,timeout
+                                                     :values ,values))
 
 (defmethod paused-p ((server server))
   (paused-p (device server)))
