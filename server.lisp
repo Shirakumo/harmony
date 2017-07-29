@@ -69,7 +69,7 @@
       (restart-case
           (loop for i from 0
                 while (bt:thread-alive-p thread)
-                do (sleep 0.01)
+                do (sleep 0.1)
                    (when (= i 100)
                      (with-simple-restart (continue "Continue waiting.")
                        (error "~a's thread is not shutting down." server))))
