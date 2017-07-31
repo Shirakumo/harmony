@@ -64,10 +64,15 @@
 (defmethod withdraw ((source source) (name symbol))
   (add source (ensure-segment name *server*)))
 
-(setf *server* (make-instance 'default-server))
-
-(defun start (&optional (thing *server*))
+(defun start (&optional (thing *server* t-p))
+  (unless t-p
+    (unless *server*
+      (setf *server* (make-instance 'default-server)))
+    (setf thing *server*))
   (harmony:start thing))
+
+(defun started-p (&optional (thing *server*))
+  (and thing (harmony:started-p thing)))
 
 (defun stop (&optional (thing *server*))
   (harmony:stop thing))

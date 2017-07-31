@@ -83,6 +83,7 @@
    #:samplerate
    #:device
    #:start
+   #:started-p
    #:stop
    #:process
    #:call-in-server-thread

@@ -44,7 +44,7 @@
   (setf (gethash name (segment-map server)) segment))
 
 (defmethod start ((server server))
-  (when (thread server)
+  (when (started-p server)
     (error "~a is already running." server))
   (unless (device server)
     (error "No device has been assigned to ~a yet.~
@@ -61,6 +61,9 @@
                                                     (*trace-output* . ,*trace-output*)))))
     (setf (thread server) thread)
     thread))
+
+(defmethod started-p ((server server))
+  (not (null (thread server))))
 
 (defmethod stop ((server server))
   (when (thread server)    
