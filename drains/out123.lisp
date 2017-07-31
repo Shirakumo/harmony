@@ -27,7 +27,8 @@
                                               (cl-out123:device-default-name "Harmony")))))
     (cl-out123:connect out)
     (cl-out123:start out :rate (samplerate (server drain))
-                         :channels 2)
+                         :channels 2
+                         :encoding :float)
     (setf (device drain) out)
     (multiple-value-bind (rate channels encoding) (cl-out123:playback-format out)
       (cl-out123:stop out)
