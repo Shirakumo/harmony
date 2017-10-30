@@ -9,20 +9,16 @@
   (:nicknames #:org.shirakumo.fraf.harmony.sources.mp3)
   (:use #:cl #:harmony)
   (:export
-   #:mp3-source
-   #:mp3-buffer-source))
+   #:mp3-source))
 (in-package #:org.shirakumo.fraf.harmony.sources.mp3)
 
 (define-source-type "mp3" mp3-source)
 
-(defclass mp3-source (source)
+(defclass mp3-source (unpack-source)
   ((file :initform NIL :accessor file)
    (source-file :initarg :file :accessor source-file)
    (channels :initarg :channels :accessor channels)
    (samplesize :initform NIL :accessor samplesize)))
-
-(defmethod initialize-instance :after ((source mp3-source) &key)
-  (setf (decoder source) #'decode))
 
 (defmethod initialize-channel ((source mp3-source))
   (let ((file (cl-mpg123:make-file (source-file source)
@@ -44,7 +40,7 @@
 (defmethod seek-to-sample ((source mp3-source) position)
   (cl-mpg123:seek (file source) position :mode :absolute :by :sample))
 
-(defun decode (samples source)
+(defmethod process ((source mp3-source) samples)
   (let* ((file (file source))
          (channel (cl-mixed:channel source))
          (buffer (cl-mixed:data channel))
@@ -66,31 +62,3 @@
              (loop for i from read below bytes
                    do (setf (cffi:mem-aref buffer :uint8) 0))
              (setf (ended-p source) T))))))
-
-(defclass mp3-buffer-source (buffer-source)
-  ((source-file :initarg :file :accessor source-file)
-   (channels :initarg :channels :accessor channels))
-  (:default-initargs :data NIL :size NIL))
-
-(defmethod initialize-channel ((source mp3-buffer-source))
-  (let ((file (cl-mpg123:make-file (source-file source)
-                                   :accepted-format (list (samplerate (server source))
-                                                          (channels source)
-                                                          :float))))
-    (cl-mpg123:connect file)
-    (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)
-      (let* ((bytes (* (cl-mpg123:sample-count file)
-                       (cl-mixed:samplesize encoding)))
-             (data (cffi:foreign-alloc :char :count bytes)))
-        (cl-mpg123:read-directly file data bytes)
-        (tg:finalize source (lambda () (cffi:foreign-free data)))
-        (setf (data source) data)
-        (setf (size source) bytes)
-        (cl-mixed:make-channel NIL
-                               (* (buffersize (server source))
-                                  (cl-mixed:samplesize encoding)
-                                  channels)
-                               encoding
-                               channels
-                               :alternating
-                               rate)))))

@@ -37,11 +37,12 @@
   ;; mixers.lisp
   (:export
    #:mixer
+   #:channels-per-source
    #:add
    #:withdraw
    #:sources
    #:channels
-   #:linear-mixer
+   #:basic-mixer
    #:space-mixer
    #:location
    #:velocity

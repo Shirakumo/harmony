@@ -21,6 +21,7 @@
                (:file "source")
                (:file "drain")
                (:file "pipeline")
+               (:file "files")
                (:module "sources"
                 :components ((:file "buffer")))
                (:file "documentation"))

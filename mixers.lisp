@@ -6,11 +6,13 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
-(defclass mixer (segment)
+(defclass mixer (segment cl-mixed:mixer)
   ((buffers :initform NIL :accessor buffers)))
 
+(defgeneric channels-per-source (mixer))
+
 (defmethod initialize-instance :after ((segment mixer) &key)
-  (let ((buffers (make-array (channels segment))))
+  (let ((buffers (make-array (channels-per-source segment))))
     (dotimes (i (length buffers))
       (setf (aref buffers i) (cl-mixed:make-buffer (buffersize (server segment)))))
     (setf (buffers segment) buffers)))
@@ -34,13 +36,16 @@
   (loop for v being the hash-values of (cl-mixed:sources mixer)
         collect v))
 
-(defclass linear-mixer (cl-mixed:linear-mixer mixer)
+(defclass basic-mixer (cl-mixed:basic-mixer mixer)
   ()
   (:default-initargs
    :channels 2))
 
-(defclass space-mixer (cl-mixed:space mixer)
+(defmethod channels-per-source ((segment space-mixer))
+  (channels segment))
+
+(defclass space-mixer (cl-mixed:space-mixer mixer)
   ())
 
-(defmethod channels ((segment space-mixer))
+(defmethod channels-per-source ((segment space-mixer))
   1)

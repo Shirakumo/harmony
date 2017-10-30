@@ -12,12 +12,11 @@
    #:out123-drain))
 (in-package #:org.shirakumo.fraf.harmony.drains.out123)
 
-(defclass out123-drain (drain)
+(defclass out123-drain (pack-drain)
   ((program-name :initform NIL :initarg :program-name :accessor program-name)
    (device :initform NIL :accessor device)))
 
 (defmethod initialize-instance :after ((drain out123-drain) &key)
-  (setf (decoder drain) #'decode)
   (setf (cl-mixed-cffi:direct-segment-start (cl-mixed:handle drain)) (cffi:callback start))
   (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
@@ -41,7 +40,7 @@
                              :alternating
                              rate))))
 
-(defun decode (samples drain)
+(defmethod process ((drain out123-drain) samples)
   (let* ((channel (cl-mixed:channel drain))
          (buffer (cl-mixed:data channel))
          (bytes (* samples

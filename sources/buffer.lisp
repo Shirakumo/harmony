@@ -8,63 +8,45 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defclass buffer-source (source)
-  ((data :initarg :data :accessor data)
-   (size :initarg :size :accessor size)
-   (channelargs :initform NIL :accessor channelargs))
+  ((buffers :initform #() :accessor buffers))
   (:default-initargs
-   :data (error "DATA required.")
-   :size (error "SIZE required.")
-   :encoding :float
-   :channels 2
-   :layout :alternating))
+   :buffers (error "BUFFERS required.")))
 
-(defmethod initialize-instance :before ((source buffer-source) &key encoding channels layout samplerate source-samplerate)
-  (setf (decoder source) #'decode-buffer)
-  (unless source-samplerate
-    (setf source-samplerate samplerate))
-  (setf (channelargs source) (list encoding
-                                   channels
-                                   layout
-                                   source-samplerate)))
+(defmethod initialize-instance :after ((source buffer-source) &key buffers)
+  (setf (buffers source) (coerce buffers 'vector)))
 
-(defmethod initialize-channel ((source buffer-source))
-  (destructuring-bind (encoding channels layout source-samplerate)
-      (channelargs source)
-    (apply #'cl-mixed:make-channel
-           NIL (* (buffersize (server source))
-                  (cl-mixed:samplesize encoding)
-                  channels)
-           encoding channels layout source-samplerate)))
-
-(defmethod seek-to-sample ((source buffer-source) position))
+(defmethod seek-to-sample ((source buffer-source) position)
+  (setf (sample-position source) position))
 
 (cffi:defcfun (memcpy "memcpy") :pointer
   (dest :pointer)
   (source :pointer)
   (num cl-mixed-cffi:size_t))
 
-(defun decode-buffer (samples source)
-  (let* ((data (data source))
-         (size (size source))
-         (channel (cl-mixed:channel source))
-         (pos (* (sample-position source)
-                 (cl-mixed:samplesize (cl-mixed:encoding channel))
-                 (cl-mixed:channels channel)))
-         (buffer (cl-mixed:data channel))
-         (bytes (* samples
-                   (cl-mixed:samplesize (cl-mixed:encoding channel))
-                   (cl-mixed:channels channel)))
+(cffi:defcfun (memset "memset") :pointer
+  (dest :pointer)
+  (source :int)
+  (num cl-mixed-cffi:size_t))
+
+(defmethod process ((source buffer-source) samples)
+  (let* ((buffers (buffers source))
+         (outputs (outputs source))
+         (size (* (cl-mixed:size (aref buffers 0)) (cffi:foreign-type-size :float)))
+         (pos (* (sample-position source) (cffi:foreign-type-size :float)))
+         (bytes (* samples (cffi:foreign-type-size :float)))
          (read (min bytes (- size pos))))
-    (memcpy buffer (cffi:inc-pointer data pos) read)
-    (when (< read bytes)
-      (cond ((looping-p source)
-             (loop while (< 0 bytes)
-                   for offset from (+ pos read) by read
-                   do (decf bytes read)
-                      (setf (sample-position source) 0)
-                      (memcpy (cffi:inc-pointer buffer (- offset pos))
-                              (cffi:inc-pointer data offset) read)))
-            (T
-             (loop for i from read below bytes
-                   do (setf (cffi:mem-aref buffer :uchar i) 0))
-             (setf (ended-p source) T))))))
+    (loop for i from 0 below (length buffers)
+          for buffer = (cl-mixed:data (aref buffers i))
+          for ouput = (cl-mixed:data (aref outputs i))
+          do (memcpy output (cffi:inc-pointer buffer pos) read)
+             (when (< read bytes)
+               (cond ((looping-p source)
+                      (loop while (< 0 bytes)
+                            for offset from (+ pos read) by read
+                            do (decf bytes read)
+                               (setf (sample-position source) 0)
+                               (memcpy (cffi:inc-pointer output (- offset pos))
+                                       (cffi:inc-pointer buffer offset) read)))
+                     (T
+                      (memset (cffi:inc-pointer output read) 0 (- bytes read))
+                      (setf (ended-p source) T)))))))

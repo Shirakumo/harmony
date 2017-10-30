@@ -45,18 +45,10 @@
                 (error "No segment called ~a on ~a"
                        segment-ish server)))))
 
-(defun play (file mixer &key (server *server*)
-                             paused
-                             loop
-                             fade
-                             (volume 1.0)
-                             (type (source-type (pathname-type file)))
-                             location
-                             velocity)
-  (harmony:play server file mixer
-                :paused paused :loop loop :fade fade
-                :volume volume :type type
-                :location location :velocity velocity))
+(defun play (source-ish mixer &rest initargs &key server &allow-other-keys)
+  (let ((initargs (copy-list initargs)))
+    (remf initargs :server)
+    (apply #'harmony:play server file mixer initargs)))
 
 (defmethod add ((source source) (name symbol))
   (add source (ensure-segment name *server*)))
