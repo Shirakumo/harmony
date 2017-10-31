@@ -139,22 +139,22 @@
                       collect node))
          (nodes (flow:allocate-ports nodes :attribute 'buffer))
          (device)
-         (old-mixer (pipeline-mixer server))
-         (mixer (cl-mixed:make-mixer))
+         (old-sequence (segment-sequence server))
+         (sequence (cl-mixed:make-segment-sequence))
          (old-buffers (buffers server))
          (buffers (allocate-buffers nodes (buffersize server) old-buffers)))
     (clrhash (segment-map server))
     (loop for node in nodes
           for segment = (complete-segment node)
-          do (add (complete-segment node) mixer)
+          do (add (complete-segment node) sequence)
              (setf (segment (name segment) server) segment)
           finally (setf device segment))
     (with-body-in-server-thread (server :synchronize T)
       (setf (device server) device)
       (setf (buffers server) buffers)
-      (setf (pipeline-mixer server) mixer))
-    (when old-mixer
-      (free old-mixer))
+      (setf (segment-sequence server) sequence))
+    (when old-sequence
+      (free old-sequence))
     (when old-buffers
       ;; Free buffers that were not re-used
       (loop for i from (length buffers) below (length old-buffers)

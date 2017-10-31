@@ -41,7 +41,7 @@
   (:default-initargs
    :channels 2))
 
-(defmethod channels-per-source ((segment space-mixer))
+(defmethod channels-per-source ((segment basic-mixer))
   (channels segment))
 
 (defclass space-mixer (cl-mixed:space-mixer mixer)

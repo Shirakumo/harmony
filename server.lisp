@@ -13,7 +13,7 @@
    (buffersize :initarg :buffersize :reader buffersize)
    (samplerate :initarg :samplerate :reader samplerate)
    (device :initarg :device :accessor device)
-   (pipeline-mixer :initform NIL :accessor pipeline-mixer)
+   (segment-sequence :initform NIL :accessor segment-sequence)
    (buffers :initform NIL :accessor buffers)
    (thread :initform NIL :accessor thread)
    ;; Synchronisation state
@@ -49,11 +49,11 @@
   (unless (device server)
     (error "No device has been assigned to ~a yet.~
             Did you compile a pipeline?" server))
-  (unless (pipeline-mixer server)
+  (unless (segment-sequence server)
     (error "No mixer object has been assigned to ~a yet.~
             Did you compile a pipeline?" server))
   (setf (thread server) T)
-  (let ((thread (bt:make-thread (lambda () (process server))
+  (let ((thread (bt:make-thread (lambda () (run server))
                                 :name (format NIL "~a process thread." server)
                                 :initial-bindings `((*standard-output* . ,*standard-output*)
                                                     (*error-output* . ,*error-output*)
@@ -83,13 +83,13 @@
           :report "Return and ignore the running thread."))
       thread)))
 
-(defmethod process ((server server))
-  (let ((mixer (handle (pipeline-mixer server)))
+(defmethod run ((server server))
+  (let ((sequence (handle (segment-sequence server)))
         (device (device server))
         (samples (buffersize server))
         (evaluation-lock (evaluation-lock server))
         (evaluation-queue (evaluation-queue-head server)))
-    (cl-mixed-cffi:mixer-start mixer)
+    (cl-mixed-cffi:segment-sequence-start sequence)
     (let ((*in-processing-thread* T))
       (unwind-protect
            (loop while (thread server)
@@ -102,13 +102,13 @@
                           (unless (cdr evaluation-queue)
                             (setf (evaluation-queue-tail server) evaluation-queue)))
                         ;; Properties might have changed.
-                        (setf mixer (handle (pipeline-mixer server)))
+                        (setf sequence (handle (segment-sequence server)))
                         (setf device (device server)))
                       (cond ((paused-p device)
                              (bt:thread-yield))
                             (T
-                             (cl-mixed-cffi:mixer-mix samples mixer)))))
-        (cl-mixed-cffi:mixer-end mixer)
+                             (cl-mixed-cffi:segment-sequence-mix samples sequence)))))
+        (cl-mixed-cffi:segment-sequence-end sequence)
         (setf (thread server) NIL)))))
 
 (defun call-in-server-thread (function server &key synchronize timeout values)

@@ -10,7 +10,7 @@
   (:use #:cl)
   (:import-from #:cl-mixed
                 #:inputs #:outputs #:input #:output #:segments
-                #:channel #:add #:withdraw #:clear #:end #:info
+                #:packed-audio #:add #:withdraw #:clear #:end #:info
                 #:handle #:pointer->object #:free
                 #:samplerate #:channels #:encoding #:channels
                 #:volume #:bypass #:location #:velocity
