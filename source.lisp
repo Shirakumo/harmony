@@ -44,7 +44,7 @@
 (defmethod seek :around ((source source) position &key (mode :absolute) (by :sample))
   (ecase by
     (:second
-     (setf position (round (* position (samplerate (channel source)))))))
+     (setf position (round (* position (samplerate (packed-audio source)))))))
   (ecase mode
     (:relative
      (setf mode :absolute)
@@ -85,16 +85,27 @@
 
 (defclass unpack-source (source)
   ((remix-factor :initform 0 :accessor remix-factor)
-   (channel :initform NIL :accessor channel)))
+   (packed-audio :initform NIL :accessor packed-audio)
+   (unpack-mix-function :initform NIL :accessor unpack-mix-function)))
 
-(defgeneric initialize-channel (source))
+(defgeneric initialize-packed-audio (source))
 
-(defmethod initialize-instance :after ((source unpack-source) &key)
-  (setf (channel source) (initialize-channel source))
+(defmethod initialize-instance ((source unpack-source) &key)
+  (call-next-method)
   (setf (remix-factor source) (coerce (/ (samplerate (channel source))
                                          (samplerate (server source)))
-                                      'single-float)))
+                                      'single-float))
+  (setf (packed-audio source) (initialize-packed-audio source))
+  (cl-mixed::with-error-on-failure ()
+    (cl-mixed-cffi:make-segment-unpacker (handle (packed-audio source)) (samplerate (server source)) (handle source)))
+  (setf (unpack-mix-function source) (cl-mixed-cffi:direct-segment-mix (handle source))))
 
-;; FIXME: call the unpacking after decode
-(defmethod process :after ((source unpack-source) samples)
-  )
+(defmethod process :around ((source unpack-source) samples)
+  (let ((endpoint-samples (* samples (remix-factor source))))
+    ;; Decode
+    (call-next-method source endpoint-samples)
+    ;; Unpack
+    (cffi:foreign-funcall-pointer
+     (unpack-mix-function source) ()
+     cl-mixed-cffi:size_t samples
+     :pointer (handle source))))

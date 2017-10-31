@@ -19,14 +19,25 @@
 
 (defclass pack-drain (drain)
   ((remix-factor :initform 0 :accessor remix-factor)
-   (channel :initform NIL :accessor channel)))
+   (packed-audio :initform NIL :accessor packed-audio)
+   (pack-mix-function :initform NIL :accessor unpack-mix-function)))
 
-(defmethod initialize-instance :After ((drain pack-drain) &key)
-  (setf (channel drain) (initialize-channel drain))
+(defmethod initialize-instance ((drain pack-drain) &key)
+  (call-next-method)
   (setf (remix-factor drain) (coerce (/ (samplerate (server drain))
                                         (samplerate (channel drain)))
-                                     'single-float)))
+                                     'single-float))
+  (setf (packed-audio drain) (initialize-packed-audio drain))
+  (cl-mixed::with-error-on-failure ()
+    (cl-mixed-cffi:make-segment-packer (handle (packed-audio source)) (samplerate (server source)) (handle source)))
+  (setf (pack-mix-function source) (cl-mixed-cffi:direct-segment-mix (handle source))))
 
-;; FIXME: call the packing before decode
-(defmethod process :before ((drain pack-drain) samples)
-  )
+(defmethod process :around ((drain pack-drain) samples)
+  (let ((endpoint-samples (* samples (remix-factor source))))
+    ;; Pack
+    (cffi:foreign-funcall-pointer
+     (pack-mix-function source) ()
+     cl-mixed-cffi:size_t samples
+     :pointer (handle source))
+    ;; Encode
+    (call-next-method source endpoint-samples)))
