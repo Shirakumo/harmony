@@ -23,3 +23,6 @@
     (remf initargs :class)
     (apply #'play server (or class (source-type (pathname-type file))) mixer
            :file file initargs)))
+
+(defclass file-source (source)
+  ((file :initarg :file :accessor file)))

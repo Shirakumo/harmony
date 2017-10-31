@@ -21,8 +21,10 @@
             (and (not (paused-p source)) (not (ended-p source))))))
 
 (defmethod initialize-instance :after ((source source) &key volume)
-  (setf (cl-mixed-cffi:direct-segment-mix (handle source)) (cffi:callback source-mix))
-  (when volume (setf (volume segment) volume)))
+  (setf (cl-mixed-cffi:direct-segment-mix (handle source)) (cffi:callback source-mix)))
+
+(defmethod shared-initialize :after ((source source) slots &key volume)
+  (when volume (setf (volume source) volume)))
 
 (defmethod (setf paused-p) :before (value (source source))
   (when value
@@ -65,7 +67,7 @@
       (cond ((ended-p source)
              (setf (paused-p source) T))
             (T
-             (funcall (decoder source) samples source)
+             (process source samples)
              ;; Count current stream position
              (perform-fading source samples)
              (incf (sample-position source) samples))))))
@@ -78,10 +80,13 @@
 (defmethod play ((server server) source-ish (mixer symbol) &rest initargs)
   (apply #'play server source-ish (segment mixer server) initargs))
 
-(defmethod play ((server server) (class class) (mixer mixer) &rest initargs &key paused loop fade volume name)
-  (let ((segment (apply #'make-instance class :server server initargs)))
-    (add segment mixer)
-    segment))
+(defmethod play ((server server) (class class) (mixer mixer) &rest initargs)
+  (add (apply #'make-instance class :server server initargs)
+       mixer))
+
+(defmethod play ((server server) (source source) (mixer mixer) &rest initargs)
+  (add (apply #'reinitialize-instance source :server server initargs)
+       mixer))
 
 (defclass unpack-source (source)
   ((remix-factor :initform 0 :accessor remix-factor)
@@ -90,12 +95,11 @@
 
 (defgeneric initialize-packed-audio (source))
 
-(defmethod initialize-instance ((source unpack-source) &key)
-  (call-next-method)
-  (setf (remix-factor source) (coerce (/ (samplerate (channel source))
+(defmethod shared-initialize :after ((source unpack-source) slots &key)
+  (setf (packed-audio source) (initialize-packed-audio source))
+  (setf (remix-factor source) (coerce (/ (samplerate (packed-audio source))
                                          (samplerate (server source)))
                                       'single-float))
-  (setf (packed-audio source) (initialize-packed-audio source))
   (cl-mixed::with-error-on-failure ()
     (cl-mixed-cffi:make-segment-unpacker (handle (packed-audio source)) (samplerate (server source)) (handle source)))
   (setf (unpack-mix-function source) (cl-mixed-cffi:direct-segment-mix (handle source))))

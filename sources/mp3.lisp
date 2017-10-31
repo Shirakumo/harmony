@@ -14,39 +14,38 @@
 
 (define-source-type "mp3" mp3-source)
 
-(defclass mp3-source (unpack-source)
-  ((file :initform NIL :accessor file)
-   (source-file :initarg :file :accessor source-file)
-   (channels :initarg :channels :accessor channels)
-   (samplesize :initform NIL :accessor samplesize)))
+(defclass mp3-source (unpack-source file-source)
+  ((mp3-file :initform NIL :accessor mp3-file)
+   (channels :initarg :channels :accessor channels)))
 
-(defmethod initialize-channel ((source mp3-source))
-  (let ((file (cl-mpg123:make-file (source-file source)
+(defmethod initialize-packed-audio ((source mp3-source))
+  (let ((file (cl-mpg123:make-file (file source)
                                    :accepted-format (list (samplerate (server source))
                                                           (channels source)
                                                           :float))))
     (cl-mpg123:connect file)
-    (setf (file source) file)
+    (setf (mp3-file source) file)
     (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)
-      (cl-mixed:make-channel NIL
-                             (* (buffersize (server source))
-                                (cl-mixed:samplesize encoding)
-                                channels)
-                             encoding
-                             channels
-                             :alternating
-                             rate))))
+      (cl-mixed:make-packed-audio
+       NIL
+       (* (buffersize (server source))
+          (cl-mixed:samplesize encoding)
+          channels)
+       encoding
+       channels
+       :alternating
+       rate))))
 
 (defmethod seek-to-sample ((source mp3-source) position)
   (cl-mpg123:seek (file source) position :mode :absolute :by :sample))
 
 (defmethod process ((source mp3-source) samples)
   (let* ((file (file source))
-         (channel (cl-mixed:channel source))
-         (buffer (cl-mixed:data channel))
+         (pack (cl-mixed:packed-audio source))
+         (buffer (cl-mixed:data pack))
          (bytes (* samples
-                   (cl-mixed:samplesize (cl-mixed:encoding channel))
-                   (cl-mixed:channels channel)))
+                   (cl-mixed:samplesize (cl-mixed:encoding pack))
+                   (cl-mixed:channels pack)))
          (read (cl-mpg123:read-directly file buffer bytes)))
     (when (< read bytes)
       (cond ((looping-p source)

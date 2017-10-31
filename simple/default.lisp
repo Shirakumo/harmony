@@ -40,7 +40,7 @@
 
 (defun ensure-segment (segment-ish server)
   (etypecase segment-ish
-    (segment segment-ish)
+    (harmony:segment segment-ish)
     (symbol (or (segment segment-ish server)
                 (error "No segment called ~a on ~a"
                        segment-ish server)))))
@@ -48,7 +48,7 @@
 (defun play (source-ish mixer &rest initargs &key server &allow-other-keys)
   (let ((initargs (copy-list initargs)))
     (remf initargs :server)
-    (apply #'harmony:play server file mixer initargs)))
+    (apply #'harmony:play server source-ish mixer initargs)))
 
 (defmethod add ((source source) (name symbol))
   (add source (ensure-segment name *server*)))

@@ -20,10 +20,9 @@
   (setf (cl-mixed-cffi:direct-segment-start (cl-mixed:handle drain)) (cffi:callback start))
   (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
-(defmethod initialize-channel ((drain out123-drain))
-  (let ((out (cl-out123:make-output #+linux "pulse" #-linux NIL
-                                    :name (or (program-name drain)
-                                              (cl-out123:device-default-name "Harmony")))))
+(defmethod initialize-packed-audio ((drain out123-drain))
+  (let ((out (cl-out123:make-output NIL :name (or (program-name drain)
+                                                  (cl-out123:device-default-name "Harmony")))))
     (cl-out123:connect out)
     (cl-out123:start out :rate (samplerate (server drain))
                          :channels 2
@@ -31,21 +30,22 @@
     (setf (device drain) out)
     (multiple-value-bind (rate channels encoding) (cl-out123:playback-format out)
       (cl-out123:stop out)
-      (cl-mixed:make-channel NIL
-                             (* (buffersize (server drain))
-                                (cl-mixed:samplesize encoding)
-                                channels)
-                             encoding
-                             channels
-                             :alternating
-                             rate))))
+      (cl-mixed:make-packed-audio
+       NIL
+       (* (buffersize (server drain))
+          (cl-mixed:samplesize encoding)
+          channels)
+       encoding
+       channels
+       :alternating
+       rate))))
 
 (defmethod process ((drain out123-drain) samples)
-  (let* ((channel (cl-mixed:channel drain))
-         (buffer (cl-mixed:data channel))
+  (let* ((pack (cl-mixed:packed-audio drain))
+         (buffer (cl-mixed:data pack))
          (bytes (* samples
-                   (cl-mixed:samplesize (cl-mixed:encoding channel))
-                   (cl-mixed:channels channel))))
+                   (cl-mixed:samplesize (cl-mixed:encoding pack))
+                   (cl-mixed:channels pack))))
     (cl-out123:play-directly (device drain) buffer bytes)))
 
 (defmethod paused-p ((drain out123-drain))

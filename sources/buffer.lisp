@@ -7,7 +7,7 @@
 (in-package #:cl-user)
 (in-package #:org.shirakumo.fraf.harmony)
 
-(defclass buffer-source (source)
+(defclass buffer-source (virtual source)
   ((buffers :initform #() :accessor buffers))
   (:default-initargs
    :buffers (error "BUFFERS required.")))
@@ -37,7 +37,7 @@
          (read (min bytes (- size pos))))
     (loop for i from 0 below (length buffers)
           for buffer = (cl-mixed:data (aref buffers i))
-          for ouput = (cl-mixed:data (aref outputs i))
+          for output = (cl-mixed:data (aref outputs i))
           do (memcpy output (cffi:inc-pointer buffer pos) read)
              (when (< read bytes)
                (cond ((looping-p source)

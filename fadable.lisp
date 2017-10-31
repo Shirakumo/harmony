@@ -13,9 +13,9 @@
    (fade-end :initform 0 :accessor fade-end)
    (easing-function :initform #'ease-linear :accessor easing-function)))
 
-(defmethod initialize-instance :after ((fadable fadable) &key fade-to fade-from)
-  (when fade-to
-    (fade segment volume fade-to :from (or fade-from 0.0))))
+(defmethod initialize-instance :after ((fadable fadable) &key volume fade-time fade-from)
+  (when fade-time
+    (fade fadable volume fade-time :from (or fade-from 0.0))))
 
 (defmethod fade ((fadable fadable) to time &key (by (easing-function fadable)) from)
   (let ((target (floor (* time (samplerate (server fadable)))))

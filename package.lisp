@@ -20,28 +20,36 @@
   ;; sources/buffer.lisp
   (:export
    #:buffer-source
-   #:data
-   #:size)
+   #:buffers)
   ;; drain.lisp
   (:export
    #:drain
-   #:decoder
-   #:server
-   #:paused-p
-   #:pause
-   #:resume
-   #:initialize-channel)
+   #:pack-drain
+   #:remix-factor
+   #:packed-audio
+   #:pack-mix-function)
   ;; fadable.lisp
   (:export
-   #:fade)
+   #:fadable
+   #:fade
+   #:ease-linear
+   #:ease-cubic-in
+   #:ease-cubic-out
+   #:ease-cubic-in-out)
+  ;; files.lisp
+  (:export
+   #:source-type
+   #:define-source-type
+   #:file-source
+   #:file)
   ;; mixers.lisp
   (:export
    #:mixer
+   #:buffers
    #:channels-per-source
    #:add
    #:withdraw
    #:sources
-   #:channels
    #:basic-mixer
    #:space-mixer
    #:location
@@ -76,6 +84,9 @@
    #:compile-pipeline)
   ;; segment.lisp
   (:export
+   #:segment
+   #:server
+   #:name
    #:volume)
   ;; server.lisp
   (:export
@@ -86,7 +97,7 @@
    #:start
    #:started-p
    #:stop
-   #:process
+   #:run
    #:call-in-server-thread
    #:with-body-in-server-thread
    #:paused-p
@@ -98,18 +109,16 @@
    #:looping-p
    #:paused-p
    #:ended-p
-   #:decoder
-   #:server
-   #:mixer
    #:sample-position
-   #:initialize-channel
+   #:process
    #:pause
    #:resume
    #:stop
    #:seek
    #:seek-to-sample
-   #:location
-   #:velocity
-   #:source-type
-   #:define-source-type
-   #:play))
+   #:play
+   #:unpack-source
+   #:remix-factor
+   #:packed-audio
+   #:unpack-mix-function
+   #:initialize-packed-audio))
