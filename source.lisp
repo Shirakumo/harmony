@@ -46,11 +46,13 @@
 (defmethod seek :around ((source source) position &key (mode :absolute) (by :sample))
   (ecase by
     (:second
-     (setf position (round (* position (samplerate (packed-audio source)))))))
+     (setf position (round (* position (samplerate (packed-audio source))))))
+    (:sample))
   (ecase mode
     (:relative
      (setf mode :absolute)
-     (incf position (sample-position source))))
+     (incf position (sample-position source)))
+    (:absolute))
   (seek-to-sample source position)
   (setf (ended-p source) NIL)
   (setf (sample-position source) position))
