@@ -26,6 +26,12 @@
 (defmethod shared-initialize :after ((source source) slots &key volume)
   (when volume (setf (volume source) volume)))
 
+(defmethod reinitialize-instance :after ((source source) &key (paused NIL p-p))
+  (seek source 0)
+  (setf (ended-p source) NIL)
+  (unless p-p
+    (setf (paused-p source) NIL)))
+
 (defmethod (setf paused-p) :before (value (source source))
   (when value
     (unless (paused-p source)
