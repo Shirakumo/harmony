@@ -95,7 +95,8 @@
 
 (defgeneric initialize-packed-audio (source))
 
-(defmethod shared-initialize :after ((source unpack-source) slots &key)
+(defmethod initialize-instance ((source unpack-source) &key)
+  (call-next-method)
   (setf (packed-audio source) (initialize-packed-audio source))
   (setf (remix-factor source) (coerce (/ (samplerate (packed-audio source))
                                          (samplerate (server source)))
@@ -105,7 +106,7 @@
   (setf (unpack-mix-function source) (cl-mixed-cffi:direct-segment-mix (handle source))))
 
 (defmethod process :around ((source unpack-source) samples)
-  (let ((endpoint-samples (* samples (remix-factor source))))
+  (let ((endpoint-samples (floor (* samples (remix-factor source)))))
     ;; Decode
     (call-next-method source endpoint-samples)
     ;; Unpack

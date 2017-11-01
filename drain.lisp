@@ -33,7 +33,7 @@
   (setf (pack-mix-function drain) (cl-mixed-cffi:direct-segment-mix (handle drain))))
 
 (defmethod process :around ((drain pack-drain) samples)
-  (let ((endpoint-samples (* samples (remix-factor drain))))
+  (let ((endpoint-samples (floor (* samples (remix-factor drain)))))
     ;; Pack
     (cffi:foreign-funcall-pointer
      (pack-mix-function drain) ()

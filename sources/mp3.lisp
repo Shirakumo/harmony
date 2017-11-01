@@ -16,7 +16,8 @@
 
 (defclass mp3-source (unpack-source file-source)
   ((mp3-file :initform NIL :accessor mp3-file)
-   (channels :initarg :channels :accessor channels)))
+   (channels :initarg :channels :accessor channels))
+  (:default-initargs :channels 2))
 
 (defmethod initialize-packed-audio ((source mp3-source))
   (let ((file (cl-mpg123:make-file (file source)
@@ -40,7 +41,7 @@
   (cl-mpg123:seek (file source) position :mode :absolute :by :sample))
 
 (defmethod process ((source mp3-source) samples)
-  (let* ((file (file source))
+  (let* ((file (mp3-file source))
          (pack (cl-mixed:packed-audio source))
          (buffer (cl-mixed:data pack))
          (bytes (* samples

@@ -22,8 +22,8 @@
   (let* ((*server* server)
          (pipeline (make-instance 'pipeline))
          (output (make-segment 'out123-drain))
-         (master (make-segment 'linear-mixer :name :master))
-         (music (make-segment 'linear-mixer :name :music))
+         (master (make-segment 'basic-mixer :name :master))
+         (music (make-segment 'basic-mixer :name :music))
          (sfx (make-segment 'space-mixer :name :sfx))
          (voice (make-segment 'space-mixer :name :voice)))
     (connect pipeline master 0 output 0)
@@ -45,7 +45,7 @@
                 (error "No segment called ~a on ~a"
                        segment-ish server)))))
 
-(defun play (source-ish mixer &rest initargs &key server &allow-other-keys)
+(defun play (source-ish mixer &rest initargs &key (server *server*) &allow-other-keys)
   (let ((initargs (copy-list initargs)))
     (remf initargs :server)
     (apply #'harmony:play server source-ish mixer initargs)))
