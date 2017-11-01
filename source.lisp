@@ -39,17 +39,20 @@
         (map NIL #'clear (outputs source))))))
 
 (defmethod pause ((source source))
-  (setf (paused-p source) T))
+  (setf (paused-p source) T)
+  source)
 
 (defmethod resume ((source source))
   (when (ended-p source)
     (seek source 0))
-  (setf (paused-p source) NIL))
+  (setf (paused-p source) NIL)
+  source)
 
 (defmethod stop ((source source))
-  (setf (ended-p source) T))
+  (setf (ended-p source) T)
+  source)
 
-(defmethod seek :around ((source source) position &key (mode :absolute) (by :sample))
+(defmethod seek ((source source) position &key (mode :absolute) (by :sample))
   (ecase by
     (:second
      (setf position (round (* position (samplerate (packed-audio source))))))
@@ -61,7 +64,8 @@
     (:absolute))
   (seek-to-sample source position)
   (setf (ended-p source) NIL)
-  (setf (sample-position source) position))
+  (setf (sample-position source) position)
+  source)
 
 (defgeneric seek-to-sample (source position))
 

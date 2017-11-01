@@ -26,11 +26,13 @@
   (with-body-in-server-thread ((server mixer)
                                ;; Apparently synchronising is unbearably slow.
                                #-(and sbcl windows) :synchronize #-(and sbcl windows) T)
-    (call-next-method)))
+    (call-next-method))
+  segment)
 
 (defmethod withdraw :around ((segment cl-mixed:segment) (mixer mixer))
   (with-body-in-server-thread ((server mixer) :synchronize T)
-    (call-next-method)))
+    (call-next-method))
+  segment)
 
 (defmethod sources ((mixer mixer))
   (loop for v being the hash-values of (cl-mixed:sources mixer)

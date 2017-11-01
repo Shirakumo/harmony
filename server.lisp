@@ -151,7 +151,9 @@
   (setf (paused-p (device server)) value))
 
 (defmethod pause ((server server))
-  (pause (device server)))
+  (pause (device server))
+  server)
 
 (defmethod resume ((server server))
-  (resume (device server)))
+  (resume (device server))
+  server)
