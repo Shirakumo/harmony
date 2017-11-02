@@ -21,8 +21,8 @@
 
 (defclass wav-source (unpack-source file-source)
   ((wav-stream :initform NIL :accessor wav-stream)
-   (data-size :initform 0 :accessor data-size)
-   (data-offset :initform 44 :accessor data-offset)
+   (data-end :initform 0 :accessor data-end)
+   (data-start :initform 44 :accessor data-start)
    (samplesize :initform 0 :accessor samplesize)))
 
 (defun decode-int (stream size)
@@ -39,36 +39,55 @@
       (error "Not a valid RIFF file: encountered ~s instead of ~s."
              found label))))
 
+(defun decode-block (stream)
+  (let ((start (file-position stream))
+        (label (decode-label stream))
+        (size (decode-int stream 4)))
+    (list* :label label
+           :start start
+           :size size
+           :end (+ start size)
+           (cond ((string= label "fmt ")
+                  (list :audio-format (decode-int stream 2)
+                        :channels (decode-int stream 2)
+                        :samplerate (decode-int stream 4)
+                        :byterate (decode-int stream 4)
+                        :block-align (decode-int stream 2)
+                        :bits-per-sample (decode-int stream 2)))
+                 (T
+                  (file-position stream (+ start size))
+                  NIL)))))
+
 (defun decode-wav-header (stream)
   (check-label stream "RIFF")
   (dotimes (i 4) (read-byte stream))
   (check-label stream "WAVE")
-  ;; FIXME: more flexible block handling
-  (check-label stream "fmt ")
-  (dotimes (i 4) (read-byte stream))
-  (let ((audio-format (decode-int stream 2))
-        (channels (decode-int stream 2))
-        (samplerate (decode-int stream 4))
-        (byterate (decode-int stream 4))
-        (block-align (decode-int stream 2))
-        (bits-per-sample (decode-int stream 2)))
-    (declare (ignore byterate block-align))
-    (unless (= 1 audio-format)
-      (error "Unsupported audio format (~d) in file." audio-format))
-    (check-label stream "data")
-    (values channels
-            samplerate
-            (/ bits-per-sample 8)
-            (decode-int 4))))
+  (let* ((blocks (loop for block = (ignore-errors (decode-block stream))
+                       while block collect block))
+         (format (find "fmt " blocks :key #'second :test #'string=))
+         (data (find "data" blocks :key #'second :test #'string=)))
+    (unless format
+      (error "Format block not found in RIFF file."))
+    (unless data
+      (error "Data block not found in RIFF file."))
+    (unless (= 1 (getf format :audio-format))
+      (error "Unsupported audio format (~d) in file." (getf format :audio-format)))
+    (file-position stream (getf data :start))
+    (values (getf format :channels)
+            (getf format :samplerate)
+            (/ (getf format :bits-per-sample) 8)
+            (getf data :start)
+            (getf data :end))))
 
 (defmethod initialize-packed-audio ((source wav-source))
   (let ((stream (open (file source) :element-type '(unsigned-byte 8))))
     (unwind-protect
-         (multiple-value-bind (channels samplerate samplesize size)
+         (multiple-value-bind (channels samplerate samplesize start end)
              (decode-wav-header stream)
            (setf (samplesize source) samplesize)
            (setf (wav-stream source) stream)
-           (setf (data-size source) size)
+           (setf (data-start source) start)
+           (setf (data-end source) end)
            (cl-mixed:make-packed-audio
             NIL
             (* (buffersize (server source))
@@ -85,9 +104,9 @@
 
 (defmethod seek-to-sample ((source wav-source) position)
   (file-position (wav-stream source)
-                 (+ (data-offset source)
+                 (+ (data-start source)
                     (min (* position (samplesize source))
-                         (data-size source)))))
+                         (data-end source)))))
 
 (defun read-directly (stream buffer bytes)
   (let ((read-buffer (load-time-value (static-vectors:make-static-vector 4096)))
