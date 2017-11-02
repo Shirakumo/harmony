@@ -9,6 +9,8 @@
   (:nicknames #:org.shirakumo.fraf.harmony.drains.pulse)
   (:use #:cl #:harmony)
   (:export
+   #:pulse-error
+   #:code
    #:pulse-drain))
 (in-package #:org.shirakumo.fraf.harmony.drains.pulse)
 
