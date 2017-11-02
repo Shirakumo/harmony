@@ -18,6 +18,8 @@
    #:pcm-writei
    #:pcm-recover
    #:pcm-pause
+   #:pcm-drop
+   #:pcm-drain
    #:pcm-close
    #:strerror))
 (in-package #:org.shirakumo.fraf.harmony.drains.alsa.cffi)
@@ -27,12 +29,14 @@
 
 (use-foreign-library libasound)
 
+(defctype size_t #+x86-64 :uint64 #+x86 :uint32)
+
 (defcenum pcm-stream
   :playback
   :capture)
 
 (defcenum pcm-format
-  :unknown
+  (:unknown -1)
   :s8
   :u8
   :s16-le
@@ -116,6 +120,12 @@
 (defcfun (pcm-pause "snd_pcm_pause") :int
   (pcm :pointer)
   (enable :int))
+
+(defcfun (pcm-drop "snd_pcm_drop") :int
+  (pcm :pointer))
+
+(defcfun (pcm-drain "snd_pcm_drain") :int
+  (pcm :pointer))
 
 (defcfun (pcm-close "snd_pcm_close") :int
   (pcm :pointer))
