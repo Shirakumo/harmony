@@ -25,6 +25,11 @@
    (data-start :initform 44 :accessor data-start)
    (samplesize :initform 0 :accessor samplesize)))
 
+(defun evenify (int)
+  (if (evenp int)
+      int
+      (1+ int)))
+
 (defun decode-int (stream size)
   (let ((int 0))
     (dotimes (i size int)
@@ -55,8 +60,18 @@
                         :block-align (decode-int stream 2)
                         :bits-per-sample (decode-int stream 2)))
                  (T
-                  (file-position stream (+ start size))
+                  (file-position stream (evenify (+ start size)))
                   NIL)))))
+
+(defun determine-sample-format (format)
+  (case (getf format :audio-format)
+    (1 (ecase (/ (getf format :bits-per-sample) 8)
+         (1 :uint8)
+         (2 :int16)
+         (3 :int24)
+         (4 :int32)))
+    (3 :float)
+    (T (error "Unsupported audio format (~d) in file." (getf format :audio-format)))))
 
 (defun decode-wav-header (stream)
   (check-label stream "RIFF")
@@ -70,19 +85,17 @@
       (error "Format block not found in RIFF file."))
     (unless data
       (error "Data block not found in RIFF file."))
-    (unless (= 1 (getf format :audio-format))
-      (error "Unsupported audio format (~d) in file." (getf format :audio-format)))
     (file-position stream (getf data :start))
     (values (getf format :channels)
             (getf format :samplerate)
-            (/ (getf format :bits-per-sample) 8)
+            (determine-sample-format format)
             (getf data :start)
             (getf data :end))))
 
 (defmethod initialize-packed-audio ((source wav-source))
   (let ((stream (open (file source) :element-type '(unsigned-byte 8))))
     (unwind-protect
-         (multiple-value-bind (channels samplerate samplesize start end)
+         (multiple-value-bind (channels samplerate sampleformat start end)
              (decode-wav-header stream)
            (setf (samplesize source) samplesize)
            (setf (wav-stream source) stream)
@@ -91,11 +104,9 @@
            (cl-mixed:make-packed-audio
             NIL
             (* (buffersize (server source))
-               samplesize
+               (cl-mixed-cffi:samplesize sampleformat)
                channels)
-            (ecase samplesize
-              (1 :uint8)
-              (2 :int16))
+            sampleformat
             channels
             :alternating
             samplerate))
