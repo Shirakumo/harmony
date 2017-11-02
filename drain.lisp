@@ -41,3 +41,11 @@
      :pointer (handle drain))
     ;; Encode
     (call-next-method drain endpoint-samples)))
+
+(defmethod pause ((drain drain))
+  (setf (paused-p drain) T)
+  drain)
+
+(defmethod resume ((drain drain))
+  (setf (paused-p drain) NIL)
+  drain)
