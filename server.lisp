@@ -53,14 +53,15 @@
     (error "No mixer object has been assigned to ~a yet.~
             Did you compile a pipeline?" server))
   (setf (thread server) T)
-  (let ((thread (bt:make-thread (lambda () (run server))
+  (let ((thread (bt:make-thread (lambda ()
+                                  (unwind-protect (run server)
+                                    (setf (thread server) NIL)))
                                 :name (format NIL "~a process thread." server)
                                 :initial-bindings `((*standard-output* . ,*standard-output*)
                                                     (*error-output* . ,*error-output*)
                                                     (*query-io* . ,*query-io*)
                                                     (*trace-output* . ,*trace-output*)))))
-    (setf (thread server) thread)
-    thread))
+    (setf (thread server) thread)))
 
 (defmethod started-p ((server server))
   (not (null (thread server))))
@@ -89,8 +90,8 @@
         (samples (buffersize server))
         (evaluation-lock (evaluation-lock server))
         (evaluation-queue (evaluation-queue-head server)))
-    (cl-mixed-cffi:segment-sequence-start sequence)
     (let ((*in-processing-thread* T))
+      (cl-mixed:start (segment-sequence server))
       (unwind-protect
            (loop while (thread server)
                  do (with-simple-restart (continue "Continue with fingers crossed.")
@@ -108,8 +109,7 @@
                              (bt:thread-yield))
                             (T
                              (cl-mixed-cffi:segment-sequence-mix samples sequence)))))
-        (cl-mixed-cffi:segment-sequence-end sequence)
-        (setf (thread server) NIL)))))
+        (cl-mixed:end (segment-sequence server))))))
 
 (defun call-in-server-thread (function server &key synchronize timeout values)
   (flet ((push-function (function)
