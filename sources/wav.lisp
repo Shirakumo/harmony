@@ -91,24 +91,4 @@
     read-total))
 
 (defmethod process ((source wav-source) samples)
-  (let* ((stream (wav-stream source))
-         (pack (cl-mixed:packed-audio source))
-         (buffer (cl-mixed:data pack))
-         (bytes (* samples
-                   (samplesize source)
-                   (cl-mixed:channels pack)))
-         (read (read-directly stream buffer bytes)))
-    (when (< read bytes)
-      (cond ((looping-p source)
-             ;; We loop to catch corner cases where the stream does not even fill a single
-             ;; buffer. This is exceedingly unlikely to ever be the case, but w/e.
-             (loop while (< read bytes)
-                   do (seek-to-sample source 0)
-                      (let ((new-read (read-directly stream buffer (- bytes read))))
-                        (incf read new-read)
-                        (setf (sample-position source) new-read))))
-            (T
-             ;; Make sure to pad out the rest of the buffer with zeroes.
-             (loop for i from read below bytes
-                   do (setf (cffi:mem-aref buffer :uint8) 0))
-             (setf (ended-p source) T))))))
+  (fill-for-unpack-source source samples #'read-directly (wav-stream source)))

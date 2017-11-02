@@ -121,4 +121,5 @@
    #:remix-factor
    #:packed-audio
    #:unpack-mix-function
-   #:initialize-packed-audio))
+   #:initialize-packed-audio
+   #:fill-for-unpack-source))

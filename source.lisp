@@ -126,3 +126,25 @@
      (unpack-mix-function source) ()
      cl-mixed-cffi:size_t samples
      :pointer (handle source))))
+
+;; Convenience
+(defun fill-for-unpack-source (source samples direct-read arg)
+  (declare (type unpack-source source)
+           (type fixnum samples)
+           (type function direct-read))
+  (let* ((pack (cl-mixed:packed-audio source))
+         (buffer (cl-mixed:data pack))
+         (bytes (* samples
+                   (cl-mixed:samplesize (cl-mixed:encoding pack))
+                   (cl-mixed:channels pack)))
+         (read (funcall direct-read arg buffer bytes)))
+    (when (< read bytes)
+      (cond ((looping-p source)
+             (loop while (< read bytes)
+                   do (seek-to-sample source 0)
+                      (let ((new-read (funcall direct-read arg buffer (- bytes read))))
+                        (incf read new-read)
+                        (setf (sample-position source) new-read))))
+            (T
+             (memset (cffi:inc-pointer buffer read) 0 (- bytes read))
+             (setf (ended-p source) T))))))

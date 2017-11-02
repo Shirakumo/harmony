@@ -41,24 +41,4 @@
   (cl-mpg123:seek (file source) position :mode :absolute :by :sample))
 
 (defmethod process ((source mp3-source) samples)
-  (let* ((file (mp3-file source))
-         (pack (cl-mixed:packed-audio source))
-         (buffer (cl-mixed:data pack))
-         (bytes (* samples
-                   (cl-mixed:samplesize (cl-mixed:encoding pack))
-                   (cl-mixed:channels pack)))
-         (read (cl-mpg123:read-directly file buffer bytes)))
-    (when (< read bytes)
-      (cond ((looping-p source)
-             ;; We loop to catch corner cases where the file does not even fill a single
-             ;; buffer. This is exceedingly unlikely to ever be the case, but w/e.
-             (loop while (< read bytes)
-                   do (cl-mpg123:seek file 0)
-                      (let ((new-read (cl-mpg123:read-directly file buffer (- bytes read))))
-                        (incf read new-read)
-                        (setf (sample-position source) new-read))))
-            (T
-             ;; Make sure to pad out the rest of the buffer with zeroes.
-             (loop for i from read below bytes
-                   do (setf (cffi:mem-aref buffer :uint8) 0))
-             (setf (ended-p source) T))))))
+  (fill-for-unpack-source source samples #'cl-mpg123:read-directly (mp3-file source)))
