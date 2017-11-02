@@ -21,9 +21,11 @@
 
 (defclass wav-source (unpack-source file-source)
   ((wav-stream :initform NIL :accessor wav-stream)
+   (data-size :initform 0 :accessor data-size)
+   (data-offset :initform 44 :accessor data-offset)
    (samplesize :initform 0 :accessor samplesize)))
 
-(defun decode-int (stream &optional (size 4))
+(defun decode-int (stream size)
   (let ((int 0))
     (dotimes (i size int)
       (setf (ldb (byte 8 (* 8 i)) int) (read-byte stream)))))
@@ -41,6 +43,7 @@
   (check-label stream "RIFF")
   (dotimes (i 4) (read-byte stream))
   (check-label stream "WAVE")
+  ;; FIXME: more flexible block handling
   (check-label stream "fmt ")
   (dotimes (i 4) (read-byte stream))
   (let ((audio-format (decode-int stream 2))
@@ -53,16 +56,19 @@
     (unless (= 1 audio-format)
       (error "Unsupported audio format (~d) in file." audio-format))
     (check-label stream "data")
-    (dotimes (i 4) (read-byte stream))
-    (values channels samplerate (/ bits-per-sample 8))))
+    (values channels
+            samplerate
+            (/ bits-per-sample 8)
+            (decode-int 4))))
 
 (defmethod initialize-packed-audio ((source wav-source))
   (let ((stream (open (file source) :element-type '(unsigned-byte 8))))
     (unwind-protect
-         (multiple-value-bind (channels samplerate samplesize)
+         (multiple-value-bind (channels samplerate samplesize size)
              (decode-wav-header stream)
            (setf (samplesize source) samplesize)
            (setf (wav-stream source) stream)
+           (setf (data-size source) size)
            (cl-mixed:make-packed-audio
             NIL
             (* (buffersize (server source))
@@ -79,11 +85,14 @@
 
 (defmethod seek-to-sample ((source wav-source) position)
   (file-position (wav-stream source)
-                 (+ 44 (* position (samplesize source)))))
+                 (+ (data-offset source)
+                    (min (* position (samplesize source))
+                         (data-size source)))))
 
 (defun read-directly (stream buffer bytes)
   (let ((read-buffer (load-time-value (static-vectors:make-static-vector 4096)))
         (read-total 0))
+    ;; FIXME: Check overrun of data block. File might contain further blocks.
     (loop for read = (read-sequence read-buffer stream :end (min (- bytes read-total) 4096))
           until (= 0 read)
           do (incf read-total read)
