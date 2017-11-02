@@ -7,7 +7,7 @@
 (in-package #:cl-user)
 (defpackage #:harmony-simple
   (:nicknames #:org.shirakumo.fraf.harmony.simple)
-  (:use #:cl #:harmony #:harmony-out123 #:harmony-mp3)
+  (:use #:cl #:harmony)
   (:shadow #:start #:started-p #:stop #:pause #:paused-p #:resume #:play #:segment)
   ;; default.lisp
   (:export
@@ -22,10 +22,6 @@
    #:define-source-type)
   ;; reexport
   (:export
-   #:mp3-source
-   #:out123-drain
-   #:linear-mixer
-   #:space-mixer
    #:add
    #:withdraw
    #:sources

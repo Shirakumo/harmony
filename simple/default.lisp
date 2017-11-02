@@ -21,7 +21,7 @@
 (defmethod make-pipeline ((server default-server))
   (let* ((*server* server)
          (pipeline (make-instance 'pipeline))
-         (output (make-segment 'out123-drain))
+         (output (make-segment 'harmony-out123:out123-drain))
          (master (make-segment 'basic-mixer :name :master))
          (music (make-segment 'basic-mixer :name :music))
          (sfx (make-segment 'space-mixer :name :sfx))
