@@ -13,9 +13,7 @@
 (in-package #:org.shirakumo.fraf.harmony.drains.pulse)
 
 (define-condition pulse-error (error)
-  ((code :initarg :code :accessor code)
-   (paused-p :initform NIL :accessor paused-p)
-   (program-name :initform NIL :initarg :program-name :accessor program-name))
+  ((code :initarg :code :accessor code))
   (:report (lambda (c s) (format s "Pulse error ~d: ~a"
                                  (code c) (harmony-pulse-cffi:strerror (code c))))))
 
@@ -25,7 +23,11 @@
        (error 'pulse-error :code (cffi:mem-ref ,errorvar :int)))))
 
 (defclass pulse-drain (pack-drain)
-  ((simple :initform NIL :accessor simple)))
+  ((simple :initform NIL :accessor simple)
+   (paused-p :initform NIL :accessor paused-p)
+   (program-name :initform NIL :initarg :program-name :accessor program-name))
+  (:default-initargs
+   :program-name "Harmony"))
 
 (defmethod initialize-instance :after ((drain pulse-drain) &key)
   (setf (cl-mixed-cffi:direct-segment-start (cl-mixed:handle drain)) (cffi:callback start))
@@ -59,7 +61,7 @@
 
 (cffi:defcallback start :int ((segment :pointer))
   (let ((drain (cl-mixed:pointer->object segment)))
-    (unless (simple segment)
+    (unless (simple drain)
       (cffi:with-foreign-object (sample-spec '(:struct harmony-pulse-cffi:sample-spec))
         (setf (harmony-pulse-cffi:sample-spec-format sample-spec) :float32le)
         (setf (harmony-pulse-cffi:sample-spec-rate sample-spec) (samplerate (server drain)))
@@ -70,8 +72,8 @@
                                 :playback (cffi:null-pointer) (program-name drain)
                                 sample-spec (cffi:null-pointer) (cffi:null-pointer)
                                 error))
-          (if (cffi:null-pointer-p (simple drain)) -1 1)))))
-  1)
+          (if (cffi:null-pointer-p (simple drain)) -1 1))))
+    (if (simple drain) 1 0)))
 
 (cffi:defcallback end :int ((segment :pointer))
   (let ((drain (cl-mixed:pointer->object segment)))
