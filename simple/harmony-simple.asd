@@ -19,4 +19,5 @@
   :depends-on (:harmony
                :harmony-out123
                :harmony-mp3
+               :harmony-wav
                :documentation-utils))
