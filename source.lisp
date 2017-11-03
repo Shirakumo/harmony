@@ -148,3 +148,6 @@
             (T
              (memset (cffi:inc-pointer buffer read) 0 (- bytes read))
              (setf (ended-p source) T))))))
+
+(cl-mixed::define-field-accessor volume unpack-source :float :volume)
+(cl-mixed::define-field-accessor bypass unpack-source :bool :bypass)

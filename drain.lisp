@@ -49,3 +49,6 @@
 (defmethod resume ((drain drain))
   (setf (paused-p drain) NIL)
   drain)
+
+(cl-mixed::define-field-accessor volume pack-drain :float :volume)
+(cl-mixed::define-field-accessor bypass pack-drain :bool :bypass)
