@@ -17,6 +17,36 @@
 
 (use-foreign-library ole32)
 
+(defmacro defcomfun ((struct method &rest options) return-type &body args)
+  (let ((structg (gensym "STRUCT"))
+        (name (intern (format NIL "~a-~a" struct method))))
+    `(progn
+       (declaim (inline ,name))
+       (defun ,name (,structg ,@(mapcar #'first args))
+         (cffi:foreign-funcall-pointer
+          (,(intern (format NIL "%~a" name))
+           (vtbl ,structg))
+          ,options
+          :pointer ,structg
+          ,@(mapcar (lambda (a) (reverse a)) args)
+          ,return-type)))))
+
+(defmacro defcomstruct (name &body methods)
+  (let ((methods (list* `(query-interface hresult)
+                        `(add-ref ulong)
+                        `(release ulong)
+                        methods)))
+    `(progn
+       (defcstruct (,name :conc-name ,(format NIL "%~a-" name))
+         ,@(loop for method in methods
+                 collect (list (first method) :pointer)))
+
+       ,@(loop for (method return . args) in methods
+               collect `(defcomfun (,name ,method) ,return
+                          ,@args)))))
+
+(trivial-indent:define-indentation defcomstruct (4 &rest (&whole 2 4 &rest 2)))
+
 ;; https://github.com/EddieRingle/portaudio/blob/master/src/hostapi/wasapi/mingw-include/audioclient.h
 ;; https://github.com/EddieRingle/portaudio/blob/master/src/hostapi/wasapi/mingw-include/mmdeviceapi.h
 
@@ -90,55 +120,103 @@
 (defcstruct (com :conc-name ||)
   (vtbl :pointer))
 
-(defcstruct (imm-device-enumerator)
-  (query-interface :pointer)
-  (add-ref :pointer)
-  (release :pointer)
-  (enum-audio-endpoints :pointer)
-  (get-default-audio-endpoint :pointer)
-  (get-device :pointer)
-  (register-endpoint-notification-callback :pointer)
-  (unregister-endpoint-notification-callback :pointer))
+(defcomstruct imm-device-enumerator
+  (enum-audio-endpoints hresult
+    (data-flow edataflow)
+    (state-mask dword)
+    (devices :pointer))
 
-(defcstruct (imm-device-collection)
-  (query-interface :pointer)
-  (add-ref :pointer)
-  (release :pointer)
-  (get-count :pointer)
-  (item :pointer))
+  (get-default-audio-endpoint hresult
+    (data-flow edataflow)
+    (role erole)
+    (endpoint :pointer))
 
-(defcstruct (imm-device)
-  (query-interface :pointer)
-  (add-ref :pointer)
-  (release :pointer)
-  (activate :pointer)
-  (open-property-store :pointer)
-  (get-id :pointer)
-  (get-state :pointer))
+  (get-device hresult
+    (pwstrid lpcwstr)
+    (device :pointer))
 
-(defcstruct (i-audio-client)
-  (query-interface :pointer)
-  (add-ref :pointer)
-  (release :pointer)
-  (initialize :pointer)
-  (get-buffer-size :pointer)
-  (get-stream-latency :pointer)
-  (get-current-padding :pointer)
-  (is-format-supported :pointer)
-  (get-mix-format :pointer)
-  (get-device-period :pointer)
-  (start :pointer)
-  (stop :pointer)
-  (reset :pointer)
-  (set-event-handle :pointer)
-  (get-service :pointer))
+  (register-endpoint-notification-callback hresult
+    (client :pointer))
 
-(defcstruct (i-audio-render-client)
-  (query-interface :pointer)
-  (add-ref :pointer)
-  (release :pointer)
-  (get-buffer :pointer)
-  (release-buffer :pointer))
+  (unregister-endpoint-notification-callback hresult
+    (client :pointer)))
+
+(defcomstruct imm-device-collection
+  (get-count hresult
+    (devices :pointer))
+  
+  (item hresult
+    (device-id :uint)
+    (device :pointer)))
+
+(defcomstruct (imm-device %imm-device-)
+  (activate hresult
+    (id refiid)
+    (cls-ctx dword)
+    (activation-params :pointer)
+    (interface :pointer))
+  
+  (open-property-store hresult
+    (access dword)
+    (properties :pointer))
+  
+  (get-id hresult
+    (str-id :pointer))
+  
+  (get-state hresult
+    (state :pointer)))
+
+(defcomstruct (i-audio-client :conc-name %i-audio-client-)
+  (initialize hresult
+    (share-mode audclnt-sharemode)
+    (stream-flags dword)
+    (buffer-duration reference-time)
+    (preiodicity reference-time)
+    (format :pointer)
+    (audio-session-guid lpcguid))
+  
+  (get-buffer-size hresult
+    (num-buffer-frames :pointer))
+  
+  (get-stream-latency hresult
+    (latency :pointer))
+  
+  (get-current-padding hresult
+    (num-padding-frames :pointer))
+  
+  (is-format-supported hresult
+    (share-mode audclnt-sharemode)
+    (format :pointer)
+    (closest-match :pointer))
+  
+  (get-mix-format hresult
+    (device-format :pointer))
+  
+  (get-device-period hresult
+    (default-device-period :pointer)
+    (minimum-device-period :pointer))
+  
+  (start hresult)
+  
+  (stop hresult)
+  
+  (reset hresult)
+  
+  (set-event-handle hresult
+    (event-handle handle))
+  
+  (get-service hresult
+    (riid refiid)
+    (service :pointer)))
+
+(defcomstruct i-audio-render-client
+  (get-buffer hresult
+    (num-frames-requested :uint32)
+    (data :pointer))
+  
+  (release-buffer hresult
+    (num-frames-written :uint32)
+    (flags dword)))
 
 (defcfun (co-initialize "CoInitialize") hresult
   (nullable :pointer))

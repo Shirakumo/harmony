@@ -15,4 +15,5 @@
   :components ((:file "wasapi-cffi")
                (:file "wasapi"))
   :depends-on (:harmony
-               :cffi))
+               :cffi
+               :trivial-indent))
