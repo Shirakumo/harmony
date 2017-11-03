@@ -90,17 +90,17 @@
             (getf format :samplerate)
             (determine-sample-format format)
             (getf data :start)
-            (getf data :end))))
+            (getf data :size))))
 
 (defmethod initialize-packed-audio ((source wav-source))
   (let ((stream (open (file source) :element-type '(unsigned-byte 8))))
     (unwind-protect
-         (multiple-value-bind (channels samplerate sampleformat start end)
+         (multiple-value-bind (channels samplerate sampleformat start size)
              (decode-wav-header stream)
-           (setf (samplesize source) samplesize)
+           (setf (samplesize source) (cl-mixed-cffi:samplesize sampleformat))
            (setf (wav-stream source) stream)
            (setf (data-start source) start)
-           (setf (data-end source) end)
+           (setf (data-end source) (+ start size))
            (cl-mixed:make-packed-audio
             NIL
             (* (buffersize (server source))
@@ -119,10 +119,11 @@
                     (min (* position (samplesize source))
                          (data-end source)))))
 
-(defun read-directly (stream buffer bytes)
-  (let ((read-buffer (load-time-value (static-vectors:make-static-vector 4096)))
-        (read-total 0))
-    ;; FIXME: Check overrun of data block. File might contain further blocks.
+(defun read-directly (source buffer bytes)
+  (let* ((stream (wav-stream source))
+         (bytes (min bytes (- (data-end source) (file-position stream))))
+         (read-buffer (load-time-value (static-vectors:make-static-vector 4096)))
+         (read-total 0))
     (loop for read = (read-sequence read-buffer stream :end (min (- bytes read-total) 4096))
           until (= 0 read)
           do (incf read-total read)
@@ -130,4 +131,4 @@
     read-total))
 
 (defmethod process ((source wav-source) samples)
-  (fill-for-unpack-source source samples #'read-directly (wav-stream source)))
+  (fill-for-unpack-source source samples #'read-directly source))
