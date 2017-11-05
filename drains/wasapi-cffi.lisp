@@ -564,7 +564,7 @@
                                (wstring->string id)
                             (co-task-mem-free id)))))))))
 
-(defun get-device (&optional id)
+(defun get-audio-client (&optional id)
   (with-com
     (with-com-object enumerator
         (co-create-instance CLSID_MMDEVICEENUMERATOR
@@ -581,3 +581,12 @@
               (imm-device-enumerator-get-default-audio-endpoint enumerator :render :multimedia device))
         (with-deref (client :pointer)
           (imm-device-activate device IID_IAUDIOCLIENT CLSCTX-ALL (cffi:null-pointer) client))))))
+
+(defun is-format-supported (audio-client samplerate channels bit-depth)
+  (with-foreign-object (wave '(:struct waveformat-extended))
+    (fill-wave-format wave samplerate channels bit-depth)
+    (with-foreign-object (closest :pointer)
+      (unwind-protect
+           (values (eql :ok (i-audio-client-is-format-supported audio-client wave closest))
+                   (cffi:mem-ref (cffi:mem-ref closest :pointer) '(:struct waveformat-extended)))
+        (co-task-mem-free (cffi:mem-ref closest :pointer))))))
