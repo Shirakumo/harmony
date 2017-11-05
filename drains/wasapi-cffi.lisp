@@ -107,7 +107,7 @@
     `(progn
        (declaim (inline ,name))
        (defun ,name (,structg ,@(mapcar #'first args))
-         (cffi:foreign-funcall-pointer
+         (foreign-funcall-pointer
           (,(intern (format NIL "%~a" name))
            (vtbl ,structg))
           ,options
@@ -134,7 +134,7 @@
 
 (defun com-release (pointer)
   (foreign-funcall-pointer
-   (cffi:mem-aref (vtbl pointer) :pointer 2)
+   (mem-aref (vtbl pointer) :pointer 2)
    ()
    :pointer pointer
    ulong))
@@ -349,7 +349,7 @@
   
   (release-buffer hresult
     (num-frames-written :uint32)
-    (flags dword)))
+    (flags audclnt-bufferflags)))
 
 (defcomstruct i-property-store
   (commit hresult)
@@ -427,22 +427,22 @@
   (wide-char :int))
 
 (defun wstring->string (pointer)
-  (let ((bytes (wide-char-to-multi-byte CP_UTF8 0 pointer -1 (cffi:null-pointer) 0 (cffi:null-pointer) (cffi:null-pointer))))
+  (let ((bytes (wide-char-to-multi-byte CP_UTF8 0 pointer -1 (null-pointer) 0 (null-pointer) (null-pointer))))
     (with-foreign-object (string :uchar bytes)
-      (wide-char-to-multi-byte CP_UTF8 0 pointer -1 string bytes (cffi:null-pointer) (cffi:null-pointer))
-      (cffi:foreign-string-to-lisp string :encoding :utf-8))))
+      (wide-char-to-multi-byte CP_UTF8 0 pointer -1 string bytes (null-pointer) (null-pointer))
+      (foreign-string-to-lisp string :encoding :utf-8))))
 
 (defun string->wstring (string)
   (with-foreign-string (string string)
-    (let* ((chars (multi-byte-to-wide-char CP_UTF8 0 string -1 (cffi:null-pointer) 0))
-           (pointer (cffi:foreign-alloc :uint16 :count chars)))
+    (let* ((chars (multi-byte-to-wide-char CP_UTF8 0 string -1 (null-pointer) 0))
+           (pointer (foreign-alloc :uint16 :count chars)))
       (multi-byte-to-wide-char CP_UTF8 0 string -1 pointer chars)
       pointer)))
 
 (defun compose-channel-mask (&rest channels)
   (let ((i 0))
     (dolist (channel channels i)
-      (setf i (logior i (cffi:foreign-enum-value 'channel-mask channel))))))
+      (setf i (logior i (foreign-enum-value 'channel-mask channel))))))
 
 (defun channel-mask-for-channel-count (channels)
   (case channels
@@ -455,13 +455,13 @@
     (T (compose-channel-mask))))
 
 (defun make-guid (d1 d2 d3 &rest d4)
-  (let ((ptr (cffi:foreign-alloc '(:struct guid))))
+  (let ((ptr (foreign-alloc '(:struct guid))))
     (setf (guid-data1 ptr) d1)
     (setf (guid-data2 ptr) d2)
     (setf (guid-data3 ptr) d3)
     (loop for i from 0 below 8
           for d in d4
-          do (setf (cffi:mem-aref (foreign-slot-pointer ptr '(:struct guid) 'data4) 'byte i)
+          do (setf (mem-aref (foreign-slot-pointer ptr '(:struct guid) 'data4) 'byte i)
                    d))
     ptr))
 
@@ -470,8 +470,8 @@
   (setf (guid-data2 to) (guid-data2 from))
   (setf (guid-data3 to) (guid-data3 from))
   (loop for i from 0 below 8
-        do (setf (cffi:mem-aref (foreign-slot-pointer to '(:struct guid) 'data4) 'byte i)
-                 (cffi:mem-aref (foreign-slot-pointer from '(:struct guid) 'data4) 'byte i)))
+        do (setf (mem-aref (foreign-slot-pointer to '(:struct guid) 'data4) 'byte i)
+                 (mem-aref (foreign-slot-pointer from '(:struct guid) 'data4) 'byte i)))
   to)
 
 (defun guid= (a b)
@@ -480,8 +480,8 @@
    (= (guid-data2 a) (guid-data2 b))
    (= (guid-data3 a) (guid-data3 b))
    (loop for i from 0 below 8
-         always (= (cffi:mem-aref (foreign-slot-pointer a '(:struct guid) 'data4) 'byte i)
-                   (cffi:mem-aref (foreign-slot-pointer b '(:struct guid) 'data4) 'byte i)))))
+         always (= (mem-aref (foreign-slot-pointer a '(:struct guid) 'data4) 'byte i)
+                   (mem-aref (foreign-slot-pointer b '(:struct guid) 'data4) 'byte i)))))
 
 (defvar IID_IAudioClient
   (make-guid #x1CB9AD4C #xDBFA #x4c32 #xB1 #x78 #xC2 #xF5 #x68 #xA7 #x03 #xB2))
@@ -498,8 +498,8 @@
 
 (defun fill-wave-format (ptr samplerate channels bit-depth &optional (format KSDATAFORMAT_SUBTYPE_PCM))
   ;; Clear the data.
-  (loop for i from 0 below (cffi:foreign-type-size '(:struct waveformat-extensible))
-        do (setf (cffi:mem-ref ptr :uchar i) 0))
+  (loop for i from 0 below (foreign-type-size '(:struct waveformat-extensible))
+        do (setf (mem-ref ptr :uchar i) 0))
   ;; The EX struct is at the beginning, so we can reuse the pointer.
   (setf (waveformat-ex-format-tag ptr) WAVE_FORMAT_EXTENSIBLE)
   (setf (waveformat-ex-size ptr) 22)
@@ -513,7 +513,7 @@
   (setf (waveformat-ex-avg-bytes-per-sec ptr) (* samplerate (waveformat-ex-block-align ptr)))
   (setf (waveformat-extensible-samples ptr) bit-depth)
   (setf (waveformat-extensible-channel-mask ptr) (channel-mask-for-channel-count channels))
-  (move-guid format (cffi:foreign-slot-pointer ptr '(:struct waveformat-extensible) 'sub-format))
+  (move-guid format (foreign-slot-pointer ptr '(:struct waveformat-extensible) 'sub-format))
   ptr)
 
 (defmacro with-error (&body body)
@@ -522,16 +522,21 @@
        (unless (eql :ok ,err)
          (error "Call failed, return code was ~s." ,err)))))
 
-(defmacro with-com (&body body)
-  `(unwind-protect
-        (progn (with-error (co-initialize (cffi:null-pointer)))
-               ,@body)
-     (co-uninitialize)))
+(defvar *com-initialized* NIL)
+
+(defun ensure-com-initialized ()
+  (unless *com-initialized*
+    (with-error (co-initialize (null-pointer)))
+    (setf *com-initialized* T)))
+
+(defun cleanup-com ()
+  (when *com-initialized*
+    (co-uninitialize)))
 
 (defmacro with-deref ((var type) &body init)
-  `(cffi:with-foreign-object (,var ,type)
+  `(with-foreign-object (,var ,type)
      (with-error ,@init)
-     (cffi:mem-ref ,var ,type)))
+     (mem-ref ,var ,type)))
 
 (defmacro with-com-object (var init &body body)
   `(let ((,var (with-deref (,var :pointer) ,init)))
@@ -540,53 +545,106 @@
        (com-release ,var))))
 
 (defun enumerate-devices ()
-  (with-com
-    (with-com-object enumerator
-        (co-create-instance CLSID_MMDEVICEENUMERATOR
-                            (cffi:null-pointer)
-                            CLSCTX-ALL
-                            IID_IMMDEVICEENUMERATOR
-                            enumerator)
-      (with-com-object collection
-          (imm-device-enumerator-enum-audio-endpoints enumerator
-                                                      :render
-                                                      DEVICE_STATE_ACTIVE
-                                                      collection)
-        (loop for i from 0 below (with-deref (count :uint)
-                                   (imm-device-collection-get-count collection count))
-              collect (with-com-object device
-                          (imm-device-collection-item collection
-                                                      i
-                                                      device)
-                        (let ((id (with-deref (id :pointer)
-                                    (imm-device-get-id device id))))
-                          (unwind-protect
-                               (wstring->string id)
-                            (co-task-mem-free id)))))))))
+  (ensure-com-initialized)
+  (with-com-object enumerator
+      (co-create-instance CLSID_MMDEVICEENUMERATOR
+                          (null-pointer)
+                          CLSCTX-ALL
+                          IID_IMMDEVICEENUMERATOR
+                          enumerator)
+    (with-com-object collection
+        (imm-device-enumerator-enum-audio-endpoints enumerator
+                                                    :render
+                                                    DEVICE_STATE_ACTIVE
+                                                    collection)
+      (loop for i from 0 below (with-deref (count :uint)
+                                 (imm-device-collection-get-count collection count))
+            collect (with-com-object device
+                        (imm-device-collection-item collection
+                                                    i
+                                                    device)
+                      (let ((id (with-deref (id :pointer)
+                                  (imm-device-get-id device id))))
+                        (unwind-protect
+                             (wstring->string id)
+                          (co-task-mem-free id))))))))
 
 (defun get-audio-client (&optional id)
-  (with-com
-    (with-com-object enumerator
-        (co-create-instance CLSID_MMDEVICEENUMERATOR
-                            (cffi:null-pointer)
-                            CLSCTX-ALL
-                            IID_IMMDEVICEENUMERATOR
-                            enumerator)
-      (with-com-object device
-          (if id
-              (let ((wstring (string->wstring id)))
-                (unwind-protect
-                     (imm-device-enumerator-get-device enumerator wstring device)
-                  (foreign-free wstring)))
-              (imm-device-enumerator-get-default-audio-endpoint enumerator :render :multimedia device))
-        (with-deref (client :pointer)
-          (imm-device-activate device IID_IAUDIOCLIENT CLSCTX-ALL (cffi:null-pointer) client))))))
+  (ensure-com-initialized)
+  (with-com-object enumerator
+      (co-create-instance CLSID_MMDEVICEENUMERATOR
+                          (null-pointer)
+                          CLSCTX-ALL
+                          IID_IMMDEVICEENUMERATOR
+                          enumerator)
+    (with-com-object device
+        (if id
+            (let ((wstring (string->wstring id)))
+              (unwind-protect
+                   (imm-device-enumerator-get-device enumerator wstring device)
+                (foreign-free wstring)))
+            (imm-device-enumerator-get-default-audio-endpoint enumerator :render :multimedia device))
+      (with-deref (client :pointer)
+        (imm-device-activate device IID_IAUDIOCLIENT CLSCTX-ALL (null-pointer) client)))))
 
 (defun is-format-supported (audio-client samplerate channels bit-depth)
-  (with-foreign-object (wave '(:struct waveformat-extended))
+  (with-foreign-object (wave '(:struct waveformat-extensible))
     (fill-wave-format wave samplerate channels bit-depth)
     (with-foreign-object (closest :pointer)
       (unwind-protect
-           (values (eql :ok (i-audio-client-is-format-supported audio-client wave closest))
-                   (cffi:mem-ref (cffi:mem-ref closest :pointer) '(:struct waveformat-extended)))
-        (co-task-mem-free (cffi:mem-ref closest :pointer))))))
+           (values (eql :ok (i-audio-client-is-format-supported audio-client :shared wave closest))
+                   (mem-ref (mem-ref closest :pointer) '(:struct waveformat-extensible)))
+        (co-task-mem-free (mem-ref closest :pointer))))))
+
+(defun get-mix-format (audio-client)
+  (with-deref (format :pointer)
+    (i-audio-client-get-mix-format audio-client format)))
+
+(defun initialize-audio-client (audio-client event-handle &optional format)
+  (with-foreign-objects ((default 'reference-time)
+                         (minimum 'reference-time))
+    (with-error (i-audio-client-get-device-period audio-client default minimum))
+    (let ((default (cffi:mem-ref default 'reference-time))
+          (format (or format (get-mix-format audio-client))))
+      (with-error (i-audio-client-initialize audio-client
+                                             :shared
+                                             AUDCLNT_STREAMFLAGS_EVENTCALLBACK
+                                             default
+                                             0
+                                             format
+                                             (null-pointer)))
+      (with-error (i-audio-client-set-event-handle audio-client event-handle))
+      (values audio-client
+              format))))
+
+(defmacro with-render-client ((buffer frames) audio-client &body body)
+  (let ((client (gensym "CLIENT"))
+        (bodyg (gensym "BODY")))
+    `(with-com-object ,client
+         (i-audio-client-get-service ,audio-client IID_IAUDIORENDERCLIENT client)
+       (let ((,frames (with-deref (,frames :uint32)
+                        (i-audio-client-get-buffer-size ,audio-client ,frames))))
+         (macrolet ((with-buffer-active (&body ,bodyg)
+                      (%with-buffer-active ',buffer ',client ',frames ,bodyg)))
+           ,@body)))))
+
+(defun %with-buffer-active (buffer client frames body)
+  (let ((thunk (gensym "THUNK"))
+        (pass (gensym "PASS")))
+    `(let ((,buffer (with-deref (,buffer :pointer)
+                      (i-audio-render-client-get-buffer ,client ,frames ,buffer))))
+       (flet ((,thunk ()
+                (let ((,pass NIL))
+                  (unwind-protect
+                       (prog1 ,@body
+                         (setf ,pass T))
+                    (unless ,pass (i-audio-render-client-release-buffer ,client 0 :silent))))))
+         (with-error (i-audio-render-client-release-buffer ,client (,thunk) 0))))))
+
+(defmacro with-audio-started (audio-client &body body)
+  (let ((audio-clientg (gensym "AUDIO-CLIENT")))
+    `(let ((,audio-clientg ,audio-client))
+       (with-error (i-audio-client-start ,audio-clientg))
+       (unwind-protect
+            (progn ,@body)
+         (with-error (i-audio-client-stop ,audio-clientg))))))
