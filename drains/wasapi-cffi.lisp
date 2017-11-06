@@ -371,6 +371,37 @@
     (key :pointer)
     (value :pointer)))
 
+(defcomstruct i-audio-session-control
+  (get-state hresult
+    (retval :pointer))
+
+  (get-display-name hresult
+    (retval :pointer))
+
+  (set-display-name hresult
+    (value :pointer)
+    (event-context :pointer))
+
+  (get-icon-path hresult
+    (retval :pointer))
+
+  (set-icon-path hresult
+    (value :pointer)
+    (event-context :pointer))
+
+  (get-grouping-param hresult
+    (retval :pointer))
+
+  (set-grouping-param hresult
+    (value :pointer)
+    (event-context :pointer))
+
+  (register-audio-session-notification hresult
+    (new-notifications :pointer))
+  
+  (unregister-audio-session-notification hresult
+    (new-notifications :pointer)))
+
 (defcfun (co-initialize "CoInitialize") hresult
   (nullable :pointer))
 
@@ -489,6 +520,8 @@
   (make-guid #x1CB9AD4C #xDBFA #x4c32 #xB1 #x78 #xC2 #xF5 #x68 #xA7 #x03 #xB2))
 (defvar IID_IAudioRenderClient
   (make-guid #xF294ACFC #x3146 #x4483 #xA7 #xBF #xAD #xDC #xA7 #xC2 #x60 #xE2))
+(defvar IID_IAudioSessionControl
+  (make-guid #xf4b1a599 #x7266 #x4319 #xa8 #xca #xe7 #x0a #xcb #x11 #xe8 #xcd))
 (defvar IID_IMMDeviceEnumerator
   (make-guid #xA95664D2 #x9614 #x4F35 #xA7 #x46 #xDE #x8D #xB6 #x36 #x17 #xE6))
 (defvar CLSID_MMDeviceEnumerator
@@ -626,6 +659,14 @@
                                            (null-pointer)))
     (with-error (i-audio-client-set-event-handle audio-client event-handle))
     format))
+
+(defun set-audio-client-label (audio-client label)
+  (with-com-object session
+      (i-audio-client-get-service audio-client IID_IAUDIOSESSIONCONTROL session)
+    (let ((label (string->wstring label)))
+      (i-audio-session-control-set-display-name session label (null-pointer))
+      (cffi:foreign-free label))
+    audio-client))
 
 (defmacro with-render-client ((buffer frames) audio-client &body body)
   (let ((client (gensym "CLIENT"))
