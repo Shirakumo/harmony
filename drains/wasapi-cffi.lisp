@@ -666,31 +666,6 @@
       (cffi:foreign-free label))
     audio-client))
 
-(defmacro with-render-client ((buffer frames) audio-client &body body)
-  (let ((client (gensym "CLIENT"))
-        (bodyg (gensym "BODY")))
-    `(with-com-object ,client
-         (i-audio-client-get-service ,audio-client IID_IAUDIORENDERCLIENT client)
-       (with-foreign-object ((,buffer :pointer))
-         (let ((,frames (with-deref (,frames :uint32)
-                          (i-audio-client-get-buffer-size ,audio-client ,frames))))
-           (macrolet ((with-buffer-active (&body ,bodyg)
-                        (%with-buffer-active ',buffer ',client ',frames ,bodyg)))
-             ,@body))))))
-
-(defun %with-buffer-active (buffer client frames body)
-  (let ((thunk (gensym "THUNK"))
-        (pass (gensym "PASS")))
-    `(flet ((,thunk ()
-              (let ((,pass NIL)
-                    (,buffer (mem-ref ,buffer :pointer)))
-                (unwind-protect
-                     (prog1 ,@body
-                       (setf ,pass T))
-                  (unless ,pass (i-audio-render-client-release-buffer ,client 0 :silent))))))
-       (with-error (i-audio-render-client-get-buffer ,client ,frames ,buffer))
-       (with-error (i-audio-render-client-release-buffer ,client (,thunk) 0)))))
-
 (defmacro with-audio-started (audio-client &body body)
   (let ((audio-clientg (gensym "AUDIO-CLIENT")))
     `(let ((,audio-clientg ,audio-client))
@@ -698,3 +673,30 @@
        (unwind-protect
             (progn ,@body)
          (with-error (i-audio-client-stop ,audio-clientg))))))
+
+(defmacro with-render-client ((buffer frames) audio-client &body body)
+  (let ((client (gensym "CLIENT"))
+        (bodyg (gensym "BODY")))
+    `(with-com-object ,client
+         (i-audio-client-get-service ,audio-client IID_IAUDIORENDERCLIENT client)
+       (with-foreign-objects ((,buffer :pointer)
+                              (,frames :uint32))
+         (macrolet ((with-buffer-active (&body ,bodyg)
+                      (%with-buffer-active ',buffer ',client ',frames ,bodyg)))
+           ,@body)))))
+
+(defun %with-buffer-active (buffer client frames body)
+  (let ((thunk (gensym "THUNK"))
+        (pass (gensym "PASS")))
+    `(progn
+       (with-error (i-audio-client-get-current-padding ,client ,frames))
+       (let ((,frames (mem-ref ,frames :uint32)))
+         (with-error (i-audio-render-client-get-buffer ,client ,frames ,buffer))
+         (let ((,buffer (mem-ref ,buffer :pointer)))
+           (flet ((,thunk ()
+                    (let ((,pass NIL))
+                      (unwind-protect
+                           (prog1 ,@body
+                             (setf ,pass T))
+                        (unless ,pass (i-audio-render-client-release-buffer ,client 0 :silent))))))
+             (with-error (i-audio-render-client-release-buffer ,client (,thunk) 0))))))))
