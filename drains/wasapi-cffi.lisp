@@ -666,13 +666,14 @@
       (cffi:foreign-free label))
     audio-client))
 
+(defun call-with-audio-started (audio-client function)
+  (with-error (i-audio-client-start audio-client))
+  (unwind-protect
+       (funcall function)
+    (with-error (i-audio-client-stop audio-client))))
+
 (defmacro with-audio-started (audio-client &body body)
-  (let ((audio-clientg (gensym "AUDIO-CLIENT")))
-    `(let ((,audio-clientg ,audio-client))
-       (with-error (i-audio-client-start ,audio-clientg))
-       (unwind-protect
-            (progn ,@body)
-         (with-error (i-audio-client-stop ,audio-clientg))))))
+  `(call-with-audio-started ,audio-client (lambda () ,@body)))
 
 (defmacro with-render-client ((buffer frames) audio-client &body body)
   (let ((client (gensym "CLIENT"))
@@ -681,7 +682,7 @@
          (i-audio-client-get-service ,audio-client IID_IAUDIORENDERCLIENT client)
        (with-foreign-objects ((,buffer :pointer)
                               (,frames :uint32))
-         (macrolet ((with-buffer-active (&body ,bodyg)
+         (macrolet ((with-buffer-active (() &body ,bodyg)
                       (%with-buffer-active ',buffer ',client ',frames ,bodyg)))
            ,@body)))))
 
@@ -700,3 +701,15 @@
                              (setf ,pass T))
                         (unless ,pass (i-audio-render-client-release-buffer ,client 0 :silent))))))
              (with-error (i-audio-render-client-release-buffer ,client (,thunk) 0))))))))
+
+
+(defun fill-with-zeroes (buffer frames)
+  (dotimes (i (* 2 frames))
+    (setf (cffi:mem-aref buffer :float i) 0.0s0)))
+
+(defun test (client event)
+  (with-render-client (buffer frames) client
+    (with-audio-started client
+      (loop (with-buffer-active ()
+              (fill-with-zeroes buffer frames))
+            (wait-for-single-object event INFINITE)))))
