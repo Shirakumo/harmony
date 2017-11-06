@@ -95,8 +95,6 @@
 (define-foreign-library ole32
   (:windows "Ole32.dll"))
 
-(define-foreign-library)
-
 (define-foreign-library avrt
   (:windows "Avrt.dll"))
 
