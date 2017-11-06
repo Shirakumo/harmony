@@ -95,49 +95,13 @@
 (define-foreign-library ole32
   (:windows "Ole32.dll"))
 
+(define-foreign-library)
+
 (define-foreign-library avrt
   (:windows "Avrt.dll"))
 
 (use-foreign-library ole32)
 (use-foreign-library avrt)
-
-(defmacro defcomfun ((struct method &rest options) return-type &body args)
-  (let ((structg (gensym "STRUCT"))
-        (name (intern (format NIL "~a-~a" struct method))))
-    `(progn
-       (declaim (inline ,name))
-       (defun ,name (,structg ,@(mapcar #'first args))
-         (foreign-funcall-pointer
-          (,(intern (format NIL "%~a" name))
-           (vtbl ,structg))
-          ,options
-          :pointer ,structg
-          ,@(loop for (name type) in args
-                  collect type collect name)
-          ,return-type)))))
-
-(defmacro defcomstruct (name &body methods)
-  (let ((methods (list* `(query-interface hresult)
-                        `(add-ref ulong)
-                        `(release ulong)
-                        methods)))
-    `(progn
-       (defcstruct (,name :conc-name ,(format NIL "%~a-" name))
-         ,@(loop for method in methods
-                 collect (list (first method) :pointer)))
-
-       ,@(loop for (method return . args) in methods
-               collect `(defcomfun (,name ,method) ,return
-                          ,@args)))))
-
-(trivial-indent:define-indentation defcomstruct (4 &rest (&whole 2 4 &rest 2)))
-
-(defun com-release (pointer)
-  (foreign-funcall-pointer
-   (mem-aref (vtbl pointer) :pointer 2)
-   ()
-   :pointer pointer
-   ulong))
 
 ;; https://github.com/EddieRingle/portaudio/blob/master/src/hostapi/wasapi/mingw-include/audioclient.h
 ;; https://github.com/EddieRingle/portaudio/blob/master/src/hostapi/wasapi/mingw-include/mmdeviceapi.h
@@ -224,6 +188,44 @@
   (:top-back-center        #x10000)
   (:top-back-right         #x20000)
   (:reserved               #x80000000))
+
+(defmacro defcomfun ((struct method &rest options) return-type &body args)
+  (let ((structg (gensym "STRUCT"))
+        (name (intern (format NIL "~a-~a" struct method))))
+    `(progn
+       (declaim (inline ,name))
+       (defun ,name (,structg ,@(mapcar #'first args))
+         (foreign-funcall-pointer
+          (,(intern (format NIL "%~a" name))
+           (vtbl ,structg))
+          ,options
+          :pointer ,structg
+          ,@(loop for (name type) in args
+                  collect type collect name)
+          ,return-type)))))
+
+(defmacro defcomstruct (name &body methods)
+  (let ((methods (list* `(query-interface hresult)
+                        `(add-ref ulong)
+                        `(release ulong)
+                        methods)))
+    `(progn
+       (defcstruct (,name :conc-name ,(format NIL "%~a-" name))
+         ,@(loop for method in methods
+                 collect (list (first method) :pointer)))
+
+       ,@(loop for (method return . args) in methods
+               collect `(defcomfun (,name ,method) ,return
+                          ,@args)))))
+
+(trivial-indent:define-indentation defcomstruct (4 &rest (&whole 2 4 &rest 2)))
+
+(defun com-release (pointer)
+  (foreign-funcall-pointer
+   (mem-aref (vtbl pointer) :pointer 2)
+   ()
+   :pointer pointer
+   ulong))
 
 (defcstruct (guid :conc-name guid-)
   (data1 dword)
@@ -384,7 +386,7 @@
 (defcfun (co-task-mem-free "CoTaskMemFree") :void
   (pointer :pointer))
 
-(defcfun (av-set-mm-thread-characteristics "AvSetMmThreadCharacteristics") handle
+(defcfun (av-set-mm-thread-characteristics "AvSetMmThreadCharacteristicsW") handle
   (task-name wstring)
   (task-index lpdword))
 
@@ -396,11 +398,11 @@
   (milliseconds dword))
 
 ;; undef?
-(defcfun (create-event "CreateEvent") handle
+(defcfun (create-event "CreateEventW") handle
   (event-attribute :pointer)
   (manual-reset :bool)
   (initial-state :bool)
-  (name :string))
+  (name wstring))
 
 (defcfun (close-handle "CloseHandle") :bool
   (object handle))
@@ -600,22 +602,30 @@
   (with-deref (format :pointer)
     (i-audio-client-get-mix-format audio-client format)))
 
-(defun initialize-audio-client (audio-client event-handle &optional format)
+(defun get-device-period (audio-client)
   (with-foreign-objects ((default 'reference-time)
                          (minimum 'reference-time))
     (with-error (i-audio-client-get-device-period audio-client default minimum))
-    (let ((default (cffi:mem-ref default 'reference-time))
-          (format (or format (get-mix-format audio-client))))
-      (with-error (i-audio-client-initialize audio-client
-                                             :shared
-                                             AUDCLNT_STREAMFLAGS_EVENTCALLBACK
-                                             default
-                                             0
-                                             format
-                                             (null-pointer)))
-      (with-error (i-audio-client-set-event-handle audio-client event-handle))
-      (values audio-client
-              format))))
+    (values (cffi:mem-ref default 'reference-time)
+            (cffi:mem-ref minimum 'reference-time))))
+
+(defun reference-time->seconds (reference-time)
+  (* reference-time 100 (expt 10 -9)))
+
+(defun seconds->reference-time (seconds)
+  (* seconds 1/100 (expt 10 9)))
+
+(defun initialize-audio-client (audio-client event-handle &key format)
+  (let ((format (or format (get-mix-format audio-client))))
+    (with-error (i-audio-client-initialize audio-client
+                                           :shared
+                                           AUDCLNT_STREAMFLAGS_EVENTCALLBACK
+                                           0
+                                           0
+                                           format
+                                           (null-pointer)))
+    (with-error (i-audio-client-set-event-handle audio-client event-handle))
+    format))
 
 (defmacro with-render-client ((buffer frames) audio-client &body body)
   (let ((client (gensym "CLIENT"))
