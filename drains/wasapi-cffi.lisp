@@ -109,7 +109,7 @@
 (defconstant DEVICE_STATE_ACTIVE #x00000001)
 (defconstant WAVE_FORMAT_EXTENSIBLE #x0000FFFE)
 (defconstant CLSCTX-ALL 23)
-(defconstant INFINITE -1)
+(defconstant INFINITE (1- (expt 2 32)))
 (defconstant CP_UTF8 65001)
 
 (defctype word :uint16)
@@ -135,24 +135,31 @@
   (:timestamp-error 4))
 
 (defcenum hresult
-  (:ok 0)
-  (:false 1)
   (:already-initialized 2290679810)
+  (:bad-pointer 2147500035)
   (:bufduration-period-not-equal 2290679827)
+  (:buffer-error 2290679832)
+  (:buffer-operation-pending 2290679819)
   (:buffer-size-error 2290679830)
   (:buffer-size-not-aligned 2290679833)
+  (:buffer-too-large 2290679814)
   (:cpuusage-exceeded 2290679831)
-  (:device-invalidated 2290679812)
   (:device-in-use 2290679818)
+  (:device-invalidated 2290679812)
   (:endpoint-create-failed 2290679823)
   (:exclusive-mode-not-allowed 2290679822)
+  (:false 1)
+  (:invalid-arg 2147942487)
   (:invalid-device-period 2290679840)
+  (:invalid-size 2290679817)
+  (:nointerface 2147500034)
+  (:not-initialized 2290679809)
+  (:ok 0)
+  (:out-of-memory 2147942414)
+  (:out-of-order 2290679815)
   (:service-not-running 2290679824)
   (:unsupported-format 2290679816)
-  (:wrong-endpoint-type 2290679811)
-  (:invalid-arg 2147942487)
-  (:out-of-memory 2147942414)
-  (:bad-pointer 2147500035))
+  (:wrong-endpoint-type 2290679811))
 
 (defcenum dataflow
   :render
@@ -656,14 +663,14 @@
                                            format
                                            (null-pointer)))
     (with-error (i-audio-client-set-event-handle audio-client event-handle))
-    format))
+    (values audio-client format)))
 
 (defun set-audio-client-label (audio-client label)
   (with-com-object session
       (i-audio-client-get-service audio-client IID_IAUDIOSESSIONCONTROL session)
     (let ((label (string->wstring label)))
       (i-audio-session-control-set-display-name session label (null-pointer))
-      (cffi:foreign-free label))
+      (foreign-free label))
     audio-client))
 
 (defun call-with-audio-started (audio-client function)
@@ -677,39 +684,60 @@
 
 (defmacro with-render-client ((buffer frames) audio-client &body body)
   (let ((client (gensym "CLIENT"))
-        (bodyg (gensym "BODY")))
-    `(with-com-object ,client
-         (i-audio-client-get-service ,audio-client IID_IAUDIORENDERCLIENT client)
-       (with-foreign-objects ((,buffer :pointer)
-                              (,frames :uint32))
-         (macrolet ((with-buffer-active (() &body ,bodyg)
-                      (%with-buffer-active ',buffer ',client ',frames ,bodyg)))
-           ,@body)))))
+        (render (gensym "RENDER"))
+        (bodyg (gensym "BODY"))
+        (buffer-frames (gensym "BUFFER-FRAMES"))
+        (padding-frames (gensym "PADDING-FRAMES")))
+    `(let ((,client ,audio-client))
+       (with-com-object ,render
+           (i-audio-client-get-service ,client IID_IAUDIORENDERCLIENT ,render)
+         (with-foreign-objects ((,buffer :pointer)
+                                (,padding-frames :uint32))
+           (let ((,buffer-frames (with-deref (,buffer-frames :uint32)
+                                   (i-audio-client-get-buffer-size ,audio-client ,buffer-frames))))
+             (macrolet ((with-buffer-active (() &body ,bodyg)
+                          `(call-with-buffer-active ,',client ,',render ,',buffer ,',buffer-frames ,',padding-frames
+                                                    (lambda (,',buffer ,',frames)
+                                                      ,@,bodyg))))
+               ,@body)))))))
 
-(defun %with-buffer-active (buffer client frames body)
-  (let ((thunk (gensym "THUNK"))
-        (pass (gensym "PASS")))
-    `(progn
-       (with-error (i-audio-client-get-current-padding ,client ,frames))
-       (let ((,frames (mem-ref ,frames :uint32)))
-         (with-error (i-audio-render-client-get-buffer ,client ,frames ,buffer))
-         (let ((,buffer (mem-ref ,buffer :pointer)))
-           (flet ((,thunk ()
-                    (let ((,pass NIL))
-                      (unwind-protect
-                           (prog1 ,@body
-                             (setf ,pass T))
-                        (unless ,pass (i-audio-render-client-release-buffer ,client 0 :silent))))))
-             (with-error (i-audio-render-client-release-buffer ,client (,thunk) 0))))))))
+(defun call-with-buffer-active (client render buffer buffer-frames padding-frames function)
+  (declare (type foreign-pointer client render buffer padding-frames))
+  (declare (type (unsigned-byte 32) buffer-frames))
+  (declare (type function function))
+  (declare (optimize speed))
+  (with-error (i-audio-client-get-current-padding client padding-frames))
+  (let ((frames (- buffer-frames (mem-ref padding-frames :uint32))))
+    (with-error (i-audio-render-client-get-buffer render frames buffer))
+    (let ((buffer (mem-ref buffer :pointer))
+          (pass NIL))
+      (unwind-protect
+           (progn (funcall function buffer frames)
+                  (setf pass T))
+        (if pass
+            (with-error (i-audio-render-client-release-buffer render frames 0))
+            (with-error (i-audio-render-client-release-buffer render 0 :silent)))))))
 
 
 (defun fill-with-zeroes (buffer frames)
   (dotimes (i (* 2 frames))
     (setf (cffi:mem-aref buffer :float i) 0.0s0)))
 
+(sb-ext:defglobal *phase* 0)
+(defun fill-with-sine (buffer frames)
+  (declare (optimize speed (safety 0)))
+  (declare (type (unsigned-byte 32) frames *phase*))
+  (declare (type cffi:foreign-pointer buffer))
+  (dotimes (i frames)
+    (let ((sample (coerce (* 2 PI 440 *phase* 1/44100) 'single-float)))
+      (setf (cffi:mem-aref buffer :float i) sample)
+      (setf (cffi:mem-aref buffer :float (1+ i)) sample)
+      (setf *phase* (mod (1+ *phase*) 44100)))))
+
 (defun test (client event)
+  (declare (optimize speed))
   (with-render-client (buffer frames) client
     (with-audio-started client
       (loop (with-buffer-active ()
-              (fill-with-zeroes buffer frames))
+              (fill-with-sine buffer frames))
             (wait-for-single-object event INFINITE)))))
