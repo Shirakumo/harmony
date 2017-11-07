@@ -100,16 +100,18 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
          (cffi:null-pointer)
          client)))))
 
-(defun format-supported-p (audio-client samplerate channels format &optional (mode :shared))
+(defun format-supported-p (audio-client samplerate channels sample-format &optional (mode :shared))
   (cffi:with-foreign-object (wave '(:struct harmony-wasapi-cffi:waveformat-extensible))
-    (harmony-wasapi-cffi:encode-wave-format wave samplerate channels format)
+    (harmony-wasapi-cffi:encode-wave-format wave samplerate channels sample-format)
     (cffi:with-foreign-object (closest :pointer)
       (let ((pass (harmony-wasapi-cffi:i-audio-client-is-format-supported
                    audio-client mode wave closest)))
         (let ((closest (cffi:mem-ref closest :pointer)))
           (unwind-protect
                (multiple-value-bind (samplerate channels sample-format)
-                   (unless (cffi:null-pointer-p closest) (harmony-wasapi-cffi:decode-wave-format closest))
+                   (cond ((cffi:null-pointer-p closest))
+                         ((eql :ok pass) (values samplerate channels sample-format))
+                         (T (harmony-wasapi-cffi:decode-wave-format closest)))
                  (values (eql :ok pass) samplerate channels sample-format))
             (harmony-wasapi-cffi:co-task-mem-free closest)))))))
 
