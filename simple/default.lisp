@@ -11,7 +11,7 @@
 (defclass default-server (server)
   ((output-spec :initarg :output-spec :accessor output-spec))
   (:default-initargs
-   :output-spec '(cl-out123:out123-drain)))
+   :output-spec '(harmony-out123:out123-drain)))
 
 (defmethod initialize-instance :after ((server default-server) &key)
   (let ((pipeline (make-pipeline server)))
