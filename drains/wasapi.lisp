@@ -109,7 +109,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
         (let ((closest (cffi:mem-ref closest :pointer)))
           (unwind-protect
                (multiple-value-bind (samplerate channels sample-format)
-                   (cond ((and (eql :ok pass))
+                   (cond ((and (eql :ok pass) (cffi:null-pointer-p closest))
                           (values samplerate channels sample-format))
                          ((not (cffi:null-pointer-p closest))
                           (harmony-wasapi-cffi:decode-wave-format closest)))
