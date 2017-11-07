@@ -698,6 +698,8 @@
              (macrolet ((with-buffer-active (() &body ,bodyg)
                           `(call-with-buffer-active ,',client ,',render ,',buffer ,',buffer-frames ,',padding-frames
                                                     (lambda (,',buffer ,',frames)
+                                                      (declare (type foreign-pointer ,',buffer))
+                                                      (declare (type (unsigned-byte 32) ,',frames))
                                                       ,@,bodyg))))
                ,@body)))))))
 
@@ -725,13 +727,14 @@
 
 (sb-ext:defglobal *phase* 0)
 (defun fill-with-sine (buffer frames)
+  ;; Assumes 44100Hz, 2Ch, 32bit Float
   (declare (optimize speed (safety 0)))
   (declare (type (unsigned-byte 32) frames *phase*))
   (declare (type cffi:foreign-pointer buffer))
   (dotimes (i frames)
     (let ((sample (coerce (* 2 PI 440 *phase* 1/44100) 'single-float)))
-      (setf (cffi:mem-aref buffer :float i) sample)
-      (setf (cffi:mem-aref buffer :float (1+ i)) sample)
+      (setf (cffi:mem-aref buffer :float (* 2 i)) sample)
+      (setf (cffi:mem-aref buffer :float (1+ (* 2 i))) sample)
       (setf *phase* (mod (1+ *phase*) 44100)))))
 
 (defun test (client event)
@@ -739,5 +742,7 @@
   (with-render-client (buffer frames) client
     (with-audio-started client
       (loop (with-buffer-active ()
-              (fill-with-sine buffer frames))
+              (when (< 0 frames)
+                ;; (foreign-funcall "printf" :string #.(format NIL "%i~%") :int frames :int)
+                (fill-with-sine buffer frames)))
             (wait-for-single-object event INFINITE)))))
