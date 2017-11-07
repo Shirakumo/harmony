@@ -249,8 +249,8 @@
 
 (defcstruct (waveformat-extensible :conc-name waveformat-extensible-)
   (format (:struct waveformat-ex))
-  (samples word)
-  (channel-mask word)
+  (samples word :offset 18)
+  (channel-mask dword)
   (sub-format (:struct guid)))
 
 (defcstruct (property-key :conc-name property-key)
@@ -536,25 +536,48 @@
 (defvar KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
   (make-guid #x00000003 #x0000 #x0010 #x80 #x00 #x00 #xAA #x00 #x38 #x9B #x71))
 
-(defun fill-wave-format (ptr samplerate channels bit-depth &optional (format KSDATAFORMAT_SUBTYPE_PCM))
-  ;; Clear the data.
-  (loop for i from 0 below (foreign-type-size '(:struct waveformat-extensible))
-        do (setf (mem-ref ptr :uchar i) 0))
-  ;; The EX struct is at the beginning, so we can reuse the pointer.
-  (setf (waveformat-ex-format-tag ptr) WAVE_FORMAT_EXTENSIBLE)
-  (setf (waveformat-ex-size ptr) 22)
-  (setf (waveformat-ex-channels ptr) channels)
-  (setf (waveformat-ex-samples-per-sec ptr) samplerate)
-  (setf (waveformat-ex-bits-per-sample ptr) bit-depth)
-  (setf (waveformat-ex-block-align ptr) (* channels 1/8 bit-depth))
-  (when (= 24 bit-depth)
-    (setf (waveformat-ex-bits-per-sample ptr) 32)
-    (setf (waveformat-ex-block-align ptr) (* channels 32/8)))
-  (setf (waveformat-ex-avg-bytes-per-sec ptr) (* samplerate (waveformat-ex-block-align ptr)))
-  (setf (waveformat-extensible-samples ptr) bit-depth)
-  (setf (waveformat-extensible-channel-mask ptr) (channel-mask-for-channel-count channels))
-  (move-guid format (foreign-slot-pointer ptr '(:struct waveformat-extensible) 'sub-format))
+(defun fill-wave-format (ptr samplerate channels format)
+  (let ((bit-depth (ecase format
+                     ((:double :int64) 64)
+                     ((:float :int32) 32)
+                     ((:int24) 24)
+                     ((:int16) 16)
+                     ((:uint8) 8)))
+        (format (case format
+                  ((:double :float) KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+                  (T KSDATAFORMAT_SUBTYPE_PCM))))
+    ;; Clear the data.
+    (loop for i from 0 below (foreign-type-size '(:struct waveformat-extensible))
+          do (setf (mem-ref ptr :uchar i) 0))
+    ;; The EX struct is at the beginning, so we can reuse the pointer.
+    (setf (waveformat-ex-format-tag ptr) WAVE_FORMAT_EXTENSIBLE)
+    (setf (waveformat-ex-size ptr) 22)
+    (setf (waveformat-ex-channels ptr) channels)
+    (setf (waveformat-ex-samples-per-sec ptr) samplerate)
+    (setf (waveformat-ex-bits-per-sample ptr) (if (= 24 bit-depth) 32 bit-depth))
+    (setf (waveformat-ex-block-align ptr) (/ (* channels (waveformat-ex-bits-per-sample ptr)) 8))
+    (setf (waveformat-ex-avg-bytes-per-sec ptr) (* samplerate (waveformat-ex-block-align ptr)))
+    (setf (waveformat-extensible-samples ptr) bit-depth)
+    (setf (waveformat-extensible-channel-mask ptr) (channel-mask-for-channel-count channels))
+    (move-guid format (foreign-slot-pointer ptr '(:struct waveformat-extensible) 'sub-format)))
   ptr)
+
+(defun decode-wave-format (ptr)
+  (values (waveformat-ex-samples-per-sec ptr)
+          (waveformat-ex-channels ptr) 
+          (if (guid= (foreign-slot-pointer ptr '(:struct waveformat-extensible) 'sub-format)
+                     KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+              (case (waveformat-extensible-samples ptr)
+                (64 :double)
+                (32 :float)
+                (T :WTF))
+              (case (waveformat-extensible-samples ptr)
+                (64 :int64)
+                (32 :int32)
+                (24 :int24)
+                (16 :int16)
+                (8 :int8)
+                (T :WTF)))))
 
 (defmacro with-error (&body body)
   (let ((err (gensym "ERR")))
@@ -609,7 +632,7 @@
                              (wstring->string id)
                           (co-task-mem-free id))))))))
 
-(defun get-audio-client (&optional id)
+(defun find-audio-client (&optional id)
   (ensure-com-initialized)
   (with-com-object enumerator
       (co-create-instance CLSID_MMDEVICEENUMERATOR
@@ -627,51 +650,74 @@
       (with-deref (client :pointer)
         (imm-device-activate device IID_IAUDIOCLIENT CLSCTX-ALL (null-pointer) client)))))
 
-(defun is-format-supported (audio-client samplerate channels bit-depth)
+(defun format-supported-p (audio-client samplerate channels format &optional (mode :shared))
   (with-foreign-object (wave '(:struct waveformat-extensible))
-    (fill-wave-format wave samplerate channels bit-depth)
+    (fill-wave-format wave samplerate channels format)
     (with-foreign-object (closest :pointer)
-      (unwind-protect
-           (values (eql :ok (i-audio-client-is-format-supported audio-client :shared wave closest))
-                   (mem-ref (mem-ref closest :pointer) '(:struct waveformat-extensible)))
-        (co-task-mem-free (mem-ref closest :pointer))))))
+      (let ((pass (i-audio-client-is-format-supported audio-client mode wave closest)))
+        (let ((closest (mem-ref closest :pointer)))
+          (unwind-protect
+               (values (eql :ok pass)
+                       (unless (null-pointer-p closest)
+                         (decode-wave-format closest)))
+            (co-task-mem-free closest)))))))
 
-(defun get-mix-format (audio-client)
+(defun mix-format (audio-client)
   (with-deref (format :pointer)
     (i-audio-client-get-mix-format audio-client format)))
-
-(defun get-device-period (audio-client)
-  (with-foreign-objects ((default 'reference-time)
-                         (minimum 'reference-time))
-    (with-error (i-audio-client-get-device-period audio-client default minimum))
-    (values (cffi:mem-ref default 'reference-time)
-            (cffi:mem-ref minimum 'reference-time))))
 
 (defun reference-time->seconds (reference-time)
   (* reference-time 100 (expt 10 -9)))
 
 (defun seconds->reference-time (seconds)
-  (* seconds 1/100 (expt 10 9)))
+  (round (* seconds 1/100 (expt 10 9))))
 
-(defun initialize-audio-client (audio-client event-handle &key format)
-  (let ((format (or format (get-mix-format audio-client))))
+(defun device-period (audio-client)
+  (with-foreign-objects ((default 'reference-time)
+                         (minimum 'reference-time))
+    (with-error (i-audio-client-get-device-period audio-client default minimum))
+    (values (reference-time->seconds (cffi:mem-ref default 'reference-time))
+            (reference-time->seconds (cffi:mem-ref minimum 'reference-time)))))
+
+(defun initialize-audio-client-shared (audio-client &key format buffer-duration)
+  (let ((format (or format (mix-format audio-client)))
+        (buffer-duration (seconds->reference-time (or buffer-duration 0.001))))
     (with-error (i-audio-client-initialize audio-client
                                            :shared
+                                           0
+                                           buffer-duration
+                                           0
+                                           format
+                                           (null-pointer)))
+    (values audio-client format)))
+
+(defun initialize-audio-client-exclusive (audio-client event-handle &key format buffer-duration)
+  (let ((format (or format (mix-format audio-client)))
+        (buffer-duration (seconds->reference-time (or buffer-duration (device-period audio-client)))))
+    (with-error (i-audio-client-initialize audio-client
+                                           :exclusive
                                            AUDCLNT_STREAMFLAGS_EVENTCALLBACK
-                                           0
-                                           0
+                                           buffer-duration
+                                           buffer-duration
                                            format
                                            (null-pointer)))
     (with-error (i-audio-client-set-event-handle audio-client event-handle))
     (values audio-client format)))
 
-(defun set-audio-client-label (audio-client label)
+(defun audio-client-label (audio-client)
+  (with-com-object session
+      (i-audio-client-get-service audio-client IID_IAUDIOSESSIONCONTROL session)
+    (with-foreign-object (label :pointer)
+      (i-audio-session-control-get-display-name session label)
+      (wstring->string (mem-ref label :pointer)))))
+
+(defun (setf audio-client-label) (label audio-client)
   (with-com-object session
       (i-audio-client-get-service audio-client IID_IAUDIOSESSIONCONTROL session)
     (let ((label (string->wstring label)))
       (i-audio-session-control-set-display-name session label (null-pointer))
       (foreign-free label))
-    audio-client))
+    label))
 
 (defun call-with-audio-started (audio-client function)
   (with-error (i-audio-client-start audio-client))
@@ -682,7 +728,7 @@
 (defmacro with-audio-started (audio-client &body body)
   `(call-with-audio-started ,audio-client (lambda () ,@body)))
 
-(defmacro with-render-client ((buffer frames) audio-client &body body)
+(defmacro with-render-client-shared ((buffer frames) audio-client &body body)
   (let ((client (gensym "CLIENT"))
         (render (gensym "RENDER"))
         (bodyg (gensym "BODY"))
@@ -694,16 +740,17 @@
          (with-foreign-objects ((,buffer :pointer)
                                 (,padding-frames :uint32))
            (let ((,buffer-frames (with-deref (,buffer-frames :uint32)
-                                   (i-audio-client-get-buffer-size ,audio-client ,buffer-frames))))
+                                   (i-audio-client-get-buffer-size ,client ,buffer-frames))))
              (macrolet ((with-buffer-active (() &body ,bodyg)
-                          `(call-with-buffer-active ,',client ,',render ,',buffer ,',buffer-frames ,',padding-frames
-                                                    (lambda (,',buffer ,',frames)
-                                                      (declare (type foreign-pointer ,',buffer))
-                                                      (declare (type (unsigned-byte 32) ,',frames))
-                                                      ,@,bodyg))))
+                          `(call-with-buffer-active-shared
+                            ,',client ,',render ,',buffer ,',buffer-frames ,',padding-frames
+                            (lambda (,',buffer ,',frames)
+                              (declare (type foreign-pointer ,',buffer))
+                              (declare (type (unsigned-byte 32) ,',frames))
+                              ,@,bodyg))))
                ,@body)))))))
 
-(defun call-with-buffer-active (client render buffer buffer-frames padding-frames function)
+(defun call-with-buffer-active-shared (client render buffer buffer-frames padding-frames function)
   (declare (type foreign-pointer client render buffer padding-frames))
   (declare (type (unsigned-byte 32) buffer-frames))
   (declare (type function function))
@@ -720,6 +767,40 @@
             (with-error (i-audio-render-client-release-buffer render frames 0))
             (with-error (i-audio-render-client-release-buffer render 0 :silent)))))))
 
+(defmacro with-render-client-exclusive ((buffer frames) audio-client &body body)
+  (let ((client (gensym "CLIENT"))
+        (render (gensym "RENDER"))
+        (bodyg (gensym "BODY")))
+    `(let ((,client ,audio-client))
+       (with-com-object ,render
+           (i-audio-client-get-service ,client IID_IAUDIORENDERCLIENT ,render)
+         (with-foreign-objects ((,buffer :pointer))
+           (let ((,frames (with-deref (,frames :uint32)
+                            (i-audio-client-get-buffer-size ,audio-client ,frames))))
+             (macrolet ((with-buffer-active (() &body ,bodyg)
+                          `(call-with-buffer-active-exclusive
+                            ,',render ,',buffer ,',frames
+                            (lambda (,',buffer)
+                              (declare (type foreign-pointer ,',buffer))
+                              (declare (type (unsigned-byte 32) ,',frames))
+                              ,@,bodyg))))
+               ,@body)))))))
+
+(defun call-with-buffer-active-shared (render buffer frames function)
+  (declare (type foreign-pointer render buffer))
+  (declare (type (unsigned-byte 32) frames))
+  (declare (type function function))
+  (declare (optimize speed))
+  (with-error (i-audio-render-client-get-buffer render frames buffer))
+  (let ((buffer (mem-ref buffer :pointer))
+        (pass NIL))
+    (unwind-protect
+         (progn (funcall function buffer)
+                (setf pass T))
+      (if pass
+          (with-error (i-audio-render-client-release-buffer render frames 0))
+          (with-error (i-audio-render-client-release-buffer render 0 :silent))))))
+
 
 (defun fill-with-zeroes (buffer frames)
   (dotimes (i (* 2 frames))
@@ -732,17 +813,25 @@
   (declare (type (unsigned-byte 32) frames *phase*))
   (declare (type cffi:foreign-pointer buffer))
   (dotimes (i frames)
-    (let ((sample (coerce (* 2 PI 440 *phase* 1/44100) 'single-float)))
+    (let ((sample (sin (coerce (* 2 PI 440 *phase* 1/44100) 'single-float))))
       (setf (cffi:mem-aref buffer :float (* 2 i)) sample)
       (setf (cffi:mem-aref buffer :float (1+ (* 2 i))) sample)
       (setf *phase* (mod (1+ *phase*) 44100)))))
 
-(defun test (client event)
+(defun test-shared (client)
   (declare (optimize speed))
-  (with-render-client (buffer frames) client
+  (with-render-client-shared (buffer frames) client
     (with-audio-started client
       (loop (with-buffer-active ()
               (when (< 0 frames)
                 ;; (foreign-funcall "printf" :string #.(format NIL "%i~%") :int frames :int)
                 (fill-with-sine buffer frames)))
+            (sleep 0.0005)))))
+
+(defun test-exclusive (client event)
+  (declare (optimize speed))
+  (with-render-client (buffer frames) client
+    (with-audio-started client
+      (loop (with-buffer-active ()
+              (fill-with-sine buffer frames))
             (wait-for-single-object event INFINITE)))))
