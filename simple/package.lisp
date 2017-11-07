@@ -28,6 +28,7 @@
    #:channels
    #:pause
    #:resume
+   #:initialize
    #:start
    #:started-p
    #:stop

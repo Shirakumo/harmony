@@ -58,11 +58,12 @@
 (defmethod withdraw ((source source) (name symbol))
   (add source (ensure-segment name *server*)))
 
+(defun initialize (&rest initargs)
+  (unless *server*
+    (setf *server* (apply #'make-instance 'default-server initargs))
+    (start *server*)))
+
 (defun start (&optional (thing *server* t-p))
-  (unless t-p
-    (unless *server*
-      (setf *server* (make-instance 'default-server)))
-    (setf thing *server*))
   (harmony:start thing))
 
 (defun started-p (&optional (thing *server*))
