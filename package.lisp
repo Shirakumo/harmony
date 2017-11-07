@@ -91,6 +91,7 @@
   ;; server.lisp
   (:export
    #:server
+   #:samples
    #:buffersize
    #:samplerate
    #:device

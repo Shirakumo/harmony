@@ -10,6 +10,7 @@
 
 (defclass server ()
   ((segment-map :initform NIL :accessor segment-map)
+   (samples :initarg :samples :accessor samples)
    (buffersize :initarg :buffersize :reader buffersize)
    (samplerate :initarg :samplerate :reader samplerate)
    (device :initarg :device :accessor device)
@@ -24,10 +25,16 @@
    :buffersize 441
    :samplerate 44100))
 
-(defmethod initialize-instance :after ((server server) &key)
-  (check-type (buffersize server) (integer 1))
-  (check-type (samplerate server) (integer 1))
+(defmethod initialize-instance :after ((server server) &key samples buffersize samplerate)
+  (check-type samples (or null (integer 1)))
+  (check-type buffersize (or null (integer 1)))
+  (check-type samplerate (integer 1))
   (setf (segment-map server) (make-hash-table :test 'eql))
+  (unless buffersize (setf (slot-value server 'buffersize) (/ samplerate 100)))
+  (if samples
+      (when (< (buffersize server) samples)
+        (error "Number of samples cannot be greater than the buffer size."))
+      (setf (samples server) (buffersize server)))
   (let ((cons (cons T NIL)))
     (setf (evaluation-queue-head server) cons)
     (setf (evaluation-queue-tail server) cons))
@@ -87,7 +94,6 @@
 (defmethod run ((server server))
   (let ((sequence (handle (segment-sequence server)))
         (device (device server))
-        (samples (buffersize server))
         (evaluation-lock (evaluation-lock server))
         (evaluation-queue (evaluation-queue-head server)))
     (let ((*in-processing-thread* T))
@@ -106,9 +112,10 @@
                         (setf sequence (handle (segment-sequence server)))
                         (setf device (device server)))
                       (cond ((paused-p device)
-                             (bt:thread-yield))
+                             (sleep (/ (buffersize server)
+                                       (samplerate server))))
                             (T
-                             (cl-mixed-cffi:segment-sequence-mix samples sequence)))))
+                             (cl-mixed-cffi:segment-sequence-mix (samples server) sequence)))))
         (cl-mixed:end (segment-sequence server))))))
 
 (defun call-in-server-thread (function server &key synchronize timeout values)
