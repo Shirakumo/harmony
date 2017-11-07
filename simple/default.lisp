@@ -9,7 +9,9 @@
 (defvar *server* NIL)
 
 (defclass default-server (server)
-  ())
+  ((output-spec :initarg :output-spec :accessor output-spec))
+  (:default-initargs
+   :output-spec '(cl-out123:out123-drain)))
 
 (defmethod initialize-instance :after ((server default-server) &key)
   (let ((pipeline (make-pipeline server)))
@@ -21,7 +23,7 @@
 (defmethod make-pipeline ((server default-server))
   (let* ((*server* server)
          (pipeline (make-instance 'pipeline))
-         (output (make-segment 'harmony-out123:out123-drain))
+         (output (apply #'make-segment (output-spec server)))
          (master (make-segment 'basic-mixer :name :master))
          (music (make-segment 'basic-mixer :name :music))
          (sfx (make-segment 'space-mixer :name :sfx))
