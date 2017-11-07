@@ -176,8 +176,6 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
          (multiple-value-bind (ok samplerate channels sample-format)
              (format-supported-p client (samplerate (server drain)) 2 :float)
            (declare (ignore ok))
-           (when (program-name drain)
-             (setf (audio-client-label client) (program-name drain)))
            (setf (client drain) client)
            (cl-mixed:make-packed-audio
             NIL
@@ -246,6 +244,8 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
         (harmony-wasapi-cffi:i-audio-client-set-event-handle
          client
          (event drain)))
+      (when (program-name drain)
+        (setf (audio-client-label client) (program-name drain)))
       (harmony-wasapi-cffi:co-task-mem-free format)
       (setf (render drain) (with-deref (render :pointer)
                              (harmony-wasapi-cffi:i-audio-client-get-service
