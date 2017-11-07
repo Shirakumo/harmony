@@ -121,7 +121,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (* reference-time 100 (expt 10 -9)))
 
 (defun seconds->reference-time (seconds)
-  (round (* seconds 1/100 (expt 10 9))))
+  (ceiling (* seconds 1/100 (expt 10 9))))
 
 (defun device-period (audio-client)
   (cffi:with-foreign-objects ((default 'harmony-wasapi-cffi:reference-time)
@@ -191,20 +191,31 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (unless (client drain)
         (harmony-wasapi-cffi:com-release client)))))
 
-(defmethod process ((drain wasapi-drain) provided-frames)
+(cffi:defcfun (memcpy "memcpy") :pointer
+  (dest :pointer)
+  (source :pointer)
+  (num cl-mixed-cffi:size_t))
+
+(defmethod process ((drain wasapi-drain) frames)
   (let* ((pack (cl-mixed:packed-audio drain))
          (source (cl-mixed:data pack))
+         (server (server drain))
          (client (client drain))
          (render (render drain))
-         (wanted-frames (- (with-deref (frames :uint32)
-                             (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
-                           (with-deref (frames :uint32)
-                             (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
          (target (with-deref (target :pointer)
-                   (harmony-wasapi-cffi:i-audio-render-client-get-buffer render wanted-frames target))))
-    ;; FIXME
-    (harmony-wasapi-cffi:i-audio-render-client-release-buffer render wanted-frames 0)
-    (harmony-wasapi-cffi:wait-for-single-object (event drain) harmony-wasapi-cffi:INFINITE)))
+                   (harmony-wasapi-cffi:i-audio-render-client-get-buffer render frames target))))
+    (memcpy target source (* frames
+                             (cl-mixed:samplesize (cl-mixed:encoding pack))
+                             (cl-mixed:channels pack)))
+    (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frames 0)
+    (loop (harmony-wasapi-cffi:wait-for-single-object (event drain) harmony-wasapi-cffi:INFINITE)
+          (setf frames (- (with-deref (frames :uint32)
+                            (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
+                          (with-deref (frames :uint32)
+                            (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
+          (when (< 0 frames)
+            (setf (samples server) frames)
+            (return)))))
 
 (defmethod (setf paused-p) :before (value (drain wasapi-drain))
   (with-body-in-server-thread ((server drain))
@@ -218,7 +229,9 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
          (mode (mode drain))
          (client (client drain))
          (format (mix-format client))
-         (buffer-duration (seconds->reference-time (device-period client))))
+         ;; Attempt to get a buffer as large as our internal ones.
+         (buffer-duration (seconds->reference-time (/ (buffersize (server drain))
+                                                      (samplerate (server drain))))))
     (unless (render drain)
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-initialize
@@ -238,7 +251,11 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                              (harmony-wasapi-cffi:i-audio-client-get-service
                               client HARMONY-WASAPI-CFFI:IID-IAUDIORENDERCLIENT render)))
       (with-error ()
-        (harmony-wasapi-cffi:i-audio-client-start client)))))
+        (harmony-wasapi-cffi:i-audio-client-start client))
+      ;; Force sample count to WASAPI desired amount.
+      (setf (samples (server drain))
+            (with-deref (frames :uint32)
+              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))))))
 
 (cffi:defcallback end :int ((segment :pointer))
   (let ((drain (cl-mixed:pointer->object segment)))
