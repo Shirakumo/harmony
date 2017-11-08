@@ -256,8 +256,13 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                               client HARMONY-WASAPI-CFFI:IID-IAUDIORENDERCLIENT render)))
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-start client))
+      ;; Resize buffers if necessary.
+      (setf (buffersize (server drain))
+            (with-deref (frames :uint32)
+              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames)))
       ;; Force sample count to 0 for an empty first run.
-      (setf (samples (server drain)) 0))))
+      (setf (samples (server drain)) 0))
+    (if (render drain) 1 0)))
 
 (cffi:defcallback end :int ((segment :pointer))
   (let ((drain (cl-mixed:pointer->object segment)))
