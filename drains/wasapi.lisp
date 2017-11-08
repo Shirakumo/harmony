@@ -155,6 +155,23 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (cffi:foreign-free label))
     label))
 
+(defun probe-buffer-size (drain)
+  (let ((client (find-audio-client (audio-client-id drain)))
+        (mode (mode drain)))
+    (unwind-protect
+         (progn (harmony-wasapi-cffi:i-audio-client-initialize
+                 client
+                 mode
+                 harmony-wasapi-cffi:AUDCLNT-STREAMFLAGS-EVENTCALLBACK
+                 (buffer-duration (seconds->reference-time (/ (buffersize (server drain))
+                                                              (samplerate (server drain)))))
+                 (ecase mode (:shared 0) (:exclusive buffer-duration))
+                 (format (mix-format client))
+                 (cffi:null-pointer))
+                (with-deref (frames :uint32)
+                  (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames)))
+      (harmony-wasapi-cffi:com-release client))))
+
 (defclass wasapi-drain (pack-drain)
   ((paused-p :initform NIL :accessor paused-p)
    (mode :initform :shared :accessor mode)
@@ -180,6 +197,36 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
              (format-supported-p client (samplerate (server drain)) 2 :float)
            (declare (ignore ok))
            (setf (client drain) client)
+           ;; WASAPI will only give us the size of the audio buffer once
+           ;; a client has been fully initialised. However, we /need/ to
+           ;; know this size at this very moment in order to be able to
+           ;; adjust the server's buffersize before any other segments
+           ;; are created.
+           ;;
+           ;; If we did this at any other point, such as what would be
+           ;; preferable namely during START, the internal buffers and
+           ;; packed audio arrays would already be readied for the size
+           ;; that the server was initially configured with.
+           ;;
+           ;; It would be possible to resize buffers at START, but some
+           ;; segments might contain internal data arrays that would
+           ;; need to be adjusted as well. A generic API extension for
+           ;; libmixed would be necessary that would allow for the
+           ;; adjustment of buffer size (and sample rate) to make this
+           ;; feasible.
+           ;;
+           ;; For now we opt for this hack of probing the buffer size
+           ;; with a fresh client, and adjusting the server's buffer
+           ;; size before any other segments are created or the
+           ;; pipeline is finalised. While this represents an implicit
+           ;; protocol constraint, I will take it for now.
+           (setf (buffersize (server drain))
+                 (probe-buffer-size (audio-client-id drain)))
+           ;; Construct the audio pack in case we need to convert.
+           ;; Usually WASAPI seems to want 44100, 2, float, for shared
+           ;; so we should be fine. In case that's not always what we
+           ;; get, and in case we ever support exclusive mode, let's
+           ;; do it proper, though.
            (cl-mixed:make-packed-audio
             NIL
             (* (buffersize (server drain))
@@ -256,10 +303,6 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                               client HARMONY-WASAPI-CFFI:IID-IAUDIORENDERCLIENT render)))
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-start client))
-      ;; Resize buffers if necessary.
-      (setf (buffersize (server drain))
-            (with-deref (frames :uint32)
-              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames)))
       ;; Force sample count to 0 for an empty first run.
       (setf (samples (server drain)) 0))
     (if (render drain) 1 0)))
