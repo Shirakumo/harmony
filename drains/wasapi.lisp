@@ -220,8 +220,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
            ;; size before any other segments are created or the
            ;; pipeline is finalised. While this represents an implicit
            ;; protocol constraint, I will take it for now.
-           (setf (buffersize (server drain))
-                 (probe-buffer-size (audio-client-id drain)))
+           (setf (buffersize (server drain)) (probe-buffer-size drain))
            ;; Construct the audio pack in case we need to convert.
            ;; Usually WASAPI seems to want 44100, 2, float, for shared
            ;; so we should be fine. In case that's not always what we
