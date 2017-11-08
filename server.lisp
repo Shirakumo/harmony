@@ -167,5 +167,6 @@
 
 (defmethod (setf buffersize) :before (size (server server))
   (unless (= size (buffersize server))
-    (loop for buffer across (buffers server)
-          do (setf (cl-mixed:size buffer) size))))
+    (when (buffers server)
+      (loop for buffer across (buffers server)
+            do (setf (cl-mixed:size buffer) size)))))

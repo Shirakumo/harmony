@@ -157,16 +157,17 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 
 (defun probe-buffer-size (drain)
   (let ((client (find-audio-client (audio-client-id drain)))
-        (mode (mode drain)))
+        (mode (mode drain))
+        (buffer-duration (seconds->reference-time (/ (buffersize (server drain))
+                                                     (samplerate (server drain))))))
     (unwind-protect
          (progn (harmony-wasapi-cffi:i-audio-client-initialize
                  client
                  mode
                  harmony-wasapi-cffi:AUDCLNT-STREAMFLAGS-EVENTCALLBACK
-                 (buffer-duration (seconds->reference-time (/ (buffersize (server drain))
-                                                              (samplerate (server drain)))))
+                 buffer-duration
                  (ecase mode (:shared 0) (:exclusive buffer-duration))
-                 (format (mix-format client))
+                 (mix-format client)
                  (cffi:null-pointer))
                 (with-deref (frames :uint32)
                   (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames)))
