@@ -10,9 +10,9 @@
 
 (defclass server ()
   ((segment-map :initform NIL :accessor segment-map)
-   (samples :initarg :samples :accessor samples)
-   (buffersize :initarg :buffersize :reader buffersize)
-   (samplerate :initarg :samplerate :reader samplerate)
+   (samples :initarg :samples :initform 0 :accessor samples)
+   (buffersize :initarg :buffersize :initform 0 :accessor buffersize)
+   (samplerate :initarg :samplerate :initform 0 :reader samplerate)
    (device :initarg :device :accessor device)
    (segment-sequence :initform NIL :accessor segment-sequence)
    (buffers :initform NIL :accessor buffers)
@@ -164,3 +164,8 @@
 (defmethod resume ((server server))
   (resume (device server))
   server)
+
+(defmethod (setf buffersize) :before (size (server server))
+  (unless (= size (buffersize server))
+    (loop for buffer across (buffers server)
+          do (setf (cl-mixed:size buffer) size))))
