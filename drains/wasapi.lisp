@@ -209,6 +209,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                              (cl-mixed:samplesize (cl-mixed:encoding pack))
                              (cl-mixed:channels pack)))
     (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frames 0)
+    ;; Wait for next render period
     (loop (harmony-wasapi-cffi:wait-for-single-object (event drain) harmony-wasapi-cffi:INFINITE)
           (setf frames (- (with-deref (frames :uint32)
                             (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
@@ -255,10 +256,8 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                               client HARMONY-WASAPI-CFFI:IID-IAUDIORENDERCLIENT render)))
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-start client))
-      ;; Force sample count to WASAPI desired amount.
-      (setf (samples (server drain))
-            (with-deref (frames :uint32)
-              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))))))
+      ;; Force sample count to 0 for an empty first run.
+      (setf (samples (server drain)) 0))))
 
 (cffi:defcallback end :int ((segment :pointer))
   (let ((drain (cl-mixed:pointer->object segment)))
