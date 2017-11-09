@@ -181,7 +181,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
         (sb-kernel:*gc-inhibit* T))
     (let ((buffers (foreign-slot-pointer io-data '(:struct audio-buffer-list) 'buffers)))
       (dotimes (i frames)
-        (let ((sample (sin (* 2 PI 440 +phase+ 1/44100))))
+        (let ((sample (sin (coerce (* 2 PI 440 +phase+ 1/44100) 'single-float))))
           (dotimes (c (audio-buffer-list-number-buffers io-data))
             (let* ((buffer (inc-pointer buffers (* c (foreign-type-size '(:struct audio-buffer)))))
                    (data (audio-buffer-data buffer)))
