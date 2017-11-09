@@ -15,4 +15,5 @@
   :components ((:file "coreaudio-cffi")
                (:file "coreaudio"))
   :depends-on (:harmony
-               :cffi))
+               :cffi
+               :alexandria))

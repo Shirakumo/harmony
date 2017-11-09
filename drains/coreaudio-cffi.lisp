@@ -1,7 +1,7 @@
 #|
- This file is a part of harmony
- (c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
- Author: Nicolas Hafner <shinmera@tymoon.eu>
+This file is a part of harmony
+(c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
+Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
 (in-package #:cl-user)
@@ -14,22 +14,22 @@
 
 ;; https://github.com/rweichler/coreaudio-examples/blob/master/CH07_AUGraphSineWave/main.c
 (define-foreign-library audio-unit
-  (:darwin (:framework "AudioUnit")))
+    (:darwin (:framework "AudioUnit")))
 
 (define-foreign-library audio-toolbox
-  (:darwin (:framework "AudioToolbox")))
+    (:darwin (:framework "AudioToolbox")))
 
 (use-foreign-library audio-unit)
 (use-foreign-library audio-toolbox)
 
 ;; Constants
+(alexandria:define-constant kAudioUnitType_Output "auou" :test 'equal)
+(alexandria:define-constant kAudioUnitSubType_DefaultOutput "def " :test 'equal)
+(alexandria:define-constant kAudioUnitManufacturer_Apple "appl" :test 'equal)
+(alexandria:define-constant kAudioFormatLinearPCM "lpcm" :test 'equal)
 (defconstant kAudioUnitProperty_StreamFormat 8)
 (defconstant kAudioUnitProperty_SetRenderCallback 23)
 (defconstant kAudioUnitScope_Input 1)
-(defconstant kAudioUnitType_Output "auou")
-(defconstant kAudioUnitSubType_DefaultOutput "def ")
-(defconstant kAudioUnitManufacturer_Apple "appl")
-(defconstant kAudioFormatLinearPCM "lpcm")
 (defconstant kAudioFormatFlagsNativeEndian 0)
 (defconstant kAudioFormatFlagIsFloat #x1)
 (defconstant kAudioFormatFlagIsPacked #x8)
@@ -40,16 +40,20 @@
 
 ;; Types
 (define-foreign-type os-type () ()
-  (:actual-type :pointer))
+  (:actual-type :int32))
 
 (define-parse-method os-type ()
   (make-instance 'os-type))
 
 (defmethod translate-to-foreign (string (type os-type))
-  (foreign-string-alloc string :encoding :ascii :null-terminated-p NIL :end 4))
+  (let ((int 0))
+    (dotimes (i 4 int)
+      (setf (ldb (byte 8 (* (- 3 i) 8)) int) (char-code (aref string i))))))
 
-(defmethod translate-from-foreign (pointer (type os-type))
-  (foreign-string-to-lisp pointer :encoding :ascii :count 4))
+(defmethod translate-from-foreign (integer (type os-type))
+  (let ((string (make-string 4)))
+    (dotimes (i 4 string)
+      (setf (aref string i) (code-char (ldb (byte 8 (* (- 3 i) 8)) integer))))))
 
 (defmethod free-translated-object (pointer (type os-type) param)
   (declare (ignore param))
@@ -64,12 +68,12 @@
 (defctype audio-unit-property-id :uint32)
 (defctype audio-unit-scope :uint32)
 (defctype audio-unit-element :uint32)
-(defctype audio-format-id :uint32)
+(defctype audio-format-id os-type)
 (defctype audio-format-flags :uint32)
 
 ;; Enums
 (defcenum render-action-flags
-  (:pre-render #.(ash 1 2))
+    (:pre-render #.(ash 1 2))
   (:post-render #.(ash 1 3))
   (:output-is-silence #.(ash 1 4))
   (:preflight #.(ash 1 5))
@@ -80,17 +84,17 @@
 
 ;; Structs
 (defcstruct (component-instance-record :conc-name component-instance-record-)
-  (data :long :count 1))
+    (data :long :count 1))
 
 (defcstruct (audio-component-description :conc-name audio-component-description-)
-  (component-type os-type)
+    (component-type os-type)
   (component-sub-type os-type)
   (component-manufacturer os-type)
   (component-flags :uint32)
   (component-flags-mask :uint32))
 
 (defcstruct (audio-stream-basic-description :conc-name audio-stream-basic-description-)
-  (sample-rate :double)
+    (sample-rate :double)
   (format-id audio-format-id)
   (format-flags audio-format-flags)
   (bytes-per-packet :uint32)
@@ -101,11 +105,11 @@
   (reserved :uint32))
 
 (defcstruct (au-render-callback-struct :conc-name au-render-callback-struct-)
-  (input-proc :pointer)
+    (input-proc :pointer)
   (input-proc-ref-con :pointer))
 
 (defcstruct (smpte-time :conc-name smpte-time-)
-  (subframes :int16)
+    (subframes :int16)
   (subframe-divisor :int16)
   (counter :uint32)
   (type :uint32)
@@ -116,7 +120,7 @@
   (frames :int16))
 
 (defcstruct (audio-time-stamp :conc-name audio-time-stamp-)
-  (sample-time :double)
+    (sample-time :double)
   (host-time :uint64)
   (rate-scalar :double)
   (word-clock-time :uint64)
@@ -125,12 +129,12 @@
   (reserved :uint32))
 
 (defcstruct (audio-buffer :conc-name audio-buffer-)
-  (number-channels :uint32)
+    (number-channels :uint32)
   (data-byte-size :uint32)
   (data :pointer))
 
 (defcstruct (audio-buffer-list :conc-name audio-buffer-list-)
-  (number-buffers :uint32)
+    (number-buffers :uint32)
   (buffers (:struct audio-buffer) :count 1))
 
 ;; Funcs
@@ -177,7 +181,7 @@
     (dotimes (i frames)
       (let ((sample (sin (* 2 PI 440 +phase+ 1/44100))))
         (dotimes (c (audio-buffer-list-number-buffers io-data))
-          (let* ((buffer (mem-aref buffers '(:struct audio-buffer) c))
+          (let* ((buffer (inc-pointer buffers (* c (foreign-type-size '(:struct audio-buffer)))))
                  (data (audio-buffer-data buffer)))
             (setf (mem-aref data :float i) sample))))
       (setf +phase+ (mod (1+ +phase+) 44100))))
@@ -185,9 +189,9 @@
 
 (defun test ()
   (with-foreign-objects ((description '(:struct audio-component-description))
-                              (stream '(:struct audio-stream-basic-description))
-                              (input '(:struct au-render-callback-struct))
-                              (unit 'audio-unit))
+                         (stream '(:struct audio-stream-basic-description))
+                         (input '(:struct au-render-callback-struct))
+                         (unit 'audio-unit))
     ;; This is always the same. Why we need this at all, I don't know. #justapplethings
     (setf (audio-component-description-component-type description) kAudioUnitType_Output)
     (setf (audio-component-description-component-sub-type description) kAudioUnitSubType_DefaultOutput)
@@ -195,7 +199,7 @@
     (setf (audio-component-description-component-flags description) 0)
     (setf (audio-component-description-component-flags-mask description) 0)
     ;; Make sure we get the format we need.
-    (setf (audio-stream-basic-description-sample-rate stream) 44100)
+    (setf (audio-stream-basic-description-sample-rate stream) 44100.0d0)
     (setf (audio-stream-basic-description-format-id stream) kAudioFormatLinearPCM)
     (setf (audio-stream-basic-description-format-flags stream) kAudioFormatFlagsNativeFloatPacked)
     (setf (audio-stream-basic-description-bytes-per-packet stream) 4)
@@ -233,7 +237,7 @@
 
 ;; Ring buffer impl
 (defcstruct (ring-buffer :conc-name ring-buffer-)
-  (data :pointer)
+    (data :pointer)
   (size :uint32)
   (read-start :uint32)
   (write-start :uint32))
@@ -314,4 +318,3 @@
                                     (the (unsigned-byte 32) (ring-buffer-write-start ring)))
                           do (sleep 0.0001))
                     (setf write-start read-start))))))
-
