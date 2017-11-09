@@ -12,6 +12,18 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
    #:openal-drain))
 (in-package #:org.shirakumo.fraf.harmony.drains.openal)
 
+(al:load-libraries)
+(alc:load-libraries)
+
+(defmacro with-cleanup-on-failure (cleanup &body body)
+  (let ((pass (gensym "PASS")))
+    `(let ((,pass NIL))
+       (unwind-protect
+            (prog1 ,@body
+              (setf ,pass T))
+         (unless ,pass
+           ,cleanup)))))
+
 (defclass openal-drain (pack-drain)
   ((context :initform NIL :accessor context)
    (device :initform NIL :accessor device)
@@ -24,30 +36,24 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
 (defmethod initialize-packed-audio ((drain openal-drain))
-  (let* ((device (alc:open-device))
-         (context (alc:create-context device))
-         (source (al:gen-source))
-         (buffer (al:gen-buffer)))
-    (print (al:get-error))
-    (alc:make-context-current context)
-    (al:listener :position #(0 0 1))
-    (al:listener :velocity #(0 0 0))
-    (al:listener :orientation #(0 0 1 0 1 0))
-    (al:source source :pitch 1)
-    (al:source source :gain 1)
-    (al:source source :position #(0 0 0))
-    (al:source source :velocity #(0 0 0))
-    (al:source source :looping NIL)
-    (setf (device drain) device)
-    (setf (context drain) context)
-    (setf (source drain) source)
-    (setf (buffer drain) buffer)
+  (let ((device (or (alc:open-device)
+                    (error "Failed to open device."))))
+    (with-cleanup-on-failure (alc:close-device device)
+      (let ((context (or (alc:create-context device)
+                         (error "Failed to create context."))))
+        (with-cleanup-on-failure (alc:destroy-context context)
+          (unless (alc:make-context-current context)
+            (error "Failed to make context current."))
+          (unless (al:extension-present-p "AL_EXT_FLOAT32")
+            (error "Required FLOAT32 extension is not present."))
+          (setf (device drain) device)
+          (setf (context drain) context))))
     (cl-mixed:make-packed-audio
      NIL
      (* (buffersize (server drain))
-        (cl-mixed:samplesize :signed-16)
+        (cl-mixed:samplesize :float)
         2)
-     :signed-16
+     :float
      2
      :alternating
      (samplerate (server drain)))))
@@ -60,10 +66,10 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                    (cl-mixed:channels packed-audio))))
     ;; Wait until the buffer is done.
     (loop while (= 0 (al:get-source source :buffers-processed))
-          do (sleep 0.00001))
+          do (sleep 0.0001))
     (let ((buffer (first (al:source-unqueue-buffers source))))
       ;; Fill it up and queue it again.
-      (al:buffer-data buffer :stereo16 (cl-mixed:data packed-audio) bytes (cl-mixed:samplerate packed-audio))
+      (al:buffer-data buffer #x10011 (cl-mixed:data packed-audio) bytes (cl-mixed:samplerate packed-audio))
       (al:source-queue-buffers source (list buffer)))))
 
 (defmethod (setf paused-p) :after (value (drain openal-drain))
@@ -79,11 +85,24 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (setf (paused-p drain) NIL))
 
 (cffi:defcallback start :int ((segment :pointer))
-  (let ((segment (cl-mixed:pointer->object segment)))
-    (alc:make-context-current (context segment))
-    (al:buffer-data (buffer segment) :stereo16 (cffi:null-pointer) 0 (cl-mixed:samplerate (packed-audio segment)))
-    (al:source-queue-buffers (source segment) (list (buffer segment)))
-    (al:source-play (source segment)))
+  (let ((drain (cl-mixed:pointer->object segment)))
+    (alc:make-context-current (context drain))
+    (let ((source (al:gen-source))
+          (buffer (al:gen-buffer)))
+      (al:listener :position #(0 0 1))
+      (al:listener :velocity #(0 0 0))
+      (al:listener :orientation #(0 0 1 0 1 0))
+      (al:source source :pitch 1)
+      (al:source source :gain 1)
+      (al:source source :position #(0 0 0))
+      (al:source source :velocity #(0 0 0))
+      (al:source source :looping NIL)
+      (setf (source drain) source)
+      (setf (buffer drain) buffer)
+      
+      (al:buffer-data (buffer drain) #x10011 (cffi:null-pointer) 0 (cl-mixed:samplerate (packed-audio drain)))
+      (al:source-queue-buffers (source drain) (list (buffer drain)))
+      (al:source-play (source drain))))
   1)
 
 (cffi:defcallback end :int ((segment :pointer))
