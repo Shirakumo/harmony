@@ -239,11 +239,6 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (unless (client drain)
         (harmony-wasapi-cffi:com-release client)))))
 
-(cffi:defcfun (memcpy "memcpy") :pointer
-  (dest :pointer)
-  (source :pointer)
-  (num cl-mixed-cffi:size_t))
-
 (defmethod process ((drain wasapi-drain) frames)
   (let* ((pack (cl-mixed:packed-audio drain))
          (source (cl-mixed:data pack))

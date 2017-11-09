@@ -31,11 +31,7 @@
   ;; fadable.lisp
   (:export
    #:fadable
-   #:fade
-   #:ease-linear
-   #:ease-cubic-in
-   #:ease-cubic-out
-   #:ease-cubic-in-out)
+   #:fade)
   ;; files.lisp
   (:export
    #:source-type
@@ -123,4 +119,13 @@
    #:packed-audio
    #:unpack-mix-function
    #:initialize-packed-audio
-   #:fill-for-unpack-source))
+   #:fill-for-unpack-source)
+  ;; toolkit.lisp
+  (:export
+   #:memcpy
+   #:memset
+   #:memclear
+   #:ease-linear
+   #:ease-cubic-in
+   #:ease-cubic-out
+   #:ease-cubic-in-out))

@@ -18,16 +18,6 @@
 (defmethod seek-to-sample ((source buffer-source) position)
   (setf (sample-position source) position))
 
-(cffi:defcfun (memcpy "memcpy") :pointer
-  (dest :pointer)
-  (source :pointer)
-  (num cl-mixed-cffi:size_t))
-
-(cffi:defcfun (memset "memset") :pointer
-  (dest :pointer)
-  (source :int)
-  (num cl-mixed-cffi:size_t))
-
 (defmethod process ((source buffer-source) samples)
   (let* ((buffers (buffers source))
          (outputs (outputs source))
@@ -48,5 +38,5 @@
                                (memcpy (cffi:inc-pointer output (- offset pos))
                                        (cffi:inc-pointer buffer offset) read)))
                      (T
-                      (memset (cffi:inc-pointer output read) 0 (- bytes read))
+                      (memclear (cffi:inc-pointer output read) (- bytes read))
                       (setf (ended-p source) T)))))))

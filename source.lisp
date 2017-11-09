@@ -146,7 +146,7 @@
                         (incf read new-read)
                         (setf (sample-position source) new-read))))
             (T
-             (memset (cffi:inc-pointer buffer read) 0 (- bytes read))
+             (memclear (cffi:inc-pointer buffer read) (- bytes read))
              (setf (ended-p source) T))))))
 
 (cl-mixed::define-field-accessor volume unpack-source :float :volume)

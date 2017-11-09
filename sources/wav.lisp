@@ -12,11 +12,6 @@
    #:wav-source))
 (in-package #:org.shirakumo.fraf.harmony.sources.wav)
 
-(cffi:defcfun (memcpy "memcpy") :pointer
-  (dest :pointer)
-  (source :pointer)
-  (num cl-mixed-cffi:size_t))
-
 (define-source-type "wav" wav-source)
 
 (defclass wav-source (unpack-source file-source)

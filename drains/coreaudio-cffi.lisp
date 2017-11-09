@@ -257,11 +257,6 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (foreign-free ring)
   T)
 
-(defcfun (memcpy "memcpy") :pointer
-  (dest :pointer)
-  (source :pointer)
-  (num :uint64))
-
 (defun ring-buffer-write (ring data bytes)
   (declare (type foreign-pointer ring data)
            (type (unsigned-byte 32) bytes))
