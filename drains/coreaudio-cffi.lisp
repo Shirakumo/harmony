@@ -23,11 +23,19 @@
 (use-foreign-library audio-toolbox)
 
 ;; Constants
+(defconstant kAudioUnitProperty_StreamFormat 8)
 (defconstant kAudioUnitProperty_SetRenderCallback 23)
 (defconstant kAudioUnitScope_Input 1)
 (defconstant kAudioUnitType_Output "auou")
 (defconstant kAudioUnitSubType_DefaultOutput "def ")
 (defconstant kAudioUnitManufacturer_Apple "appl")
+(defconstant kAudioFormatLinearPCM "lpcm")
+(defconstant kAudioFormatFlagsNativeEndian 0)
+(defconstant kAudioFormatFlagIsFloat #x1)
+(defconstant kAudioFormatFlagIsPacked #x8)
+(defconstant kAudioFormatFlagsNativeFloatPacked (logior kAudioFormatFlagsNativeEndian
+                                                        kAudioFormatFlagIsFloat
+                                                        kAudioFormatFlagIsPacked))
 (defconstant no-err 0)
 
 ;; Types
@@ -56,6 +64,8 @@
 (defctype audio-unit-property-id :uint32)
 (defctype audio-unit-scope :uint32)
 (defctype audio-unit-element :uint32)
+(defctype audio-format-id :uint32)
+(defctype audio-format-flags :uint32)
 
 ;; Enums
 (defcenum render-action-flags
@@ -78,6 +88,17 @@
   (component-manufacturer os-type)
   (component-flags :uint32)
   (component-flags-mask :uint32))
+
+(defcstruct (audio-stream-basic-description :conc-name audio-stream-basic-description-)
+  (sample-rate :double)
+  (format-id audio-format-id)
+  (format-flags audio-format-flags)
+  (bytes-per-packet :uint32)
+  (frames-per-packet :uint32)
+  (bytes-per-frame :uint32)
+  (channels-per-frame :uint32)
+  (bits-per-channel :uint32)
+  (reserved :uint32))
 
 (defcstruct (au-render-callback-struct :conc-name au-render-callback-struct-)
   (input-proc :pointer)
@@ -158,19 +179,34 @@
         (dotimes (c (audio-buffer-list-number-buffers io-data))
           (let* ((buffer (mem-aref buffers '(:struct audio-buffer) c))
                  (data (audio-buffer-data buffer)))
-            (setf (cffi:mem-aref data :float i) sample))))
+            (setf (mem-aref data :float i) sample))))
       (setf +phase+ (mod (1+ +phase+) 44100))))
   no-err)
 
 (defun test ()
-  (cffi:with-foreign-objects ((description '(:struct audio-component-description))
+  (with-foreign-objects ((description '(:struct audio-component-description))
+                              (stream '(:struct audio-stream-basic-description))
                               (input '(:struct au-render-callback-struct))
                               (unit 'audio-unit))
+    ;; This is always the same. Why we need this at all, I don't know. #justapplethings
     (setf (audio-component-description-component-type description) kAudioUnitType_Output)
     (setf (audio-component-description-component-sub-type description) kAudioUnitSubType_DefaultOutput)
     (setf (audio-component-description-component-manufacturer description) kAudioUnitManufacturer_Apple)
+    (setf (audio-component-description-component-flags description) 0)
+    (setf (audio-component-description-component-flags-mask description) 0)
+    ;; Make sure we get the format we need.
+    (setf (audio-stream-basic-description-sample-rate stream) 44100)
+    (setf (audio-stream-basic-description-format-id stream) kAudioFormatLinearPCM)
+    (setf (audio-stream-basic-description-format-flags stream) kAudioFormatFlagsNativeFloatPacked)
+    (setf (audio-stream-basic-description-bytes-per-packet stream) 4)
+    (setf (audio-stream-basic-description-frames-per-packet stream) 1)
+    (setf (audio-stream-basic-description-bytes-per-frame stream) 8)
+    (setf (audio-stream-basic-description-channels-per-frame stream) 2)
+    (setf (audio-stream-basic-description-bits-per-channel stream) (* 4 8))
+    ;; For some reason setting a callback needs an intermediary struct.
     (setf (au-render-callback-struct-input-proc input) (callback sine-wave-render))
     (setf (au-render-callback-struct-input-proc-ref-con input) (null-pointer))
+    
     (let ((component (audio-component-find-next (null-pointer) description)))
       (when (null-pointer-p component)
         (error "No component found."))
@@ -182,9 +218,100 @@
                                  0
                                  input
                                  (foreign-type-size '(:struct au-render-callback-struct)))
+        (audio-unit-set-property unit
+                                 kAudioUnitProperty_StreamFormat
+                                 kAudioUnitScope_Input
+                                 0
+                                 stream
+                                 (foreign-type-size '(:struct audio-stream-basic-description)))
         (audio-unit-initialize unit)
         (audio-output-unit-start unit)
         (unwind-protect (loop (sleep 0.1))
           (audio-output-unit-stop unit)
           (audio-unit-uninitialize unit)
           (audio-component-instance-dispose unit))))))
+
+;; Ring buffer impl
+(defcstruct (ring-buffer :conc-name ring-buffer-)
+  (data :pointer)
+  (size :uint32)
+  (read-start :uint32)
+  (write-start :uint32))
+
+(defun make-ring-buffer (size)
+  (let ((ring (foreign-alloc '(:struct ring-buffer))))
+    (setf (ring-buffer-data ring) (foreign-alloc :uint8 :count size))
+    (setf (ring-buffer-size ring) size)
+    (setf (ring-buffer-read-start ring) 0)
+    (setf (ring-buffer-write-start ring) 0)
+    ring))
+
+(defun free-ring-buffer (ring)
+  (foreign-free (ring-buffer-data ring))
+  (foreign-free ring)
+  T)
+
+(defcfun (memcpy "memcpy") :pointer
+  (dest :pointer)
+  (source :pointer)
+  (num :uint64))
+
+(defun ring-buffer-write (ring data bytes)
+  (declare (type foreign-pointer ring data)
+           (type (unsigned-byte 32) bytes))
+  (declare (optimize speed (safety 0) (debug 0)))
+  (let ((buffer (ring-buffer-data ring))
+        (size (ring-buffer-size ring))
+        (read-start (ring-buffer-read-start ring))
+        (write-start (ring-buffer-write-start ring)))
+    (declare (type foreign-pointer buffer)
+             (type (integer 1 #.(expt 2 32)) size)
+             (type (unsigned-byte 32) read-start write-start))
+    (loop for free of-type (unsigned-byte 32) = (mod (- read-start write-start 1) size)
+          do (print free)
+             (cond ((< write-start read-start)
+                    (memcpy (inc-pointer buffer write-start) data (min free bytes)))
+                   (T
+                    (let ((to-end (- size write-start)))
+                      (memcpy (inc-pointer buffer write-start) data to-end)
+                      (memcpy buffer (inc-pointer data to-end) (- (min free bytes) to-end)))))
+             (setf write-start (setf (ring-buffer-write-start ring)
+                                     (print (mod (1- read-start) size))))
+             (cond ((<= bytes free)
+                    (return))
+                   (T ;; Wait for more data to write to be available
+                    (decf bytes free)
+                    (loop until (= (the (unsigned-byte 32) (ring-buffer-read-start ring))
+                                   (the (unsigned-byte 32) (ring-buffer-write-start ring)))
+                          do (sleep 0.0001))
+                    (setf read-start write-start))))))
+
+(defun ring-buffer-read (ring data bytes)
+  (declare (type foreign-pointer ring data)
+           (type (unsigned-byte 32) bytes))
+  (declare (optimize speed (safety 1) (debug 0)))
+  (let ((buffer (ring-buffer-data ring))
+        (size (ring-buffer-size ring))
+        (read-start (ring-buffer-read-start ring))
+        (write-start (ring-buffer-write-start ring)))
+    (declare (type foreign-pointer buffer)
+             (type (integer 1 #.(expt 2 32)) size)
+             (type (unsigned-byte 32) read-start write-start))
+    (loop for free of-type (unsigned-byte 32) = (mod (- write-start read-start) size)
+          do (cond ((< read-start write-start)
+                    (memcpy (inc-pointer buffer read-start) data (min free bytes)))
+                   (T
+                    (let ((to-end (- size read-start)))
+                      (memcpy (inc-pointer buffer read-start) data to-end)
+                      (memcpy buffer (inc-pointer data to-end) (- (min free bytes) to-end)))))
+             (setf read-start (setf (ring-buffer-read-start ring)
+                                    (mod write-start size)))
+             (cond ((<= bytes free)
+                    (return))
+                   (T ;; Wait for more data to read to be available
+                    (decf bytes free)
+                    (loop until (/= (the (unsigned-byte 32) (ring-buffer-read-start ring))
+                                    (the (unsigned-byte 32) (ring-buffer-write-start ring)))
+                          do (sleep 0.0001))
+                    (setf write-start read-start))))))
+
