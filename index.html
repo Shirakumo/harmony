@@ -1,0 +1,1022 @@
+<!DOCTYPE html> <html xmlns="http://www.w3.org/1999/xhtml"> <head> <meta charset="utf-8"> <title>Harmony</title> <meta name="viewport" content="width=device-width"> <meta name="description" content="A common lisp sound server and sound processing library."> <meta name="author" content="Nicolas Hafner &lt;shinmera@tymoon.eu&gt;"> <style type="text/css"> body{
+          max-width: 1024px;
+          margin: 0 auto 0 auto;
+          font-family: sans-serif;
+          color: #333333;
+          font-size: 14pt;
+          padding: 5px;
+      }
+      body>header{
+          display:flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          max-width: 100%;
+          text-align: center;
+      }
+      body>header img{
+          max-width: 50%;
+      }
+      img{
+          max-width: 100%;
+          max-height: 100%;
+      }
+      code{
+          font-family: Consolas, Inconsolata, monospace;
+      }
+      a{
+          text-decoration: none;
+          color: #0055AA;
+      }
+      a img{
+          border: none;
+      }
+      #documentation{
+          text-align: justify;
+      }
+      #documentation pre{
+          margin-left: 20px;
+          overflow: auto;
+      }
+      #documentation img{
+          margin: 5px;
+      }
+      #symbol-index>ul{
+          list-style: none;
+          padding: 0;
+      }
+      #symbol-index .package>ul{
+          list-style: none;
+          padding: 0 0 0 10px;
+      }
+      #symbol-index .package .nicknames{
+          font-weight: normal;
+      }
+      #symbol-index .package h4{
+          display: inline-block;
+          margin: 0;
+      }
+      #symbol-index .package article{
+          margin: 0 0 15px 0;
+      }
+      #symbol-index .package article header{
+          font-size: 1.2em;
+          font-weight: normal;
+      }
+      #symbol-index .package .name{
+          margin-right: 5px;
+      }
+      #symbol-index .package .docstring{
+          margin: 0 0 0 15px;
+          white-space: pre-wrap;
+          font-size: 12pt;
+      }
+      @media (max-width: 800px){
+          body{font-size: 12pt;}
+      } </style> </head> <body> <header> <h1><img alt="harmony" src="harmony-logo.png"></h1> <span class="version">2.0.0</span> <p class="description">A common lisp sound server and sound processing library.</p> </header> <main> <article id="documentation">  <div><h2>About Harmony</h2> <p>Harmony is a library that provides you with audio processing tools as well as an audio server to play back music, sfx, and so forth. It is most suited for use in a game engine, but may feasibly also used for more advanced things such as an audio processing tool.</p> <h2>How To</h2> <p>A very basic sound system can be gained by loading the <code>harmony-simple</code> system and using its predefined audio pipeline and convenience functions.</p> <pre><code>(ql:quickload :harmony-simple)
+</code></pre> <p>Before any audio can be played, the audio server needs to be initialised.</p> <pre><code>(<a href="#HARMONY-SIMPLE:INITIALIZE">harmony-simple:initialize</a>)
+</code></pre> <p>Once the server is running, we need some files to play. Harmony-simple sets up a pipeline that supports three distinct mixers: <code>:music</code>, <code>:sfx</code>, and <code>:voice</code>. The latter two mixers provide 3D audio, allowing you to place the sources in 3D space. Playing a file simply happens through the <code><a href="#HARMONY:PLAY">play</a></code> function.</p> <pre><code>(<a href="#HARMONY-SIMPLE:PLAY">harmony-simple:play</a> #p&quot;music.mp3&quot; :music :loop T)
+(<a href="#HARMONY-SIMPLE:PLAY">harmony-simple:play</a> #p&quot;explosion.mp3&quot; :sfx)
+</code></pre> <p>Returned by <code><a href="#HARMONY:PLAY">play</a></code> is a <code><a href="#HARMONY:SOURCE">source</a></code> instance, which you can use to control the playback. You can <code><a href="#HARMONY:PAUSE">pause</a></code>, <code><a href="#HARMONY:RESUME">resume</a></code>, and <code><a href="#HARMONY:STOP">stop</a></code> a source. When a source is stopped manually or naturally reaches its end it is removed from the mixer. You can <code><a href="#HARMONY:RESUME">resume</a></code> and <code><a href="#HARMONY:ADD">add</a></code> it again if you want to re-use it. If you would like to smoothly fade a track, you can use the <code>:fade</code> initarg on <code><a href="#HARMONY:PLAY">play</a></code>, or use the <code><a href="#HARMONY:FADE">fade</a></code> function after the fact. You can also directly control the volume with the <code><a href="#HARMONY:VOLUME">volume</a></code> accessor.</p> <p>For sources on the 3D mixers, you can use the <code><a href="#HARMONY:LOCATION">location</a></code> and <code><a href="#HARMONY:VELOCITY">velocity</a></code> accessors to modify their placement. The velocity will not cause the location to be updated automatically, and is instead used to calculate the intensity of the doppler effect. If you do not want to have a doppler effect, you can simply leave the velocity at its default. The mixer itself also has a few properties that you'll want to control in order to control the listener. Aside from the <code><a href="#HARMONY:LOCATION">location</a></code> and <code><a href="#HARMONY:VELOCITY">velocity</a></code>, there's also the <code><a href="#HARMONY:DIRECTION">direction</a></code>, <code><a href="#HARMONY:UP">up</a></code>, <code><a href="#HARMONY:SOUNDSPEED">soundspeed</a></code>, <code><a href="#HARMONY:DOPPLER-FACTOR">doppler-factor</a></code>, <code><a href="#HARMONY:MIN-DISTANCE">min-distance</a></code>, <code><a href="#HARMONY:MAX-DISTANCE">max-distance</a></code>, <code><a href="#HARMONY:ROLLOFF">rolloff</a></code>, and <code><a href="#HARMONY:ATTENUATION">attenuation</a></code> to control the properties of the 3D space.</p> <p>If you need to pause the sound playback entirely, you can also use <code><a href="#HARMONY:PAUSE">pause</a></code> and <code><a href="#HARMONY:RESUME">resume</a></code> without an argument.</p> <h2>Choosing the Playback Backend</h2> <p>Harmony includes support for a variety of playback backends: Out123, OpenAL, WASAPI, ALSA, and PulseAudio. It is recommended to use the native backends (WASAPI, ALSA) where possible as they do not have any C dependencies and should have reduced latency and complexity compared to the other backends (Out123, OpenAL).</p> <p>You can choose a backend, and customise its options, with the <code>:output-spec</code> initarg on harmony-simple's <code><a href="#HARMONY-SIMPLE:INITIALIZE">initialize</a></code>. For example, to use the PulseAudio backend:</p> <pre><code>(asdf:load-system :harmony-pulse)
+(<a href="#HARMONY-SIMPLE:INITIALIZE">harmony-simple:initialize</a> :output-spec '(harmony-pulse:pulse-drain))
+</code></pre> <p>A number of the backends include extra options like <code>:program-name</code> that allows you to change the appearance of your program in the system's volume mixer.</p> <h2>Constructing Your Own Pipeline</h2> <p>If you want a pipeline that is a bit more involved than what harmony-simple gives you, perhaps to add certain effects or other kinds of shenanigans, you can easily build that pipeline. Before you do, though, you should get briefly acquainted with <a href="https://shirakumo.github.io/cl-mixed">cl-mixed</a>, or at least with the segments it provides. Harmony uses libmixed underneath to do most of the audio processing and mixing, and in itself only provides a sound server, and a convenient way to handle segments and create a pipeline.</p> <p>Here's an example of a pipeline consisting of an output, a LADSPA plugin, and a basic mixer. You'll need a server beforehand, which you can get by simply instantiating <code><a href="#HARMONY:SERVER">harmony:server</a></code>.</p> <pre><code>(<a href="http://l1sp.org/cl/let*">let*</a> ((pipeline (<a href="http://l1sp.org/cl/make-instance">make-instance</a> 'harmony:pipeline))
+       (<a href="#HARMONY:OUTPUT">output</a> (<a href="http://l1sp.org/cl/make-instance">make-instance</a> 'harmony-out123:out123-drain :server server))
+       (master (<a href="http://l1sp.org/cl/make-instance">make-instance</a> 'harmony:basic-mixer :server server :name :master))
+       (ladspa (<a href="http://l1sp.org/cl/make-instance">make-instance</a> 'cl-mixed:ladspa :samplerate (<a href="#HARMONY:SAMPLERATE">harmony:samplerate</a> server)
+                                               :file #p&quot;ladspa-plugin.so&quot;)))
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline ladspa 0 output 0)
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline ladspa 1 output 1)
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline master 0 output 0)
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline master 1 output 1)
+  (<a href="#HARMONY:COMPILE-PIPELINE">harmony:compile-pipeline</a> pipeline server))
+</code></pre> <p>Once the pipeline has been compiled to the server, you can start by adding segments to the master mixer, similar to before. Most of the other commands remain the same as well, just using a different package.</p> <pre><code>(<a href="#HARMONY:PLAY">harmony:play</a> server #p&quot;something.mp3&quot; :master)
+</code></pre> <p>When you construct the pipeline, Harmony takes care of properly allocating the necessary internal buffers, connecting the segments as required, and determining the proper order in which to process them.</p> <h2>Extending Harmony's Segments</h2> <p>Segments are the lifeblood of Harmony. Through segments you get audio data into the pipeline, transform it as you need, and finally even output it to be heard. Being able to define custom and new segments is therefore the primary way in which to extend Harmony's functionality.</p> <p>One of the easiest things to do is to define a new source. Let's do that with a sine wave generator. As a first step, we'll need to define a class.</p> <pre><code>(<a href="http://l1sp.org/cl/defclass">defclass</a> sine (<a href="#HARMONY:SOURCE">harmony:source</a> cl-mixed:virtual)
+  ((sine-phase :initform 0 :accessor sine-phase)))
+</code></pre> <p>The class inherits from <code><a href="#HARMONY:SOURCE">source</a></code> to get useful functionality for fading, pausing, and seeking. We also inherit from <code>cl-mixed:virtual</code> as this segment won't have a segment defined in C to support it underneath. Instead, we can now extend all the functionality of the segment from the lisp side.</p> <p>As part of the contract of subclassing <code><a href="#HARMONY:SOURCE">source</a></code>, we need to implement a method on <code><a href="#HARMONY:SEEK-TO-SAMPLE">seek-to-sample</a></code>. Let's do that:</p> <pre><code>(<a href="http://l1sp.org/cl/defmethod">defmethod</a> harmony:seek-to-sample ((source sine) position)
+  (<a href="http://l1sp.org/cl/setf">setf</a> (sine-phase source) (<a href="http://l1sp.org/cl/mod">mod</a> position (<a href="#HARMONY:SAMPLERATE">harmony:samplerate</a> (<a href="#HARMONY:SERVER">harmony:server</a> source)))))
+</code></pre> <p>We'll be using the <code>sine-phase</code> to track the current phase of our sine wave, so in order to &quot;seek&quot; we'll need to adjust it here. Naturally you won't really be able to hear the effects of seeking on a sine wave generator, but for other sources proper seeking behaviour can be vital.</p> <p>Finally we need to implement the actual sample generation, which for all <code><a href="#HARMONY:SOURCE">source</a></code>s happens in <code><a href="#HARMONY:PROCESS">process</a></code>:</p> <pre><code>(<a href="http://l1sp.org/cl/defmethod">defmethod</a> harmony:process ((source sine) samples)
+  (<a href="http://l1sp.org/cl/let*">let*</a> ((buffers (cl-mixed:outputs source))
+         (<a href="http://l1sp.org/cl/phase">phase</a> (sine-phase source))
+         (<a href="#HARMONY:SAMPLERATE">samplerate</a> (<a href="#HARMONY:SAMPLERATE">harmony:samplerate</a> (<a href="#HARMONY:SERVER">harmony:server</a> source)))
+         (factor (<a href="http://l1sp.org/cl/*">*</a> 2 PI 440 (<a href="http://l1sp.org/cl//">/</a> samplerate))))
+    (<a href="http://l1sp.org/cl/loop">loop</a> for i from 0 below samples
+          for sample = (<a href="http://l1sp.org/cl/sin">sin</a> (<a href="http://l1sp.org/cl/coerce">coerce</a> (<a href="http://l1sp.org/cl/*">*</a> factor phase) 'single-float))
+          do (<a href="http://l1sp.org/cl/loop">loop</a> for buffer across buffers
+                   do (<a href="http://l1sp.org/cl/setf">setf</a> (cffi:mem-aref (cl-mixed:data buffer) :float i) sample))
+             (<a href="http://l1sp.org/cl/incf">incf</a> phase))
+    (<a href="http://l1sp.org/cl/setf">setf</a> (sine-phase source) (<a href="http://l1sp.org/cl/mod">mod</a> phase samplerate))))
+</code></pre> <p>First we extract the output buffer vector and the current phase, and calculate the constant factor for the wave. We then iterate over the number of samples we need to generate, and set the sample at the corresponding position in each buffer. Note that buffers contain C arrays and as such we need to use CFFI's <code>mem-aref</code> instead of Lisp's <code><a href="http://l1sp.org/cl/aref">aref</a></code>. Once we're done with the sample generation we update the phase in our instance.</p> <p>And that's it. You can now test your sine generator with <code>(<a href="#HARMONY-SIMPLE:PLAY">harmony-simple:play</a> 'sine :music)</code>.</p> <p>For a lot of sources and drains you will want to interact with other libraries and systems. They will usually have their own idea of how the sample data should be represented. Often times they'll want a single C array where the samples are interleaved, or might even need a different sample format than the floats Harmony uses internally. For this, libmixed offers a good amount of support by taking over the packing and unpacking of samples for you. </p> <p>In Harmony, you can make use of this with the <code><a href="#HARMONY:UNPACK-SOURCE">unpack-source</a></code> and <code><a href="#HARMONY:PACK-DRAIN">pack-drain</a></code> respectively. As an additional contract, they'll have you construct a <code><a href="#HARMONY:PACKED-AUDIO">packed-audio</a></code> object that encodes the sample representation format, but will in turn handle the conversion for you, so that you just need to write to or read from a buffer using your foreign system. For an example on how this works, see the <a href="sources/mp3.lisp">mp3</a> and <a href="sources/wav.lisp">wav</a> sources, or the <a href="drains/alsa.lisp">alsa</a> and <a href="drains/pulse.lisp">pulse</a> drains.</p> <p>Finally I think it would be worth it to look at an example of an effect segment. We'll be writing a very primitive version of an echo effect with a linear falloff.</p> <p>As before, we'll first want to create a new class to encapsulate our segment with.</p> <pre><code>(<a href="http://l1sp.org/cl/defclass">defclass</a> echo (<a href="#HARMONY:SEGMENT">harmony:segment</a> cl-mixed:virtual)
+  ((buffers :initform NIL :accessor buffers)
+   (offset :initform 0 :accessor offset)
+   (delay :initarg :delay :initform 0.2 :accessor delay)
+   (falloff :initarg :falloff :initform 0.8 :accessor falloff)))
+</code></pre> <p>We'll make this work by having internal buffers that keep some of the previous samples that come in and mixes them back into the output with a slight delay added. In order to know the proper size of the buffers, we'll need to know the sample rate ahead of time as well, hence the parameter.</p> <p>Next we'll need to actually instantiate the buffers on start.</p> <pre><code>(<a href="http://l1sp.org/cl/defmethod">defmethod</a> cl-mixed:start ((echo echo))
+  (<a href="http://l1sp.org/cl/let">let</a> ((buffers (<a href="http://l1sp.org/cl/make-array">make-array</a> 2)))
+    (<a href="http://l1sp.org/cl/setf">setf</a> (<a href="#HARMONY:BUFFERS">buffers</a> echo) buffers)
+    (<a href="http://l1sp.org/cl/dotimes">dotimes</a> (i (<a href="http://l1sp.org/cl/length">length</a> buffers))
+      (<a href="http://l1sp.org/cl/setf">setf</a> (<a href="http://l1sp.org/cl/aref">aref</a> buffers i) (<a href="http://l1sp.org/cl/make-array">make-array</a> (<a href="http://l1sp.org/cl/ceiling">ceiling</a> (<a href="http://l1sp.org/cl/*">*</a> (delay echo)
+                                                     (<a href="#HARMONY:SAMPLERATE">harmony:samplerate</a>
+                                                      (<a href="#HARMONY:SERVER">harmony:server</a> echo))))
+                                         :element-type 'single-float
+                                         :initial-element 0.0s0)))))
+</code></pre> <p>Since we don't need to share these buffers with any C parts, we can just use a CL array for our convenience.</p> <p>In order for Harmony to be able to assemble the pipeline from the segments properly, it needs to know some information about the segment. We can provide this information with a method on <code>cl-mixed:info</code>:</p> <pre><code>(<a href="http://l1sp.org/cl/defmethod">defmethod</a> cl-mixed:info ((echo echo))
+  (<a href="http://l1sp.org/cl/list">list</a> :min-inputs 2 :max-inputs 2 :outputs 2))
+</code></pre> <p>There are a few other info fields that are specified by libmixed, but this should be enough for our purposes.</p> <p>Finally, the actual mixing step. The <code>virtual</code> class provides methods for all of the actions that can be performed on a segment. It already handles the connecting of input and output buffers for us, so we don't need to care about that. All we need to do is handle the mixing logic.</p> <pre><code>(<a href="http://l1sp.org/cl/defmethod">defmethod</a> cl-mixed:mix (<a href="#HARMONY:SAMPLES">samples</a> (echo echo))
+  (<a href="http://l1sp.org/cl/let">let</a> ((offset (offset echo))
+        (falloff (falloff echo)))
+    (<a href="http://l1sp.org/cl/loop">loop</a> for out-buffer across (cl-mixed:outputs echo)
+          for in-buffer across (cl-mixed:inputs echo)
+          for out = (cl-mixed:data out-buffer)
+          for in = (cl-mixed:data in-buffer)
+          for buf across (<a href="#HARMONY:BUFFERS">buffers</a> echo)
+          for off = offset
+          do (<a href="http://l1sp.org/cl/loop">loop</a> for i from 0 below samples
+                   for sample = (cffi:mem-aref in :float i)
+                   for echo = (<a href="http://l1sp.org/cl/aref">aref</a> buf off)
+                   do (<a href="http://l1sp.org/cl/setf">setf</a> (cffi:mem-aref out :float i) (<a href="http://l1sp.org/cl/+">+</a> sample echo))
+                      (<a href="http://l1sp.org/cl/setf">setf</a> (<a href="http://l1sp.org/cl/aref">aref</a> buf off) (<a href="http://l1sp.org/cl/*">*</a> (<a href="http://l1sp.org/cl/+">+</a> sample echo) falloff))
+                      (<a href="http://l1sp.org/cl/setf">setf</a> off (<a href="http://l1sp.org/cl/mod">mod</a> (<a href="http://l1sp.org/cl/1+">1+</a> off) (<a href="http://l1sp.org/cl/length">length</a> buf)))))
+    (<a href="http://l1sp.org/cl/setf">setf</a> (offset echo) (<a href="http://l1sp.org/cl/mod">mod</a> (<a href="http://l1sp.org/cl/+">+</a> offset samples) (<a href="http://l1sp.org/cl/length">length</a> (<a href="http://l1sp.org/cl/aref">aref</a> (<a href="#HARMONY:BUFFERS">buffers</a> echo) 0))))))
+</code></pre> <p>This iterates over all channels (in-&gt;buf-&gt;out), and for each channel does the following: for each sample to compute, output the input sample added to the sample looked up in the echo buffer. Then store the same multiplied by the falloff into the echo buffer. Finally advance the offset into the echo buffer. At the end of the function we have to make sure to store the current offset in the segment for the next time mix is called.</p> <p>In order to test this we'll create our own pipeline real quick:</p> <pre><code>(<a href="http://l1sp.org/cl/let">let</a> ((pipeline (<a href="http://l1sp.org/cl/make-instance">make-instance</a> 'harmony:pipeline))
+      (<a href="#HARMONY:OUTPUT">output</a> (<a href="#HARMONY-SIMPLE:MAKE-SEGMENT">harmony-simple:make-segment</a> 'harmony-out123:out123-drain))
+      (echo (<a href="#HARMONY-SIMPLE:MAKE-SEGMENT">harmony-simple:make-segment</a> 'echo :name :echo))
+      (<a href="#HARMONY:SOURCE">source</a> (<a href="#HARMONY-SIMPLE:MAKE-SEGMENT">harmony-simple:make-segment</a> 'harmony-mp3:mp3-source :file #p&quot;some.mp3&quot;)))
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline echo 0 output 0)
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline echo 1 output 1)
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline source 0 echo 0)
+  (<a href="#HARMONY:CONNECT">harmony:connect</a> pipeline source 1 echo 1)
+  (<a href="#HARMONY:COMPILE-PIPELINE">harmony:compile-pipeline</a> pipeline harmony-simple:*server*))
+</code></pre> <p>Note that this will perform all the pipeline computation locally, and then switch out the pipeline in the server. If you had something else going on in the previous pipeline, then that will be replaced. You should now hear the song being played back with an echo effect.</p> <p>For more information on the details of segments and the underlying mechanisms of the mixing, see the documentation of the <a href="https://shirakumo.github.io/cl-mixed">cl-mixed</a> library.</p> <h2>Also See</h2> <ul> <li><a href="https://shirakumo.github.io/cl-mixed">cl-mixed</a> For the mixing and sound processing library.</li> <li><a href="https://shinmera.github.io/flow">flow</a> For the pipeline construction and graph handling.</li> </ul> </div>  </article> <article id="copyright">  <h2>Copyright</h2> <span>harmony</span> is licensed under the <span><a href="https://tldrlegal.com/search?q=Artistic">Artistic</a></span> license.  © <span>Nicolas Hafner &lt;shinmera@tymoon.eu&gt;</span> .  This library can be obtained on <a href="https://github.com/Shirakumo/harmony">https://github.com/Shirakumo/harmony</a>.  </article>  <article id="symbol-index"> <h2>Package Index</h2> <ul><li class="package"> <h3> <a name="HARMONY" href="#HARMONY">HARMONY</a> <span class="nicknames">(ORG.SHIRAKUMO.FRAF.HARMONY)</span> </h3> <ul><li> <a name="HARMONY:BASIC-MIXER"> </a> <article id="CLASS HARMONY:BASIC-MIXER"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ABASIC-MIXER">BASIC-MIXER</a></code></h4>  </header> <div class="docstring"><pre>This mixer simply adds all its sources together.
+
+Note that unless you control the volume of your
+sources carefully, this can easily result in the
+clipping of the audio samples, and thus in distortion.
+No dynamic range compression is applied whatsoever.
+
+By default the mixer is initialised to input and
+output two channels. Should you require more or less,
+you must specify it via its initarg.
+
+Each source connected to the mixer /must/ have as
+many outputs as this mixer has channels.
+
+See <a href="#HARMONY:BASIC-MIXER">CL-MIXED:BASIC-MIXER</a>
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:BUFFER-SOURCE"> </a> <article id="CLASS HARMONY:BUFFER-SOURCE"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ABUFFER-SOURCE">BUFFER-SOURCE</a></code></h4>  </header> <div class="docstring"><pre>In-memory buffer source.
+
+This source simply copies the data from its preset
+buffers to the output buffers as it is mixed.
+
+This is mostly useful for very low-latency effects
+that you can keep entirely in memory ahead of time.
+For instance, you could decode a wave file into the
+corresponding BUFFER instances and then instantiate
+buffer-sources from those whenever the effect should
+be played.
+
+See <a href="NIL">CL-MIXED:VIRTUAL</a>
+See <a href="#HARMONY:SOURCE">SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:DRAIN"> </a> <article id="CLASS HARMONY:DRAIN"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ADRAIN">DRAIN</a></code></h4>  </header> <div class="docstring"><pre>Superclass for all drain segments in Harmony.
+
+A drain is a segment that only consumes audio and
+sends it off somewhere outside of the pipeline for
+further processing.
+
+A class that implements this protocol must implement
+a primary method on PROCESS to handle the audio
+processing step.
+
+See <a href="#HARMONY:SEGMENT">SEGMENT</a>
+See <a href="#HARMONY:PROCESS">PROCESS</a></pre></div> </article> </li><li> <a name="HARMONY:FADABLE"> </a> <article id="CLASS HARMONY:FADABLE"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3AFADABLE">FADABLE</a></code></h4>  </header> <div class="docstring"><pre>Mixin class for all segments that support volume fading.
+
+Any implementing class must implement a method for
+VOLUME and (SETF VOLUME). Furthermore, the class
+must call PERFORM-FADING at the end of each of its
+mix iterations.
+
+In order for the fading effect to be nice, the
+number of samples processed in each iteration must
+be relatively small.
+
+See <a href="#HARMONY:SEGMENT">SEGMENT</a>
+See <a href="NIL">START-VOLUME</a>
+See <a href="NIL">TARGET-VOLUME</a>
+See <a href="NIL">FADE-COUNT</a>
+See <a href="NIL">FADE-END</a>
+See <a href="NIL">EASING-FUNCTION</a>
+See <a href="#HARMONY:FADE">FADE</a>
+See <a href="NIL">PERFORM-FADING</a></pre></div> </article> </li><li> <a name="HARMONY:FILE-SOURCE"> </a> <article id="CLASS HARMONY:FILE-SOURCE"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3AFILE-SOURCE">FILE-SOURCE</a></code></h4>  </header> <div class="docstring"><pre>Superclass for sources that back a file.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:FILE">FILE</a></pre></div> </article> </li><li> <a name="HARMONY:IN-PORT"> </a> <article id="CLASS HARMONY:IN-PORT"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3AIN-PORT">IN-PORT</a></code></h4>  </header> <div class="docstring"><pre>A port to represent an input location on a segment.
+
+See <a href="#HARMONY:IN-PORT">FLOW:IN-PORT</a>
+See <a href="NIL">FLOW:1-PORT</a></pre></div> </article> </li><li> <a name="HARMONY:IN-PORTS"> </a> <article id="CLASS HARMONY:IN-PORTS"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3AIN-PORTS">IN-PORTS</a></code></h4>  </header> <div class="docstring"><pre>A port to represent a segment's inputs for a segment that supports arbitrary input locations.
+
+See <a href="#HARMONY:IN-PORT">FLOW:IN-PORT</a>
+See <a href="NIL">FLOW:N-PORT</a></pre></div> </article> </li><li> <a name="HARMONY:MIXER"> </a> <article id="CLASS HARMONY:MIXER"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3AMIXER">MIXER</a></code></h4>  </header> <div class="docstring"><pre>Superclass for all mixer segments.
+
+Mixers are segments that accumulate multiple inputs.
+They all allow you to add or remove sources to mix
+from dynamically at runtime without having to re-
+compile the entire pipeline. Any source dynamically
+attached to a mixer should /not/ be part of the
+pipeline, as otherwise it is processed multiple times.
+
+Any class that implements this protocol must implement
+a method on CHANNELS-PER-SOURCE which returns the
+number of used input buffers for each source that is
+added to the mixer.
+
+See <a href="#HARMONY:SEGMENT">SEGMENT</a>
+See <a href="#HARMONY:MIXER">CL-MIXED:MIXER</a>
+See <a href="#HARMONY:BUFFERS">BUFFERS</a>
+See <a href="#HARMONY:SOURCES">SOURCES</a>
+See <a href="#HARMONY:ADD">ADD</a>
+See <a href="#HARMONY:WITHDRAW">WITHDRAW</a>
+See <a href="#HARMONY:CHANNELS-PER-SOURCE">CHANNELS-PER-SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:NODE"> </a> <article id="CLASS HARMONY:NODE"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ANODE">NODE</a></code></h4>  </header> <div class="docstring"><pre>A node to represent a segment in the pipeline.
+
+You should construct this through MAKE-NODE.
+
+See <a href="NIL">FLOW:DYNAMIC-NODE</a>
+See <a href="#HARMONY:MAKE-NODE">MAKE-NODE</a>
+See <a href="NIL">COMPLETE-SEGMENT</a>
+See <a href="NIL">NTH-OUT</a>
+See <a href="NIL">NTH-IN</a></pre></div> </article> </li><li> <a name="HARMONY:OUT-PORT"> </a> <article id="CLASS HARMONY:OUT-PORT"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3AOUT-PORT">OUT-PORT</a></code></h4>  </header> <div class="docstring"><pre>A port to represent an output location on a segment.
+
+See <a href="#HARMONY:OUT-PORT">FLOW:OUT-PORT</a>
+See <a href="NIL">FLOW:N-PORT</a></pre></div> </article> </li><li> <a name="HARMONY:PACK-DRAIN"> </a> <article id="CLASS HARMONY:PACK-DRAIN"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3APACK-DRAIN">PACK-DRAIN</a></code></h4>  </header> <div class="docstring"><pre>Superclass for drains that pack to a compact format first.
+
+This drain performs a preprocessing of the input
+buffers by merging them, and possibly converting
+or resampling them, into a single C array of
+audio samples.
+
+This is convenient for a lot of external libraries
+and APIs that expect a singular C buffer of samples
+in a specific format.
+
+A class that implements this protocol must implement
+a primary method on INITIALIZE-PACKED-AUDIO, which
+should return a valid PACKED-AUDIO instance that
+holds and describes the expected audio format
+properties.
+
+See <a href="#HARMONY:DRAIN">DRAIN</a>
+See <a href="#HARMONY:REMIX-FACTOR">REMIX-FACTOR</a>
+See <a href="#HARMONY:PACKED-AUDIO">PACKED-AUDIO</a>
+See <a href="#HARMONY:INITIALIZE-PACKED-AUDIO">INITIALIZE-PACKED-AUDIO</a>
+See <a href="#HARMONY:PACKED-AUDIO">CL-MIXED:PACKED-AUDIO</a></pre></div> </article> </li><li> <a name="HARMONY:PACKED-AUDIO"> </a> <article id="CLASS HARMONY:PACKED-AUDIO"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3APACKED-AUDIO">PACKED-AUDIO</a></code></h4>  </header> <div class="docstring"><pre>Packed-audio represents an interface to an outside sound source or drain.
+
+The object holds all the necessary information to describe
+the audio data present in a raw byte buffer. This includes
+how many channels there are, how the samples are laid out
+and how the samples are formatted in memory. It also includes
+the samplerate of the channel's source so that it can be
+converted if necessary.
+
+See <a href="NIL">MAKE-PACKED-AUDIO</a>
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:DRAIN">DRAIN</a>
+See <a href="NIL">C-OBJECT</a>
+See <a href="NIL">OWN-DATA</a>
+See <a href="NIL">DATA</a>
+See <a href="NIL">SIZE</a>
+See <a href="NIL">ENCODING</a>
+See <a href="#HARMONY-SIMPLE:CHANNELS">CHANNELS</a>
+See <a href="NIL">LAYOUT</a>
+See <a href="#HARMONY:SAMPLERATE">SAMPLERATE</a></pre></div> </article> </li><li> <a name="HARMONY:PIPELINE"> </a> <article id="CLASS HARMONY:PIPELINE"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3APIPELINE">PIPELINE</a></code></h4>  </header> <div class="docstring"><pre>This class holds a collection of nodes during the assembly of an audio pipeline.
+
+It is primarily used to handle the logic of connecting
+segments together and finally compiling it all down
+to a fully assembled audio pipeline ready for use in
+the server.
+
+Among other things it takes care of buffer allocation
+and proper buffer assignment.
+
+See <a href="#HARMONY:CONNECT">CONNECT</a>
+See <a href="#HARMONY:DISCONNECT">DISCONNECT</a>
+See <a href="#HARMONY:SEVER">SEVER</a>
+See <a href="#HARMONY:COMPILE-PIPELINE">COMPILE-PIPELINE</a></pre></div> </article> </li><li> <a name="HARMONY:SEGMENT"> </a> <article id="CLASS HARMONY:SEGMENT"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ASEGMENT">SEGMENT</a></code></h4>  </header> <div class="docstring"><pre>Base class for all Harmony segments that can appear in a pipeline.
+
+A segment must carry a reference to the server
+that it is running on. This reference can be
+supplied through the :SERVER initarg.
+
+Segments can have a name, which allows them to be
+found again through the server object, when they
+appear in the server's pipeline.
+
+Note that even segments that are not derived
+from this class, but rather the underlying class
+CL-MIXED:SEGMENT may be used in a pipeline.
+
+See <a href="#HARMONY:SEGMENT">CL-MIXED:SEGMENT</a>
+See <a href="#HARMONY:SERVER">SERVER</a>
+See <a href="#HARMONY:NAME">NAME</a></pre></div> </article> </li><li> <a name="HARMONY:SERVER"> </a> <article id="CLASS HARMONY:SERVER"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ASERVER">SERVER</a></code></h4>  </header> <div class="docstring"><pre>This class represents a sound server.
+
+The server is responsible for keeping a background
+thread that constantly processes and outputs sound.
+
+The actual construction of a sound pipeline should
+be done through the PIPELINE class, which can then
+compile its information down to a format suitable
+for the server. 
+
+Upon construction the server must know the general
+buffer size and the sample rate used throughout the
+pipeline. These properties may not change unless
+you completely recreate every segment and recompile
+the pipeline.
+
+The buffer size defaults to 441 and the sample rate
+to 44100. Note that having too high a buffer size
+will result in degraded output quality for some
+operations like fading. Note that having a sample
+rate that differs from your inputs or the output
+device will likely result in bad audio quality and
+distortions, as the audio data needs to be
+resampled.
+
+The number of actual samples being processed each
+run is controlled by the SAMPLES field, and can be
+changed at runtime. Note however that setting this
+to a value higher than BUFFERSIZE will most likely
+spawn demons in your pants and crash your Lisp.
+
+See <a href="NIL">SEGMENT-MAP</a>
+See <a href="#HARMONY:SAMPLES">SAMPLES</a>
+See <a href="#HARMONY:BUFFERSIZE">BUFFERSIZE</a>
+See <a href="NIL">SAMPLESIZE</a>
+See <a href="#HARMONY:DEVICE">DEVICE</a>
+See <a href="NIL">SEGMENT-SEQUENCE</a>
+See <a href="#HARMONY:BUFFERS">BUFFERS</a>
+See <a href="NIL">THREAD</a>
+See <a href="#HARMONY:COMPILE-PIPELINE">COMPILE-PIPELINE</a>
+See <a href="NIL">EVALUATION-QUEUE-HEAD</a>
+See <a href="NIL">EVALUATION-QUEUE-TAIL</a>
+See <a href="NIL">EVALUATION-LOCK</a>
+See <a href="#HARMONY:SEGMENT">SEGMENT</a>
+See <a href="NIL">SEGMENTS</a>
+See <a href="#HARMONY:START">START</a>
+See <a href="#HARMONY:STARTED-P">STARTED-P</a>
+See <a href="#HARMONY:STOP">STOP</a>
+See <a href="#HARMONY:RUN">RUN</a>
+See <a href="#HARMONY:CALL-IN-SERVER-THREAD">CALL-IN-SERVER-THREAD</a>
+See <a href="#HARMONY:PAUSED-P">PAUSED-P</a>
+See <a href="#HARMONY:PAUSE">PAUSE</a>
+See <a href="#HARMONY:RESUME">RESUME</a></pre></div> </article> </li><li> <a name="HARMONY:SOURCE"> </a> <article id="CLASS HARMONY:SOURCE"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ASOURCE">SOURCE</a></code></h4>  </header> <div class="docstring"><pre>Superclass for all of Harmony's source segments.
+
+A source segment does not input any data and
+instead directly provides it, either by generating
+it on the fly, or by reading it from a file or
+some kind of stream.
+
+A class that implements this protocol must implement
+a primary method on PROCESS to output samples to its
+connected buffers.
+
+Furthermore it must implement the SEEK-TO-SAMPLE
+method to provide seeking. If it cannot seek, even
+in the most imprecise way, it must implement that
+method to signal an error.
+
+See <a href="#HARMONY:FADABLE">FADABLE</a>
+See <a href="#HARMONY:LOOPING-P">LOOPING-P</a>
+See <a href="#HARMONY:PAUSED-P">PAUSED-P</a>
+See <a href="#HARMONY:ENDED-P">ENDED-P</a>
+See <a href="#HARMONY:SAMPLE-POSITION">SAMPLE-POSITION</a>
+See <a href="#HARMONY:PROCESS">PROCESS</a>
+See <a href="#HARMONY:PAUSE">PAUSE</a>
+See <a href="#HARMONY:RESUME">RESUME</a>
+See <a href="#HARMONY:STOP">STOP</a>
+See <a href="#HARMONY:SEEK">SEEK</a>
+See <a href="#HARMONY:SEEK-TO-SAMPLE">SEEK-TO-SAMPLE</a>
+See <a href="#HARMONY:PLAY">PLAY</a></pre></div> </article> </li><li> <a name="HARMONY:SPACE-MIXER"> </a> <article id="CLASS HARMONY:SPACE-MIXER"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3ASPACE-MIXER">SPACE-MIXER</a></code></h4>  </header> <div class="docstring"><pre>This mixer mixes sources as if they were located in 3D space.
+
+Note that unless you control the volume of your
+sources carefully, this can easily result in the
+clipping of the audio samples, and thus in distortion.
+No dynamic range compression is applied whatsoever.
+
+Each source only has to have a single output buffer,
+which is then interpreted as a point audio source. If
+you require different shapes of sources, you can get
+that behaviour by modifying the location of the source
+relative to the listener in such a way that the
+closest point of the source's shape is the actual point
+the source has. This won't account for overlapping and
+such finer details of sound, but should be good enough
+for most cases.
+
+Note that unlike in CL-MIXED, where each source is
+independent of the mixer, and you thus have to use the
+INPUT-LOCATION/VELOCITY functions to adjust their
+parameters, in Harmony the sources are tied to a mixer
+and you can thus use the same LOCATION and VELOCITY
+functions for sources as you would for the mixer. In
+the case of the mixer, the location and velocity are
+to be interpreted as those of the listener.
+
+See <a href="#HARMONY:SPACE-MIXER">CL-MIXED:SPACE-MIXER</a>
+See <a href="#HARMONY:MIXER">MIXER</a>
+See <a href="#HARMONY:LOCATION">LOCATION</a>
+See <a href="#HARMONY:VELOCITY">VELOCITY</a>
+See <a href="#HARMONY:DIRECTION">DIRECTION</a>
+See <a href="#HARMONY:UP">UP</a>
+See <a href="#HARMONY:SOUNDSPEED">SOUNDSPEED</a>
+See <a href="#HARMONY:DOPPLER-FACTOR">DOPPLER-FACTOR</a>
+See <a href="#HARMONY:MIN-DISTANCE">MIN-DISTANCE</a>
+See <a href="#HARMONY:MAX-DISTANCE">MAX-DISTANCE</a>
+See <a href="#HARMONY:ROLLOFF">ROLLOFF</a>
+See <a href="#HARMONY:ATTENUATION">ATTENUATION</a></pre></div> </article> </li><li> <a name="HARMONY:UNPACK-SOURCE"> </a> <article id="CLASS HARMONY:UNPACK-SOURCE"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY%3AUNPACK-SOURCE">UNPACK-SOURCE</a></code></h4>  </header> <div class="docstring"><pre>Superclass for sources that unpack from a compact format first.
+
+This source performs postprocessing of a data array
+by splitting it out to the connected output buffers,
+and possibly converting or resampling it as
+necessary.
+
+This is convenient for a lot of external libraries
+and APIs that provide a singular C buffer of samples
+in a specific format.
+
+A class that implements this protocol must implement
+a primary method on INITIALIZE-PACKED-AUDIO, which
+should return a valid PACKED-AUDIO instance that
+holds and describes the provided audio format
+properties.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:REMIX-FACTOR">REMIX-FACTOR</a>
+See <a href="#HARMONY:PACKED-AUDIO">PACKED-AUDIO</a>
+See <a href="#HARMONY:INITIALIZE-PACKED-AUDIO">INITIALIZE-PACKED-AUDIO</a>
+See <a href="#HARMONY:FILL-FOR-UNPACK-SOURCE">FILL-FOR-UNPACK-SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:ATTENUATION"> </a> <article id="ACCESSOR HARMONY:ATTENUATION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AATTENUATION">ATTENUATION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SPACE</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the attenuation function used to describe the distance volume falloff.
+
+The value should be one of
+
+  :NONE :LINEAR :INVERSE :EXPONENTIAL
+
+The value may also be a pointer to a C function
+of the following signature:
+  
+  float attenuation(float min,
+                    float max,
+                    float dist,
+                    float roll);
+
+See <a href="NIL">mixed.h</a>
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:BUFFERS"> </a> <article id="ACCESSOR HARMONY:BUFFERS"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ABUFFERS">BUFFERS</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the sequence of buffers.
+
+The buffers are internal to this object and should
+not be touched unless you really, really know what
+you're doing.
+
+See <a href="#HARMONY:MIXER">MIXER</a>
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:BUFFERSIZE"> </a> <article id="ACCESSOR HARMONY:BUFFERSIZE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ABUFFERSIZE">BUFFERSIZE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the number of samples in a buffer on the server.
+
+This is SETFable, but note that this will only
+adapt the buffers constructed through the pipeline.
+Buffers, and especially internal data arrays, are
+not adjusted and may not be able to hold the
+required amount of data if you increase the buffer
+size. Use at your own risk.
+
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:DEVICE"> </a> <article id="ACCESSOR HARMONY:DEVICE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ADEVICE">DEVICE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the device segment of the server.
+
+The device segment is like any other segment in
+the pipeline, with the exception that the server
+uses its PAUSED-P state to determine whether it
+should suspend mixing or not. Usually COMPILE-
+PIPELINE will ensure that the device is the last
+segment in the sorted segments list, and thus
+the segment responsible for outputting the audio
+data.
+
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:DIRECTION"> </a> <article id="ACCESSOR HARMONY:DIRECTION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ADIRECTION">DIRECTION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor for the direction the listener is facing in space.
+
+To set a vector, the value should be a list or a vector
+of three floats. When reading, the returned value is
+always a vector of three floats.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:DOPPLER-FACTOR"> </a> <article id="ACCESSOR HARMONY:DOPPLER-FACTOR"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ADOPPLER-FACTOR">DOPPLER-FACTOR</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the over-/under-statement factor of the doppler effect.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:ENDED-P"> </a> <article id="ACCESSOR HARMONY:ENDED-P"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AENDED-P">ENDED-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to whether the source has reached its end or not.
+
+Once a source has been marked as ended, it is
+automatically paused as soon as possible, and then
+removed from its mixer if the mixer is known to the
+source.
+
+And ended source can be started anew by using
+the RESUME function.
+
+See <a href="#HARMONY:STOP">STOP</a>
+See <a href="#HARMONY:RESUME">RESUME</a></pre></div> </article> </li><li> <a name="HARMONY:FILE"> </a> <article id="ACCESSOR HARMONY:FILE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AFILE">FILE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the pathname of the file the file-source reads from.
+
+See <a href="#HARMONY:FILE-SOURCE">FILE-SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:INPUT"> </a> <article id="ACCESSOR HARMONY:INPUT"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AINPUT">INPUT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">LOCATION SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the input buffer at the specified location of the segment.
+
+See <a href="NIL">INPUT-FIELD</a>
+See <a href="#HARMONY:SEGMENT">SEGMENT</a></pre></div> </article> </li><li> <a name="HARMONY:LOCATION"> </a> <article id="ACCESSOR HARMONY:LOCATION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ALOCATION">LOCATION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor for the location of the listener in space.
+
+To set a vector, the value should be a list or a vector
+of three floats. When reading, the returned value is
+always a vector of three floats.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:LOOPING-P"> </a> <article id="ACCESSOR HARMONY:LOOPING-P"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ALOOPING-P">LOOPING-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to whether the source should loop after finishing.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:MAX-DISTANCE"> </a> <article id="ACCESSOR HARMONY:MAX-DISTANCE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AMAX-DISTANCE">MAX-DISTANCE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the maximal distance above which the source is inaudible.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:MIN-DISTANCE"> </a> <article id="ACCESSOR HARMONY:MIN-DISTANCE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AMIN-DISTANCE">MIN-DISTANCE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the minimal distance below which the source is at max volume.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:NODES"> </a> <article id="ACCESSOR HARMONY:NODES"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ANODES">NODES</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the hash table mapping segments to their corresponding nodes.
+
+See <a href="#HARMONY:PIPELINE">PIPELINE</a></pre></div> </article> </li><li> <a name="HARMONY:OUTPUT"> </a> <article id="ACCESSOR HARMONY:OUTPUT"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AOUTPUT">OUTPUT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">LOCATION SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the output buffer at the specified location of the segment.
+
+See <a href="NIL">OUTPUT-FIELD</a>
+See <a href="#HARMONY:SEGMENT">SEGMENT</a></pre></div> </article> </li><li> <a name="HARMONY:PACK-MIX-FUNCTION"> </a> <article id="ACCESSOR HARMONY:PACK-MIX-FUNCTION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3APACK-MIX-FUNCTION">PACK-MIX-FUNCTION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the function pointer for the packer segment's mix function.
+
+See <a href="NIL">CL-MIXED:PACKER</a>
+See <a href="#HARMONY:PACK-DRAIN">PACK-DRAIN</a></pre></div> </article> </li><li> <a name="HARMONY:PACKED-AUDIO"> </a> <article id="ACCESSOR HARMONY:PACKED-AUDIO"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3APACKED-AUDIO">PACKED-AUDIO</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the packed-audio instance of the source/drain.
+
+See <a href="#HARMONY:PACKED-AUDIO">CL-MIXED:PACKED-AUDIO</a>
+See <a href="#HARMONY:UNPACK-SOURCE">UNPACK-SOURCE</a>
+See <a href="#HARMONY:PACK-DRAIN">PACK-DRAIN</a></pre></div> </article> </li><li> <a name="HARMONY:PAUSED-P"> </a> <article id="ACCESSOR HARMONY:PAUSED-P"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3APAUSED-P">PAUSED-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to whether the source is paused or not.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:PAUSE">PAUSE</a>
+See <a href="#HARMONY:RESUME">RESUME</a></pre></div> </article> </li><li> <a name="HARMONY:REMIX-FACTOR"> </a> <article id="ACCESSOR HARMONY:REMIX-FACTOR"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AREMIX-FACTOR">REMIX-FACTOR</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Returns the conversion factor between the channel's and the server's samplerate.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:DRAIN">DRAIN</a></pre></div> </article> </li><li> <a name="HARMONY:ROLLOFF"> </a> <article id="ACCESSOR HARMONY:ROLLOFF"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AROLLOFF">ROLLOFF</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the rolloff factor that describes the curvature of the attenuation function.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:SAMPLE-POSITION"> </a> <article id="ACCESSOR HARMONY:SAMPLE-POSITION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ASAMPLE-POSITION">SAMPLE-POSITION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Returns the sample counter for the source.
+
+The sample counter is kept to keep track of the
+seeking position. It is not necessarily entirely
+accurate.
+
+The samples are counted in the source's channel
+samplerate, rather than the server's samplerate.
+It is updated during mixing.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:SAMPLERATE"> </a> <article id="ACCESSOR HARMONY:SAMPLERATE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ASAMPLERATE">SAMPLERATE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">PACKED-AUDIO</code><code>)</code>  </header> <div class="docstring"><pre>Returns the sample rate (in Hz) that the segments on the server operate by.
+
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:SAMPLES"> </a> <article id="ACCESSOR HARMONY:SAMPLES"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ASAMPLES">SAMPLES</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the number of samples the server processes each iteration.
+
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:SEGMENT"> </a> <article id="ACCESSOR HARMONY:SEGMENT"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ASEGMENT">SEGMENT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NAME SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the segment of the given name on the server.
+
+This is useful to retrieve segments at a later
+point in time after the pipeline has already been
+assembled.
+
+See <a href="NIL">SEGMENT-MAP</a>
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:SERVER"> </a> <article id="ACCESSOR HARMONY:SERVER"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ASERVER">SERVER</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the segment's server.
+
+See <a href="#HARMONY:SEGMENT">SEGMENT</a></pre></div> </article> </li><li> <a name="HARMONY:SOUNDSPEED"> </a> <article id="ACCESSOR HARMONY:SOUNDSPEED"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ASOUNDSPEED">SOUNDSPEED</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the speed of sound in space.
+
+This value only influences the strength of
+the doppler factor.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:SOURCE-TYPE"> </a> <article id="ACCESSOR HARMONY:SOURCE-TYPE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3ASOURCE-TYPE">SOURCE-TYPE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NAME</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the file type extension to source type mapping.
+
+The name should be a string designating the file
+type, and the value a source class name.
+
+See <a href="NIL">*FILETYPE-SOURCE-MAP*</a>
+See <a href="#HARMONY:DEFINE-SOURCE-TYPE">DEFINE-SOURCE-TYPE</a></pre></div> </article> </li><li> <a name="HARMONY:UNPACK-MIX-FUNCTION"> </a> <article id="ACCESSOR HARMONY:UNPACK-MIX-FUNCTION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AUNPACK-MIX-FUNCTION">UNPACK-MIX-FUNCTION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the foreign function pointer for the unpacker segment mix function.
+
+See <a href="NIL">CL-MIXED:UNPACKER</a>
+See <a href="#HARMONY:UNPACK-SOURCE">UNPACK-SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:UP"> </a> <article id="ACCESSOR HARMONY:UP"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AUP">UP</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor for the vector representing &quot;upwards&quot; in space.
+
+To set a vector, the value should be a list or a vector
+of three floats. When reading, the returned value is
+always a vector of three floats.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:VELOCITY"> </a> <article id="ACCESSOR HARMONY:VELOCITY"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AVELOCITY">VELOCITY</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor for the velocity of the listener in space.
+
+To set a vector, the value should be a list or a vector
+of three floats. When reading, the returned value is
+always a vector of three floats.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:VOLUME"> </a> <article id="ACCESSOR HARMONY:VOLUME"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AVOLUME">VOLUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the outputting volume of the volume control segment.
+
+Must be in the range [0, infinity[.
+
+See <a href="NIL">VOLUME-CONTROL</a></pre></div> </article> </li><li> <a name="HARMONY:ALLOCATE-BUFFERS"> </a> <article id="FUNCTION HARMONY:ALLOCATE-BUFFERS"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AALLOCATE-BUFFERS">ALLOCATE-BUFFERS</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NODES BUFFERSIZE &amp;OPTIONAL OLD-BUFFERS</code><code>)</code>  </header> <div class="docstring"><pre>Handle the allocation of the necessary buffers for the nodes.
+
+The number of buffers necessary is determined by
+looking at the BUFFER attribute of each port and
+maximising that.
+
+If OLD-BUFFERS is given, only additional buffers
+as necessary are allocated and the buffers in the
+old sequence are re-used.
+
+After all buffers have been allocated, the BUFFER
+attribute on each port in the nodes list is
+replaced by the actual buffer instance.
+
+See <a href="NIL">FLOW:ATTRIBUTE</a>
+See <a href="NIL">CL-MIXED:MAKE-BUFFER</a></pre></div> </article> </li><li> <a name="HARMONY:CALL-IN-SERVER-THREAD"> </a> <article id="FUNCTION HARMONY:CALL-IN-SERVER-THREAD"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3ACALL-IN-SERVER-THREAD">CALL-IN-SERVER-THREAD</a></code></h4> <code class="qualifiers"></code> <code class="arguments">FUNCTION SERVER &amp;KEY SYNCHRONIZE TIMEOUT VALUES</code><code>)</code>  </header> <div class="docstring"><pre>Causes the given function to be evaluated in the server's processing thread.
+
+If SYNCHRONIZE is non-NIL, then this function does
+not return until the given function has been
+evaluated. If additionally VALUES is non-NIL, the
+values as produced by the given function are
+returned after evaluation.
+
+If TIMEOUT is given, it should be the number of
+seconds after which this function gives up waiting
+for the given function to be evaluated or to finish
+evaluating.
+
+Note that if *IN-PROCESSING-THREAD* is non-NIL, or
+if the server has no thread, the function is
+evaluated directly and immediately. Otherwise it
+is placed onto the server's evaluation-queue.
+
+Any call to this will acquire the evaluation-lock
+of the server at least once.
+
+See <a href="#HARMONY:WITH-BODY-IN-SERVER-THREAD">WITH-BODY-IN-SERVER-THREAD</a>
+See <a href="NIL">*IN-PROCESSING-THREAD*</a>
+See <a href="NIL">EVALUATION-QUEUE-HEAD</a>
+See <a href="NIL">EVALUATION-QUEUE-TAIL</a>
+See <a href="NIL">EVALUATION-LOCK</a></pre></div> </article> </li><li> <a name="HARMONY:EASE-CUBIC-IN"> </a> <article id="FUNCTION HARMONY:EASE-CUBIC-IN"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AEASE-CUBIC-IN">EASE-CUBIC-IN</a></code></h4> <code class="qualifiers"></code> <code class="arguments">X</code><code>)</code>  </header> <div class="docstring"><pre>Cubic-in easing.
+
+X -&gt; X³</pre></div> </article> </li><li> <a name="HARMONY:EASE-CUBIC-IN-OUT"> </a> <article id="FUNCTION HARMONY:EASE-CUBIC-IN-OUT"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AEASE-CUBIC-IN-OUT">EASE-CUBIC-IN-OUT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">X</code><code>)</code>  </header> <div class="docstring"><pre>Cubic-in-out easing.
+
+X -&gt; (2*x)³/2       | If x &lt;  0.5
+     1+(2*(x-1))³/2 | otherwise</pre></div> </article> </li><li> <a name="HARMONY:EASE-CUBIC-OUT"> </a> <article id="FUNCTION HARMONY:EASE-CUBIC-OUT"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AEASE-CUBIC-OUT">EASE-CUBIC-OUT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">X</code><code>)</code>  </header> <div class="docstring"><pre>Cubic-out easing.
+
+X -&gt; 1+(x-1)³</pre></div> </article> </li><li> <a name="HARMONY:EASE-LINEAR"> </a> <article id="FUNCTION HARMONY:EASE-LINEAR"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AEASE-LINEAR">EASE-LINEAR</a></code></h4> <code class="qualifiers"></code> <code class="arguments">X</code><code>)</code>  </header> <div class="docstring"><pre>Linear easing.
+
+X -&gt; X</pre></div> </article> </li><li> <a name="HARMONY:FILL-FOR-UNPACK-SOURCE"> </a> <article id="FUNCTION HARMONY:FILL-FOR-UNPACK-SOURCE"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AFILL-FOR-UNPACK-SOURCE">FILL-FOR-UNPACK-SOURCE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE SAMPLES DIRECT-READ ARG</code><code>)</code>  </header> <div class="docstring"><pre>This is a convenience function for unpack sources.
+
+Handling the edge-cases of reaching the output end
+and looping properly can be a bit tricky. This
+function takes care of properly filling the packed
+audio array with data while handling the necessary
+wraparound or zeroing in case of stream end.
+
+DIRECT-READ should be a function of three arguments:
+  ARG    --- The arg passed into the function.
+  BUFFER --- A pointer to the C array of data.
+  BYTES  --- The number of bytes to write into it.</pre></div> </article> </li><li> <a name="HARMONY:MEMCLEAR"> </a> <article id="FUNCTION HARMONY:MEMCLEAR"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AMEMCLEAR">MEMCLEAR</a></code></h4> <code class="qualifiers"></code> <code class="arguments">DEST NUM</code><code>)</code>  </header> <div class="docstring"><pre>Clear the memory in a region to zero.
+
+This is a tiny wrapper around memset.
+  DEST   --- A destination array pointer.
+  NUM    --- The number of bytes to copy.
+
+See <a href="#HARMONY:MEMSET">MEMSET</a></pre></div> </article> </li><li> <a name="HARMONY:MEMCPY"> </a> <article id="FUNCTION HARMONY:MEMCPY"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AMEMCPY">MEMCPY</a></code></h4> <code class="qualifiers"></code> <code class="arguments">DEST SOURCE NUM</code><code>)</code>  </header> <div class="docstring"><pre>Copy memory from one region to another.
+
+This is the libc memcpy().
+  DEST   --- A destination array pointer.
+  SOURCE --- A source array pointer.
+  NUM    --- The number of bytes to copy.
+
+See <a href="NIL">memcpy()</a></pre></div> </article> </li><li> <a name="HARMONY:MEMSET"> </a> <article id="FUNCTION HARMONY:MEMSET"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AMEMSET">MEMSET</a></code></h4> <code class="qualifiers"></code> <code class="arguments">DEST SOURCE NUM</code><code>)</code>  </header> <div class="docstring"><pre>Set memory in a region to a particular byte.
+
+This is the libc memset().
+  DEST   --- A destination array pointer.
+  SOURCE --- A source byte to set the array with.
+  NUM    --- The number of bytes to copy.
+
+See <a href="NIL">memset()</a></pre></div> </article> </li><li> <a name="HARMONY:ADD"> </a> <article id="GENERIC HARMONY:ADD"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3AADD">ADD</a></code></h4> <code class="qualifiers"></code> <code class="arguments">BUFFER SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Add the object to the given collection.
+
+For segment-sequences this means adding a segment to
+the sequence. For mixers this means adding another
+input buffer.
+
+See <a href="NIL">SEGMENT-SEQUENCE</a>
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:CHANNELS-PER-SOURCE"> </a> <article id="GENERIC HARMONY:CHANNELS-PER-SOURCE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ACHANNELS-PER-SOURCE">CHANNELS-PER-SOURCE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">MIXER</code><code>)</code>  </header> <div class="docstring"><pre>Returns the number of channel buffers each source should provide.
+
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:COMPILE-PIPELINE"> </a> <article id="GENERIC HARMONY:COMPILE-PIPELINE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ACOMPILE-PIPELINE">COMPILE-PIPELINE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">PIPELINE SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Compile the pipeline into the given server.
+
+This performs a buffer allocation on each of the
+inputs and outputs of the segments connected in the
+pipeline, flattens the graph topologically to
+figure out the proper order to mix the segments in,
+and finally constructs a mixer object to configure
+the server with.
+
+Once everything has been properly built, the server
+is updated with the new device, buffers, and mixer.
+The device is taken to be the last segment in the
+topological sort.
+
+After everything has been updated, the old mixer
+and unneeded buffers are freed. Segments are not
+freed, and will instead be garbage-collected
+automatically if no longer needed.
+
+This also updates the SEGMENT-MAP in the server, by
+clearing it first, and then updating it with all
+the segments contained in the pipeline.
+
+See <a href="#HARMONY:PIPELINE">PIPELINE</a>
+See <a href="#HARMONY:SERVER">SERVER</a>
+See <a href="#HARMONY:ALLOCATE-BUFFERS">ALLOCATE-BUFFERS</a>
+See <a href="NIL">FLOW:ALLOCATE-PORTS</a>
+See <a href="NIL">COMPLETE-SEGMENT</a>
+See <a href="NIL">SEGMENT-MAP</a></pre></div> </article> </li><li> <a name="HARMONY:CONNECT"> </a> <article id="GENERIC HARMONY:CONNECT"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ACONNECT">CONNECT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">PIPELINE SOURCE SOURCE-OUTPUT TARGET TARGET-INPUT</code><code>)</code>  </header> <div class="docstring"><pre>Connects the output location to the input location of the given segments.
+
+The system cannot feasibly figure out how you intend
+locations to be connected together, which is why you
+must specify them yourself.
+
+See <a href="#HARMONY:PIPELINE">PIPELINE</a>
+See <a href="#HARMONY:DISCONNECT">DISCONNECT</a>
+See <a href="#HARMONY:SEVER">SEVER</a></pre></div> </article> </li><li> <a name="HARMONY:DISCONNECT"> </a> <article id="GENERIC HARMONY:DISCONNECT"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ADISCONNECT">DISCONNECT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">PIPELINE SOURCE SOURCE-OUTPUT TARGET TARGET-INPUT</code><code>)</code>  </header> <div class="docstring"><pre>Disconnects the output location from the input location of the given segments.
+
+The system cannot feasibly figure out how you intend
+locations to be disconnected, which is why you must
+specify them yourself.
+
+See <a href="#HARMONY:PIPELINE">PIPELINE</a>
+See <a href="#HARMONY:CONNECT">CONNECT</a>
+See <a href="#HARMONY:SEVER">SEVER</a></pre></div> </article> </li><li> <a name="HARMONY:ENSURE-NODE"> </a> <article id="GENERIC HARMONY:ENSURE-NODE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3AENSURE-NODE">ENSURE-NODE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NODE PIPELINE</code><code>)</code>  </header> <div class="docstring"><pre>Either creates or returns the node corresponding to the given segment.
+
+See <a href="#HARMONY:PIPELINE">PIPELINE</a>
+See <a href="#HARMONY:NODES">NODES</a>
+See <a href="#HARMONY:MAKE-NODE">MAKE-NODE</a></pre></div> </article> </li><li> <a name="HARMONY:FADE"> </a> <article id="GENERIC HARMONY:FADE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3AFADE">FADE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">FADABLE TO TIME &amp;KEY BY FROM</code><code>)</code>  </header> <div class="docstring"><pre>Cause the segment to start fading as soon as possible.
+
+TIME should be a float, specifying the duration
+of the fade in seconds. If :FROM is not specified,
+it is taken to be current volume of the segment.
+BY should be a function of one float argument
+and one return value.
+
+See <a href="NIL">EASING-FUNCTION</a>
+See <a href="#HARMONY:FADABLE">FADABLE</a></pre></div> </article> </li><li> <a name="HARMONY:INITIALIZE-PACKED-AUDIO"> </a> <article id="GENERIC HARMONY:INITIALIZE-PACKED-AUDIO"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3AINITIALIZE-PACKED-AUDIO">INITIALIZE-PACKED-AUDIO</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE</code><code>)</code>  </header> <div class="docstring"><pre>This function should return a packed-audio instance.
+
+The instance should contain a pointer to a C array
+of opaque samples, as well as a precise description
+of the way in which the samples are laid out, as well
+as what their rate and format is.
+
+See <a href="#HARMONY:PACKED-AUDIO">CL-MIXED:PACKED-AUDIO</a>
+See <a href="#HARMONY:UNPACK-SOURCE">UNPACK-SOURCE</a>
+See <a href="#HARMONY:PACK-DRAIN">PACK-DRAIN</a></pre></div> </article> </li><li> <a name="HARMONY:MAKE-NODE"> </a> <article id="GENERIC HARMONY:MAKE-NODE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3AMAKE-NODE">MAKE-NODE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Construct a new node instance for the given segment.
+
+The segment must support the INFO operation and report
+accurately on its number of inputs and outputs.
+Otherwise, a proper node cannot be constructed.
+
+See <a href="#HARMONY:NODE">NODE</a>
+See <a href="#HARMONY:SEGMENT">SEGMENT</a></pre></div> </article> </li><li> <a name="HARMONY:NAME"> </a> <article id="GENERIC HARMONY:NAME"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ANAME">NAME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the name of the segment.
+
+The name should be a symbol, and can be used to
+retrieve the segment from the server after the
+pipeline has been compiled for it.
+
+See <a href="#HARMONY:SEGMENT">SEGMENT</a></pre></div> </article> </li><li> <a name="HARMONY:PAUSE"> </a> <article id="GENERIC HARMONY:PAUSE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3APAUSE">PAUSE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Pause the source or drain.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:DRAIN">DRAIN</a>
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:PLAY"> </a> <article id="GENERIC HARMONY:PLAY"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3APLAY">PLAY</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER SOURCE-ISH MIXER &amp;KEY PAUSED LOOP FADE VOLUME NAME CLASS
+ &amp;ALLOW-OTHER-KEYS</code><code>)</code>  </header> <div class="docstring"><pre>Conveniently play back a source on the designated mixer of the server.
+
+In general PLAY is responsible for creating or
+initialising a source if necessary, adding it to the
+specified mixer, and playing it back.
+
+PLAY is supposed to be &quot;smart&quot; about its arguments
+and will coerce where possible. For instance, the
+SOURCE-ISH can be a symbol, class, source, or
+pathname. The mixer can be either a symbol or a
+mixer. Additional coercions could be added through 
+libraries.
+
+The INITARGS are either creation initargs for new
+sources, or REINITIALIZE-INSTANCE initargs for
+existing sources.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:PROCESS"> </a> <article id="GENERIC HARMONY:PROCESS"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3APROCESS">PROCESS</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE SAMPLES</code><code>)</code>  </header> <div class="docstring"><pre>This function is responsible for invoking the actual sample processing step of a segment.
+
+Note that not all segments will call this function,
+and unless you do so yourself, currently only SOURCE
+and DRAIN will.
+
+In general a call to this function should result in
+samples from the connected input buffers to be read
+and samples to the connected output buffers to be
+written.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:DRAIN">DRAIN</a></pre></div> </article> </li><li> <a name="HARMONY:RESUME"> </a> <article id="GENERIC HARMONY:RESUME"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ARESUME">RESUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Resume the source or drain from a pause.
+
+If the source was ENDED-P, it is seeked to
+position 0 before resuming.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:DRAIN">DRAIN</a>
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:RUN"> </a> <article id="GENERIC HARMONY:RUN"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ARUN">RUN</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>This function is called by the background processing thread of the server.
+
+It is responsible for starting, ending, and mixing
+the segments in the pipeline. It is also
+responsible for checking the server's evaluation-
+queue, and running any function that appears on it.
+
+Within PROCESS, *IN-PROCESSING-THREAD* is bound to
+T.
+
+If the device of the server is PAUSED-P, then
+BT:THREAD-YIELD is called.
+
+See <a href="#HARMONY:SERVER">SERVER</a></pre></div> </article> </li><li> <a name="HARMONY:SEEK"> </a> <article id="GENERIC HARMONY:SEEK"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ASEEK">SEEK</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE POSITION &amp;KEY MODE BY</code><code>)</code>  </header> <div class="docstring"><pre>Seek the source to the requested position.
+
+MODE may be either :ABSOLUTE or :RELATIVE,
+where relative denotes the requested position
+to be relative to the current position.
+BY may be either :SAMPLE or :SECOND, where
+:SAMPLE denotes the specific requested sample
+position in the source's stream, and :SECOND
+requests the approximate playback time in
+seconds.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:SEEK-TO-SAMPLE">SEEK-TO-SAMPLE</a></pre></div> </article> </li><li> <a name="HARMONY:SEEK-TO-SAMPLE"> </a> <article id="GENERIC HARMONY:SEEK-TO-SAMPLE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ASEEK-TO-SAMPLE">SEEK-TO-SAMPLE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE POSITION</code><code>)</code>  </header> <div class="docstring"><pre>Seek to the specified sample.
+
+This position is absolute. Every source
+must implement a method for this function.
+
+See <a href="#HARMONY:SEEK">SEEK</a>
+See <a href="#HARMONY:SOURCE">SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY:SEVER"> </a> <article id="GENERIC HARMONY:SEVER"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ASEVER">SEVER</a></code></h4> <code class="qualifiers"></code> <code class="arguments">PIPELINE SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Severs all connections to and from the given segment.
+
+See <a href="#HARMONY:CONNECT">CONNECT</a>
+See <a href="#HARMONY:DISCONNECT">DISCONNECT</a>
+See <a href="#HARMONY:PIPELINE">PIPELINE</a></pre></div> </article> </li><li> <a name="HARMONY:SOURCES"> </a> <article id="GENERIC HARMONY:SOURCES"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ASOURCES">SOURCES</a></code></h4> <code class="qualifiers"></code> <code class="arguments">MIXER</code><code>)</code>  </header> <div class="docstring"><pre>Returns a list of all segments currently connected to the mixer.
+
+Note that these segments are not necessarily of type
+SOURCE.
+
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:START"> </a> <article id="GENERIC HARMONY:START"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ASTART">START</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Start up the server's background processing thread.
+
+This in turn causes audio processing to &quot;actually&quot;
+happen. If the server is not ready to process audio,
+an error is signalled. If the server has already been
+started, an error is signalled.
+
+See <a href="NIL">THREAD</a>
+See <a href="#HARMONY:SERVER">SERVER</a>
+See <a href="#HARMONY:STARTED-P">STARTED-P</a>
+See <a href="#HARMONY:STOP">STOP</a></pre></div> </article> </li><li> <a name="HARMONY:STARTED-P"> </a> <article id="GENERIC HARMONY:STARTED-P"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ASTARTED-P">STARTED-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Returns true if the server has been started already and is currently running.
+
+See <a href="#HARMONY:SERVER">SERVER</a>
+See <a href="#HARMONY:START">START</a>
+See <a href="#HARMONY:STOP">STOP</a></pre></div> </article> </li><li> <a name="HARMONY:STOP"> </a> <article id="GENERIC HARMONY:STOP"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3ASTOP">STOP</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Stops the server or source.
+
+When the server is stopped, its background processing
+thread is shut down. If no thread is currently
+running, nothing happens.
+
+When a source is stopped, its ENDED-P property is
+set to T.
+
+See <a href="NIL">THREAD</a>
+See <a href="#HARMONY:SERVER">SERVER</a>
+See <a href="#HARMONY:START">START</a>
+See <a href="#HARMONY:STARTED-P">STARTED-P</a>
+See <a href="#HARMONY:ENDED-P">ENDED-P</a></pre></div> </article> </li><li> <a name="HARMONY:WITHDRAW"> </a> <article id="GENERIC HARMONY:WITHDRAW"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY%3AWITHDRAW">WITHDRAW</a></code></h4> <code class="qualifiers"></code> <code class="arguments">BUFFER SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Remove the object from the given collection.
+
+For segment-sequences this means removing the segment
+from the sequence. For mixers this means removing
+the given input buffer.
+
+See <a href="NIL">SEGMENT-SEQUENCE</a>
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:DEFINE-SOURCE-TYPE"> </a> <article id="MACRO HARMONY:DEFINE-SOURCE-TYPE"> <header class="macro"> <span class="type">macro</span>  <code>(</code><h4 class="name"><code><a href="#MACRO%20HARMONY%3ADEFINE-SOURCE-TYPE">DEFINE-SOURCE-TYPE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NAME TYPE</code><code>)</code>  </header> <div class="docstring"><pre>Conveniently define a source type mapping.
+
+See <a href="#HARMONY:SOURCE-TYPE">SOURCE-TYPE</a></pre></div> </article> </li><li> <a name="HARMONY:WITH-BODY-IN-SERVER-THREAD"> </a> <article id="MACRO HARMONY:WITH-BODY-IN-SERVER-THREAD"> <header class="macro"> <span class="type">macro</span>  <code>(</code><h4 class="name"><code><a href="#MACRO%20HARMONY%3AWITH-BODY-IN-SERVER-THREAD">WITH-BODY-IN-SERVER-THREAD</a></code></h4> <code class="qualifiers"></code> <code class="arguments">(SERVER &amp;KEY SYNCHRONIZE TIMEOUT VALUES) &amp;BODY BODY</code><code>)</code>  </header> <div class="docstring"><pre>Shorthand macro to evaluate the body in the server's processing thread.
+
+See <a href="#HARMONY:CALL-IN-SERVER-THREAD">CALL-IN-SERVER-THREAD</a></pre></div> </article> </li></ul> </li><li class="package"> <h3> <a name="HARMONY-SIMPLE" href="#HARMONY-SIMPLE">HARMONY-SIMPLE</a> <span class="nicknames">(ORG.SHIRAKUMO.FRAF.HARMONY.SIMPLE)</span> </h3> <ul><li> <a name="HARMONY-SIMPLE:*SERVER*"> </a> <article id="SPECIAL HARMONY-SIMPLE:*SERVER*"> <header class="special"> <span class="type">special</span>  <h4 class="name"><code><a href="#SPECIAL%20HARMONY-SIMPLE%3A%2ASERVER%2A">*SERVER*</a></code></h4>  </header> <div class="docstring"><pre>This variable holds the currently active SERVER instance.
+
+See <a href="#HARMONY:SERVER">HARMONY:SERVER</a>
+See <a href="#HARMONY-SIMPLE:INITIALIZE">INITIALIZE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:DEFAULT-SERVER"> </a> <article id="CLASS HARMONY-SIMPLE:DEFAULT-SERVER"> <header class="class"> <span class="type">class</span>  <h4 class="name"><code><a href="#CLASS%20HARMONY-SIMPLE%3ADEFAULT-SERVER">DEFAULT-SERVER</a></code></h4>  </header> <div class="docstring"><pre>Subclass for the default server used in harmony-simple.
+
+On initialize-instance this server constructs its own
+pipeline by using MAKE-PIPELINE and a successive
+COMPILE-PIPELINE.
+
+See <a href="#HARMONY:SERVER">HARMONY:SERVER</a>
+See <a href="#HARMONY-SIMPLE:OUTPUT-SPEC">OUTPUT-SPEC</a>
+See <a href="#HARMONY-SIMPLE:MAKE-PIPELINE">MAKE-PIPELINE</a>
+See <a href="#HARMONY:COMPILE-PIPELINE">HARMONY:COMPILE-PIPELINE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:DIRECTION"> </a> <article id="ACCESSOR HARMONY-SIMPLE:DIRECTION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3ADIRECTION">DIRECTION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor for the direction the listener is facing in space.
+
+To set a vector, the value should be a list or a vector
+of three floats. When reading, the returned value is
+always a vector of three floats.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:ENDED-P"> </a> <article id="ACCESSOR HARMONY-SIMPLE:ENDED-P"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3AENDED-P">ENDED-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to whether the source has reached its end or not.
+
+Once a source has been marked as ended, it is
+automatically paused as soon as possible, and then
+removed from its mixer if the mixer is known to the
+source.
+
+And ended source can be started anew by using
+the RESUME function.
+
+See <a href="#HARMONY:STOP">STOP</a>
+See <a href="#HARMONY:RESUME">RESUME</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:LOCATION"> </a> <article id="ACCESSOR HARMONY-SIMPLE:LOCATION"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3ALOCATION">LOCATION</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor for the location of the listener in space.
+
+To set a vector, the value should be a list or a vector
+of three floats. When reading, the returned value is
+always a vector of three floats.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:LOOPING-P"> </a> <article id="ACCESSOR HARMONY-SIMPLE:LOOPING-P"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3ALOOPING-P">LOOPING-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to whether the source should loop after finishing.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:OUTPUT-SPEC"> </a> <article id="ACCESSOR HARMONY-SIMPLE:OUTPUT-SPEC"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3AOUTPUT-SPEC">OUTPUT-SPEC</a></code></h4> <code class="qualifiers"></code> <code class="arguments">OBJECT</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the list of initargs used to construct the output drain for the server.
+
+This list should consist of a class designator and
+the respective make-instance initargs.
+
+See <a href="#HARMONY-SIMPLE:DEFAULT-SERVER">DEFAULT-SERVER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:SOURCE-TYPE"> </a> <article id="ACCESSOR HARMONY-SIMPLE:SOURCE-TYPE"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3ASOURCE-TYPE">SOURCE-TYPE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NAME</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the file type extension to source type mapping.
+
+The name should be a string designating the file
+type, and the value a source class name.
+
+See <a href="NIL">*FILETYPE-SOURCE-MAP*</a>
+See <a href="#HARMONY:DEFINE-SOURCE-TYPE">DEFINE-SOURCE-TYPE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:VELOCITY"> </a> <article id="ACCESSOR HARMONY-SIMPLE:VELOCITY"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3AVELOCITY">VELOCITY</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor for the velocity of the listener in space.
+
+To set a vector, the value should be a list or a vector
+of three floats. When reading, the returned value is
+always a vector of three floats.
+
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:VOLUME"> </a> <article id="ACCESSOR HARMONY-SIMPLE:VOLUME"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3AVOLUME">VOLUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the outputting volume of the volume control segment.
+
+Must be in the range [0, infinity[.
+
+See <a href="NIL">VOLUME-CONTROL</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:INITIALIZE"> </a> <article id="FUNCTION HARMONY-SIMPLE:INITIALIZE"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3AINITIALIZE">INITIALIZE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;REST INITARGS</code><code>)</code>  </header> <div class="docstring"><pre>Constructs and starts the harmony server.
+
+This sets the current value of *SERVER*, unless
+*SERVER* is already non-NIL, in which case it does
+nothing.
+
+See <a href="#HARMONY-SIMPLE:DEFAULT-SERVER">DEFAULT-SERVER</a>
+See <a href="#HARMONY-SIMPLE:*SERVER*">*SERVER*</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:MAKE-SEGMENT"> </a> <article id="FUNCTION HARMONY-SIMPLE:MAKE-SEGMENT"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3AMAKE-SEGMENT">MAKE-SEGMENT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">TYPE &amp;REST ARGS</code><code>)</code>  </header> <div class="docstring"><pre>Create an instance of a segment.
+
+This is a wrapper around MAKE-INSTANCE, making sure to
+supply the current *SERVER* as an initarg.
+
+See <a href="#HARMONY-SIMPLE:*SERVER*">*SERVER*</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:PAUSE"> </a> <article id="FUNCTION HARMONY-SIMPLE:PAUSE"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3APAUSE">PAUSE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;OPTIONAL (THING *SERVER*)</code><code>)</code>  </header> <div class="docstring"><pre>Pauses the server or the given thing.
+
+See <a href="#HARMONY:PAUSE">HARMONY:PAUSE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:PAUSED-P"> </a> <article id="FUNCTION HARMONY-SIMPLE:PAUSED-P"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3APAUSED-P">PAUSED-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;OPTIONAL (THING *SERVER*)</code><code>)</code>  </header> <div class="docstring"><pre>Returns whether the server or the given thing is paused.
+
+See <a href="#HARMONY:PAUSED-P">HARMONY:PAUSED-P</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:PLAY"> </a> <article id="FUNCTION HARMONY-SIMPLE:PLAY"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3APLAY">PLAY</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE-ISH MIXER &amp;REST INITARGS &amp;KEY (SERVER *SERVER*) &amp;ALLOW-OTHER-KEYS</code><code>)</code>  </header> <div class="docstring"><pre>Wrapper around HARMONY:PLAY to use the default server.
+
+See <a href="#HARMONY:PLAY">HARMONY:PLAY</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:RESUME"> </a> <article id="FUNCTION HARMONY-SIMPLE:RESUME"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3ARESUME">RESUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;OPTIONAL (THING *SERVER*)</code><code>)</code>  </header> <div class="docstring"><pre>Resumes the server or the given thing.
+
+See <a href="#HARMONY:RESUME">HARMONY:RESUME</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:SEGMENT"> </a> <article id="FUNCTION HARMONY-SIMPLE:SEGMENT"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3ASEGMENT">SEGMENT</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NAME &amp;OPTIONAL (THING *SERVER*)</code><code>)</code>  </header> <div class="docstring"><pre>Returns the segment in the server with the given name.
+
+If no such segment can be found, NIL is returned instead.</pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:START"> </a> <article id="FUNCTION HARMONY-SIMPLE:START"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3ASTART">START</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;OPTIONAL (THING *SERVER* T-P)</code><code>)</code>  </header> <div class="docstring"><pre>Starts the server or the given thing.
+
+See <a href="#HARMONY:START">HARMONY:START</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:STARTED-P"> </a> <article id="FUNCTION HARMONY-SIMPLE:STARTED-P"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3ASTARTED-P">STARTED-P</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;OPTIONAL (THING *SERVER*)</code><code>)</code>  </header> <div class="docstring"><pre>Returns whether the server or the given thing is started.
+
+See <a href="#HARMONY:STARTED-P">HARMONY:STARTED-P</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:STOP"> </a> <article id="FUNCTION HARMONY-SIMPLE:STOP"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3ASTOP">STOP</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;OPTIONAL (THING *SERVER*)</code><code>)</code>  </header> <div class="docstring"><pre>Stops the server or the given thing.
+
+See <a href="#HARMONY:STOP">HARMONY:STOP</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:ADD"> </a> <article id="GENERIC HARMONY-SIMPLE:ADD"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY-SIMPLE%3AADD">ADD</a></code></h4> <code class="qualifiers"></code> <code class="arguments">BUFFER SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Add the object to the given collection.
+
+For segment-sequences this means adding a segment to
+the sequence. For mixers this means adding another
+input buffer.
+
+See <a href="NIL">SEGMENT-SEQUENCE</a>
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:FADE"> </a> <article id="GENERIC HARMONY-SIMPLE:FADE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY-SIMPLE%3AFADE">FADE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">FADABLE TO TIME &amp;KEY BY FROM</code><code>)</code>  </header> <div class="docstring"><pre>Cause the segment to start fading as soon as possible.
+
+TIME should be a float, specifying the duration
+of the fade in seconds. If :FROM is not specified,
+it is taken to be current volume of the segment.
+BY should be a function of one float argument
+and one return value.
+
+See <a href="NIL">EASING-FUNCTION</a>
+See <a href="#HARMONY:FADABLE">FADABLE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:MAKE-PIPELINE"> </a> <article id="GENERIC HARMONY-SIMPLE:MAKE-PIPELINE"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY-SIMPLE%3AMAKE-PIPELINE">MAKE-PIPELINE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SERVER</code><code>)</code>  </header> <div class="docstring"><pre>Constructs a pipeline for the given server.
+
+See <a href="#HARMONY:SERVER">HARMONY:SERVER</a>
+See <a href="#HARMONY:PIPELINE">HARMONY:PIPELINE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:SEEK"> </a> <article id="GENERIC HARMONY-SIMPLE:SEEK"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY-SIMPLE%3ASEEK">SEEK</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE POSITION &amp;KEY MODE BY</code><code>)</code>  </header> <div class="docstring"><pre>Seek the source to the requested position.
+
+MODE may be either :ABSOLUTE or :RELATIVE,
+where relative denotes the requested position
+to be relative to the current position.
+BY may be either :SAMPLE or :SECOND, where
+:SAMPLE denotes the specific requested sample
+position in the source's stream, and :SECOND
+requests the approximate playback time in
+seconds.
+
+See <a href="#HARMONY:SOURCE">SOURCE</a>
+See <a href="#HARMONY:SEEK-TO-SAMPLE">SEEK-TO-SAMPLE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:SOURCES"> </a> <article id="GENERIC HARMONY-SIMPLE:SOURCES"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY-SIMPLE%3ASOURCES">SOURCES</a></code></h4> <code class="qualifiers"></code> <code class="arguments">MIXER</code><code>)</code>  </header> <div class="docstring"><pre>Returns a list of all segments currently connected to the mixer.
+
+Note that these segments are not necessarily of type
+SOURCE.
+
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:WITHDRAW"> </a> <article id="GENERIC HARMONY-SIMPLE:WITHDRAW"> <header class="generic"> <span class="type">generic</span>  <code>(</code><h4 class="name"><code><a href="#GENERIC%20HARMONY-SIMPLE%3AWITHDRAW">WITHDRAW</a></code></h4> <code class="qualifiers"></code> <code class="arguments">BUFFER SEGMENT</code><code>)</code>  </header> <div class="docstring"><pre>Remove the object from the given collection.
+
+For segment-sequences this means removing the segment
+from the sequence. For mixers this means removing
+the given input buffer.
+
+See <a href="NIL">SEGMENT-SEQUENCE</a>
+See <a href="#HARMONY:MIXER">MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:DEFINE-SOURCE-TYPE"> </a> <article id="MACRO HARMONY-SIMPLE:DEFINE-SOURCE-TYPE"> <header class="macro"> <span class="type">macro</span>  <code>(</code><h4 class="name"><code><a href="#MACRO%20HARMONY-SIMPLE%3ADEFINE-SOURCE-TYPE">DEFINE-SOURCE-TYPE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NAME TYPE</code><code>)</code>  </header> <div class="docstring"><pre>Conveniently define a source type mapping.
+
+See <a href="#HARMONY:SOURCE-TYPE">SOURCE-TYPE</a></pre></div> </article> </li></ul> </li></ul> </article>  </main> </body> </html> 
