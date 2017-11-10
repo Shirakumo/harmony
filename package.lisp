@@ -50,6 +50,8 @@
    #:space-mixer
    #:location
    #:velocity
+   #:input-location
+   #:input-velocity
    #:direction
    #:up
    #:soundspeed
