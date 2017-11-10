@@ -150,9 +150,12 @@
              (setf (segment (name segment) server) segment)
           finally (setf device segment))
     (with-body-in-server-thread (server :synchronize T)
+      (when old-sequence
+        (cl-mixed:end old-sequence))
       (setf (device server) device)
       (setf (buffers server) buffers)
-      (setf (segment-sequence server) sequence))
+      (setf (segment-sequence server) sequence)
+      (cl-mixed:start sequence))
     (when old-sequence
       (free old-sequence))
     (when old-buffers
