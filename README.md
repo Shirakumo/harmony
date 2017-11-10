@@ -6,9 +6,9 @@ A very basic sound system can be gained by loading the `harmony-simple` system a
 
     (ql:quickload :harmony-simple)
 
-Before any audio can be played, the audio server needs to be started up.
+Before any audio can be played, the audio server needs to be initialised.
 
-    (harmony-simple:start)
+    (harmony-simple:initialize)
 
 Once the server is running, we need some files to play. Harmony-simple sets up a pipeline that supports three distinct mixers: `:music`, `:sfx`, and `:voice`. The latter two mixers provide 3D audio, allowing you to place the sources in 3D space. Playing a file simply happens through the `play` function.
 
@@ -24,11 +24,11 @@ If you need to pause the sound playback entirely, you can also use `pause` and `
 ## Constructing Your Own Pipeline
 If you want a pipeline that is a bit more involved than what harmony-simple gives you, perhaps to add certain effects or other kinds of shenanigans, you can easily build that pipeline. Before you do, though, you should get briefly acquainted with [cl-mixed](https://shirakumo.github.io/cl-mixed), or at least with the segments it provides. Harmony uses libmixed underneath to do most of the audio processing and mixing, and in itself only provides a sound server, and a convenient way to handle segments and create a pipeline.
 
-Here's an example of a pipeline consisting of an output, a LADSPA plugin, and a linear mixer. You'll need a server beforehand, which you can get by simply instantiating `harmony:server`.
+Here's an example of a pipeline consisting of an output, a LADSPA plugin, and a basic mixer. You'll need a server beforehand, which you can get by simply instantiating `harmony:server`.
 
     (let* ((pipeline (make-instance 'harmony:pipeline))
            (output (make-instance 'harmony-out123:out123-drain :server server))
-           (master (make-instance 'harmony:linear-mixer :server server :name :master))
+           (master (make-instance 'harmony:basic-mixer :server server :name :master))
            (ladspa (make-instance 'cl-mixed:ladspa :samplerate (harmony:samplerate server)
                                                    :file #p"ladspa-plugin.so")))
       (harmony:connect pipeline ladspa 0 output 0)
@@ -43,39 +43,43 @@ Once the pipeline has been compiled to the server, you can start by adding segme
 
 When you construct the pipeline, Harmony takes care of properly allocating the necessary internal buffers, connecting the segments as required, and determining the proper order in which to process them.
 
-## Extending Harmony's Sources
-If you would like to add support for an additional audio format, or some other kind of audio source, you'll want to look into creating your own source class. A relatively simple example of how to do so is shown in the [provided mp3 source](sources/mp3.lisp). Generally the procedure is as follows:
+## Extending Harmony's Segment
+Segments are the lifeblood of Harmony. Through segments you get audio data into the pipeline, transform it as you need, and finally even output it to be heard. Being able to define custom and new segments is therefore the primary way in which to extend Harmony's functionality.
 
-    (defclass my-source (source)
-      ())
+One of the easiest things to do is to define a new source. Let's do that with a sine wave generator. As a first step, we'll need to define a class.
+
+    (defclass sine (source cl-mixed:virtual)
+      ((sine-phase :initform 0 :accessor sine-phase))
+
+The class inherits from `source` to get useful functionality for fading, pausing, and seeking. We also inherit from `cl-mixed:virtual` as this segment won't have a segment defined in C to support it underneath. Instead, we can now extend all the functionality of the segment from the lisp side.
+
+As part of the contract of subclassing `source`, we need to implement a method on `seek-to-sample`. Let's do that:
     
-    (defmethod initialize-instance :after ((source my-source) &key)
-      (setf (decoder source) #'decode))
+    (defmethod seek-to-sample ((source sine) position)
+      (setf (sine-phase source) (mod position (samplerate (server source)))))
+
+We'll be using the `sine-phase` to track the current phase of our sine wave, so in order to "seek" we'll need to adjust it here. Naturally you won't really be able to hear the effects of seeking on a sine wave generator, but for other sources proper seeking behaviour can be vital.
+
+Finally we need to implement the actual sample generation, which for all `source`s happens in `process`:
     
-    (defmethod initialize-channel ((source my-source))
-      #| Read source and determine properties |#
-      (cl-mixed:make-channel #| source file properties here |#))
-    
-    (defmethod seek-to-sample ((source my-source) position)
-      #| Seek somehow |#)
-    
-    (defun decode (samples source)
-      (let ((c-buffer (cl-mixed:data (cl-mixed:channel source))))
-        #| Process the source file, write samples into c-buffer. |#
-        #| Handle end-of-source / looping |#))
+    (defmethod process ((source sine) samples)
+      (let ((buffers (outputs source))
+            (phase (sine-phase source))
+            (factor (* 2 PI 440 (/ (samplerate (server source))))))
+        (loop for i from 0 below samples
+              for sample = (sin (coerce (* factor phase) 'single-float))
+              do (loop for buffer across buffers
+                       do (setf (cffi:mem-aref (cl-mixed:data buffer) :float i) sample))
+                 (incf phase))
+        (setf (sine-phase source) (mod phase (samplerate (server source))))))
 
-Naturally you'll want to read up on the underlying [cl-mixed](https://shirakumo.github.io/cl-mixed) library. The system should be able to handle conversion of sample types, buffer layouts, and even sample rates. All you need to do is properly initialise the channel object and write the raw data into the c-buffer.
+First we extract the output buffer vector and the current phase, and calculate the constant factor for the wave. We then iterate over the number of samples we need to generate, and set the sample at the corresponding position in each buffer. Note that buffers contain C arrays and as such we need to use CFFI's `mem-aref` instead of Lisp's `aref`. Once we're done with the sample generation we update the phase in our instance.
 
-When constructing the channel, you'll most likely want to try to match your source's sample rate, buffer size, and sample format with that of the server, if at all possible. The `server`, `samplerate`, and `buffersize` functions will be useful for that. The server's internal sample format is always single-floats.
+And that's it. You can now test your sine generator with `(harmony-simple:play 'sine :music)`.
 
-You don't necessarily have to support seeking in your source, but it is highly recommended to take the effort to provide it, or in the very least provide a way to seek back to the beginning.
+STUFF STUFF STUFF
 
-If your source does indeed read from a file, you'll probably also want to register the file type with the system, so that `play` automatically knows to use your source.
-
-    (define-source-type "what" my-source)
-
-## Extending Harmony's Drains
-Drains function almost completely analogous to sources, with the exception that they don't fill the c-buffer, but rather read it out. Thus, drains would be useful to write to a file, or output them to a sound server on your operating system. The standard `harmony-out123:out123-drain` already provides the latter for you, so unless you need special support for that, there is no need to create additional ones.
+Naturally you'll want to read up on the underlying [cl-mixed](https://shirakumo.github.io/cl-mixed) library.
 
 ## Also See
 
