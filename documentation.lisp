@@ -16,16 +16,41 @@ sends it off somewhere outside of the pipeline for
 further processing.
 
 A class that implements this protocol must implement
-the INITIALIZE-CHANNEL method, and must set the
-DECODER slot to a valid function of two arguments,
-the first of which being a number of samples to
-consume, the second being the class instance itself.
+a primary method on PROCESS to handle the audio
+processing step.
 
-See CL-MIXED:DRAIN
 See SEGMENT
-See DECODER
-See CHANNEL-FUNCTION
-See REMIX-FACTOR"))
+See PROCESS")
+
+  (type pack-drain
+    "Superclass for drains that pack to a compact format first.
+
+This drain performs a preprocessing of the input
+buffers by merging them, and possibly converting
+or resampling them, into a single C array of
+audio samples.
+
+This is convenient for a lot of external libraries
+and APIs that expect a singular C buffer of samples
+in a specific format.
+
+A class that implements this protocol must implement
+a primary method on INITIALIZE-PACKED-AUDIO, which
+should return a valid PACKED-AUDIO instance that
+holds and describes the expected audio format
+properties.
+
+See DRAIN
+See REMIX-FACTOR
+See PACKED-AUDIO
+See INITIALIZE-PACKED-AUDIO
+See CL-MIXED:PACKED-AUDIO")
+
+  (function pack-mix-function
+    "Accessor to the function pointer for the packer segment's mix function.
+
+See CL-MIXED:PACKER
+See PACK-DRAIN"))
 
 ;; fadable.lisp
 (docs:define-docs
@@ -110,28 +135,39 @@ See FADABLE")
 You should call this function at the end of every
 iteration of your primary mixing of the segment.
 
-See FADABLE")
-  
-  (function ease-linear
-    "Linear easing.
+See FADABLE"))
 
-X -> X")
-  
-  (function ease-cubic-in
-    "Cubic-in easing.
+;; files.lisp
+(docs:define-docs
+  (variable *filetype-source-map*
+    "This map stores the associations of file type extensions to source class names.
 
-X -> X³")
-  
-  (function ease-cubic-out
-    "Cubic-out easing.
+See SOURCE-TYPE")
 
-X -> 1+(x-1)³")
-  
-  (function ease-cubic-in-out
-    "Cubic-in-out easing.
+  (function source-type
+    "Accessor to the file type extension to source type mapping.
 
-X -> (2*x)³/2       | If x <  0.5
-     1+(2*(x-1))³/2 | otherwise"))
+The name should be a string designating the file
+type, and the value a source class name.
+
+See *FILETYPE-SOURCE-MAP*
+See DEFINE-SOURCE-TYPE")
+
+  (function define-source-type
+    "Conveniently define a source type mapping.
+
+See SOURCE-TYPE")
+
+  (type file-source
+    "Superclass for sources that back a file.
+
+See SOURCE
+See FILE")
+
+  (function file
+    "Accessor to the pathname of the file the file-source reads from.
+
+See FILE-SOURCE"))
 
 ;; mixers.lisp
 (docs:define-docs
@@ -145,11 +181,18 @@ compile the entire pipeline. Any source dynamically
 attached to a mixer should /not/ be part of the
 pipeline, as otherwise it is processed multiple times.
 
+Any class that implements this protocol must implement
+a method on CHANNELS-PER-SOURCE which returns the
+number of used input buffers for each source that is
+added to the mixer.
+
 See SEGMENT
+See CL-MIXED:MIXER
 See BUFFERS
+See SOURCES
 See ADD
 See WITHDRAW
-See SOURCCES")
+See CHANNELS-PER-SOURCE")
   
   (function buffers
     "Accessor to the sequence of buffers.
@@ -160,14 +203,22 @@ you're doing.
 
 See MIXER
 See SERVER")
-  
-  (function sources
-    "Returns a list of source segments attached to the mixer.
 
-See MIXER.")
+  (function sources
+    "Returns a list of all segments currently connected to the mixer.
+
+Note that these segments are not necessarily of type
+SOURCE.
+
+See MIXER")
   
-  (type linear-mixer
-    "This mixer simply linearly adds all its sources together.
+  (function channels-per-source
+    "Returns the number of channel buffers each source should provide.
+
+See MIXER")
+  
+  (type basic-mixer
+    "This mixer simply adds all its sources together.
 
 Note that unless you control the volume of your
 sources carefully, this can easily result in the
@@ -181,7 +232,7 @@ you must specify it via its initarg.
 Each source connected to the mixer /must/ have as
 many outputs as this mixer has channels.
 
-See CL-MIXED:LINEAR-MIXER
+See CL-MIXED:BASIC-MIXER
 See MIXER")
   
   (type space-mixer
@@ -211,7 +262,7 @@ functions for sources as you would for the mixer. In
 the case of the mixer, the location and velocity are
 to be interpreted as those of the listener.
 
-See CL-MIXED:SPACE
+See CL-MIXED:SPACE-MIXER
 See MIXER
 See LOCATION
 See VELOCITY
@@ -410,11 +461,17 @@ A segment must carry a reference to the server
 that it is running on. This reference can be
 supplied through the :SERVER initarg.
 
+Segments can have a name, which allows them to be
+found again through the server object, when they
+appear in the server's pipeline.
+
 Note that even segments that are not derived
 from this class, but rather the underlying class
 CL-MIXED:SEGMENT may be used in a pipeline.
 
-See CL-MIXED:SEGMENT")
+See CL-MIXED:SEGMENT
+See SERVER
+See NAME")
   
   (function server
     "Accessor to the segment's server.
@@ -464,21 +521,30 @@ device will likely result in bad audio quality and
 distortions, as the audio data needs to be
 resampled.
 
+The number of actual samples being processed each
+run is controlled by the SAMPLES field, and can be
+changed at runtime. Note however that setting this
+to a value higher than BUFFERSIZE will most likely
+spawn demons in your pants and crash your Lisp.
+
 See SEGMENT-MAP
+See SAMPLES
 See BUFFERSIZE
 See SAMPLESIZE
 See DEVICE
-See PIPELINE-MIXER
+See SEGMENT-SEQUENCE
 See BUFFERS
 See THREAD
 See COMPILE-PIPELINE
-See EVALUATION-QUEUE
+See EVALUATION-QUEUE-HEAD
+See EVALUATION-QUEUE-TAIL
 See EVALUATION-LOCK
 See SEGMENT
 See SEGMENTS
 See START
+See STARTED-P
 See STOP
-See PROCESS
+See RUN
 See CALL-IN-SERVER-THREAD
 See PAUSED-P
 See PAUSE
@@ -492,9 +558,21 @@ This map is usually populated by COMPILE-PIPELINE.
 See NAME
 See SERVER
 See SEGMENT")
+
+  (function samples
+    "Accessor to the number of samples the server processes each iteration.
+
+See SERVER")
   
   (function buffersize
-    "Returns the number of samples in a buffer on the server.
+    "Accessor to the number of samples in a buffer on the server.
+
+This is SETFable, but note that this will only
+adapt the buffers constructed through the pipeline.
+Buffers, and especially internal data arrays, are
+not adjusted and may not be able to hold the
+required amount of data if you increase the buffer
+size. Use at your own risk.
 
 See SERVER")
   
@@ -517,14 +595,15 @@ data.
 
 See SERVER")
   
-  (function pipeline-mixer
-    "Accessor to the 'mixer' of the server.
+  (function segment-sequence
+    "Accessor to the segment-sequence of the server.
 
 This object handles the invocation of the segments
 in their proper order. It is usually created and
 assigned by COMPILE-PIPELINE.
 
-See CL-MIXED:MIXER")
+See CL-MIXED:SEGMENT-SEQUENCE
+See SERVER")
   
   (function thread
     "Accessor to the background processing thread of the server.
@@ -533,11 +612,12 @@ If this is NIL, you may assume that the server
 is currently not processing any data.
 
 See START
+See STARTED-P
 See STOP
 See PROCESS")
   
-  (function evaluation-queue
-    "Accessor to the list of functions the server should evaluate.
+  (function evaluation-queue-head
+    "Accessor to the head of the list of functions the server should evaluate.
 
 This list is used to cause functions to be run
 inside the server thread, forcing a
@@ -547,7 +627,18 @@ race conditions or other kinds of problems that
 might wreck the system.
 
 See SERVER
-See CALL-IN-SERVER-THREAD")
+See CALL-IN-SERVER-THREAD
+See EVALUATION-LOCK")
+
+  (function evaluation-queue-tail
+    "Accessor to the tail end of the list of functions the server should evaluate.
+
+This always references a CONS whose CDR can be
+used to append new functions to the queue.
+
+See SERVER
+See CALL-IN-SERVER-THREAD
+See EVALUATION-LOCK")
   
   (function evaluation-lock
     "Accessor to the lock used to secure the evaluation queue.
@@ -575,6 +666,14 @@ started, an error is signalled.
 
 See THREAD
 See SERVER
+See STARTED-P
+See STOP")
+
+  (function started-p
+    "Returns true if the server has been started already and is currently running.
+
+See SERVER
+See START
 See STOP")
   
   (function stop
@@ -590,9 +689,10 @@ set to T.
 See THREAD
 See SERVER
 See START
+See STARTED-P
 See ENDED-P")
   
-  (function process
+  (function run
     "This function is called by the background processing thread of the server.
 
 It is responsible for starting, ending, and mixing
@@ -632,7 +732,8 @@ of the server at least once.
 
 See WITH-BODY-IN-SERVER-THREAD
 See *IN-PROCESSING-THREAD*
-See EVALUATION-QUEUE
+See EVALUATION-QUEUE-HEAD
+See EVALUATION-QUEUE-TAIL
 See EVALUATION-LOCK")
   
   (function with-body-in-server-thread
@@ -642,11 +743,6 @@ See CALL-IN-SERVER-THREAD"))
 
 ;; source.lisp
 (docs:define-docs
-  (variable *filetype-source-map*
-    "This map stores the associations of file type extensions to source class names.
-
-See SOURCE-TYPE")
-  
   (type source
     "Superclass for all of Harmony's source segments.
 
@@ -656,33 +752,26 @@ it on the fly, or by reading it from a file or
 some kind of stream.
 
 A class that implements this protocol must implement
-the INITIALIZE-CHANNEL method, and must set the
-DECODER slot to a valid function of two arguments,
-the first of which being a number of samples to
-consume, the second being the class instance itself.
+a primary method on PROCESS to output samples to its
+connected buffers.
+
 Furthermore it must implement the SEEK-TO-SAMPLE
 method to provide seeking. If it cannot seek, even
 in the most imprecise way, it must implement that
 method to signal an error.
 
-See CL-MIXED:SOURCE
-See INITIALIZE-CHANNEL
 See FADABLE
 See LOOPING-P
 See PAUSED-P
 See ENDED-P
-See DECODER
 See SAMPLE-POSITION
-See REMIX-FACTOR
-See CHANNEL-FUNCTION
-See MIXER
+See PROCESS
 See PAUSE
 See RESUME
 See STOP
 See SEEK
 See SEEK-TO-SAMPLE
-See LOCATION
-See VELOCITY")
+See PLAY")
   
   (function looping-p
     "Accessor to whether the source should loop after finishing.
@@ -710,23 +799,6 @@ the RESUME function.
 See STOP
 See RESUME")
   
-  (function decoder
-    "Accessor to the decoder function of the source or drain.
-
-This function is responsible for processing the
-audio samples between the external device it is
-interacting with and the internal audio buffers.
-For sources this means filling the raw audio
-buffer of the channel, and for drains this means
-processing the raw audio buffer of the channel.
-
-This function is automatically called during the
-mixing of a source or drain as long as it is not
-paused and hasn't ended.
-
-See SOURCE
-See DRAIN")
-  
   (function sample-position
     "Returns the sample counter for the source.
 
@@ -739,30 +811,19 @@ samplerate, rather than the server's samplerate.
 It is updated during mixing.
 
 See SOURCE")
-  
-  (function remix-factor
-    "Returns the conversion factor between the channel's and the server's samplerate.
 
-See SOURCE
-See DRAIN")
-  
-  (function channel-function
-    "Accessor to the original C-function used to process the channel in a source/drain.
+  (function process
+    "This function is responsible for invoking the actual sample processing step of a segment.
 
-You should probably not have to touch this.
+Note that not all segments will call this function,
+and unless you do so yourself, currently only SOURCE
+and DRAIN will.
 
-See SOURCE
-See DRAIN")
-  
-  (function mixer
-    "Accessor to the mixer that this source was added to.
+In general a call to this function should result in
+samples from the connected input buffers to be read
+and samples to the connected output buffers to be
+written.
 
-See SOURCE")
-  
-  (function initialize-channel
-    "This function creates the appropriate channel instance for use with the source/drain.
-
-See CL-MIXED:CHANNEL
 See SOURCE
 See DRAIN")
   
@@ -807,34 +868,161 @@ must implement a method for this function.
 See SEEK
 See SOURCE")
 
-  (function source-type
-    "Accessor to the file type extension to source type mapping.
-
-The name should be a string designating the file
-type, and the value a source class name.
-
-See *FILETYPE-SOURCE-MAP*
-See DEFINE-SOURCE-TYPE")
-
-  (function define-source-type
-    "Conveniently define a source type mapping.
-
-See SOURCE-TYPE")
-
   (function play
-    "Conveniently play back a file on the designated mixer of the server.
+    "Conveniently play back a source on the designated mixer of the server.
 
-By default the source type to use is determined by
-the file type extension in the given path. If no
-corresponding source type is known, an error is
-signalled.
+In general PLAY is responsible for creating or
+initialising a source if necessary, adding it to the
+specified mixer, and playing it back.
 
-The given mixer may either be a segment, or the name
-of a registered segment on the server to add the
-constructed source to.
+PLAY is supposed to be \"smart\" about its arguments
+and will coerce where possible. For instance, the
+SOURCE-ISH can be a symbol, class, source, or
+pathname. The mixer can be either a symbol or a
+mixer. Additional coercions could be added through 
+libraries.
 
-See SEGMENT
-See SOURCE-TYPE
-See VOLUME
-See FADE
-See ADD"))
+The INITARGS are either creation initargs for new
+sources, or REINITIALIZE-INSTANCE initargs for
+existing sources.
+
+See SOURCE")
+
+  (type unpack-source
+    "Superclass for sources that unpack from a compact format first.
+
+This source performs postprocessing of a data array
+by splitting it out to the connected output buffers,
+and possibly converting or resampling it as
+necessary.
+
+This is convenient for a lot of external libraries
+and APIs that provide a singular C buffer of samples
+in a specific format.
+
+A class that implements this protocol must implement
+a primary method on INITIALIZE-PACKED-AUDIO, which
+should return a valid PACKED-AUDIO instance that
+holds and describes the provided audio format
+properties.
+
+See SOURCE
+See REMIX-FACTOR
+See PACKED-AUDIO
+See INITIALIZE-PACKED-AUDIO
+See FILL-FOR-UNPACK-SOURCE")
+
+  (function unpack-mix-function
+    "Accessor to the foreign function pointer for the unpacker segment mix function.
+
+See CL-MIXED:UNPACKER
+See UNPACK-SOURCE")
+
+  (function remix-factor
+    "Returns the conversion factor between the channel's and the server's samplerate.
+
+See SOURCE
+See DRAIN")
+
+  (function packed-audio
+    "Accessor to the packed-audio instance of the source/drain.
+
+See CL-MIXED:PACKED-AUDIO
+See UNPACK-SOURCE
+See PACK-DRAIN")
+
+  (function initialize-packed-audio
+    "This function should return a packed-audio instance.
+
+The instance should contain a pointer to a C array
+of opaque samples, as well as a precise description
+of the way in which the samples are laid out, as well
+as what their rate and format is.
+
+See CL-MIXED:PACKED-AUDIO
+See UNPACK-SOURCE
+See PACK-DRAIN")
+
+  (function fill-for-unpack-source
+    "This is a convenience function for unpack sources.
+
+Handling the edge-cases of reaching the output end
+and looping properly can be a bit tricky. This
+function takes care of properly filling the packed
+audio array with data while handling the necessary
+wraparound or zeroing in case of stream end.
+
+DIRECT-READ should be a function of three arguments:
+  ARG    --- The arg passed into the function.
+  BUFFER --- A pointer to the C array of data.
+  BYTES  --- The number of bytes to write into it."))
+
+;; toolkit.lisp
+(docs:define-docs
+  (function memcpy
+    "Copy memory from one region to another.
+
+This is the libc memcpy().
+  DEST   --- A destination array pointer.
+  SOURCE --- A source array pointer.
+  NUM    --- The number of bytes to copy.
+
+See memcpy()")
+
+  (function memset
+    "Set memory in a region to a particular byte.
+
+This is the libc memset().
+  DEST   --- A destination array pointer.
+  SOURCE --- A source byte to set the array with.
+  NUM    --- The number of bytes to copy.
+
+See memset()")
+
+  (function memclear
+    "Clear the memory in a region to zero.
+
+This is a tiny wrapper around memset.
+  DEST   --- A destination array pointer.
+  NUM    --- The number of bytes to copy.
+
+See MEMSET")
+  
+  (function ease-linear
+    "Linear easing.
+
+X -> X")
+  
+  (function ease-cubic-in
+    "Cubic-in easing.
+
+X -> X³")
+  
+  (function ease-cubic-out
+    "Cubic-out easing.
+
+X -> 1+(x-1)³")
+  
+  (function ease-cubic-in-out
+    "Cubic-in-out easing.
+
+X -> (2*x)³/2       | If x <  0.5
+     1+(2*(x-1))³/2 | otherwise"))
+
+;; sources/buffer.lisp
+(docs:define-docs
+  (type buffer-source
+    "In-memory buffer source.
+
+This source simply copies the data from its preset
+buffers to the output buffers as it is mixed.
+
+This is mostly useful for very low-latency effects
+that you can keep entirely in memory ahead of time.
+For instance, you could decode a wave file into the
+corresponding BUFFER instances and then instantiate
+buffer-sources from those whenever the effect should
+be played.
+
+See CL-MIXED:VIRTUAL
+See SOURCE"))
