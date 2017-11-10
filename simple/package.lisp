@@ -13,6 +13,8 @@
   (:export
    #:*server*
    #:default-server
+   #:output-spec
+   #:make-segment
    #:make-pipeline
    #:play
    #:segment)
