@@ -97,7 +97,7 @@
                                     :count (channels drain))))
       (setf (ring-buffers drain) ring)
       (dotimes (i (channels drain))
-        (harmony-coreaudio-cffi:make-ring-buffer 1024 ring)
+        (harmony-coreaudio-cffi:make-ring-buffer (* 1024 4) ring)
         (cffi:incf-pointer ring (cffi:foreign-type-size '(:struct harmony-coreaudio-cffi:ring-buffer)))))
     ;; Prepare needed information
     (create-component-description description)
