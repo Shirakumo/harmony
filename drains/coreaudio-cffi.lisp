@@ -9,15 +9,105 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (:nicknames #:org.shirakumo.fraf.harmony.drains.coreaudio.cffi)
   (:use #:cl #:cffi)
   (:export
-   ))
+   #:audio-unit
+   #:audio-toolbox
+   #:kAudioUnitType_Output
+   #:kAudioUnitSubType_DefaultOutput
+   #:kAudioUnitManufacturer_Apple
+   #:kAudioFormatLinearPCM
+   #:kAudioUnitProperty_StreamFormat
+   #:kAudioUnitProperty_SetRenderCallback
+   #:kAudioUnitScope_Input
+   #:kAudioFormatFlagsNativeEndian
+   #:kAudioFormatFlagIsFloat
+   #:kAudioFormatFlagIsPacked
+   #:kAudioFormatFlagsNativeFloatPacked
+   #:no-err
+   #:os-type
+   #:os-status
+   #:audio-component
+   #:component-instance
+   #:component-result
+   #:audio-component-instance
+   #:audio-unit
+   #:audio-unit-property-id
+   #:audio-unit-scope
+   #:audio-unit-element
+   #:audio-format-id
+   #:audio-format-flags
+   #:render-action-flags
+   #:component-instance-record
+   #:component-instance-record-data
+   #:audio-component-description
+   #:audio-component-description-component-type
+   #:audio-component-description-component-sub-type
+   #:audio-component-description-component-manufacturer
+   #:audio-component-description-component-flags
+   #:audio-component-description-component-flags-mask
+   #:audio-stream-basic-description
+   #:audio-stream-basic-description-sample-rate
+   #:audio-stream-basic-description-format-id
+   #:audio-stream-basic-description-format-flags
+   #:audio-stream-basic-description-bytes-per-packet
+   #:audio-stream-basic-description-frames-per-packet
+   #:audio-stream-basic-description-bytes-per-frame
+   #:audio-stream-basic-description-channels-per-frame
+   #:audio-stream-basic-description-bits-per-channel
+   #:audio-stream-basic-description-reserved
+   #:au-render-callback-struct
+   #:au-render-callback-struct-input-proc
+   #:au-render-callback-struct-input-proc-ref-con
+   #:smpte-time
+   #:smpte-time-subframes
+   #:smpte-time-subframe-dicisor
+   #:smpte-time-counter
+   #:smpte-time-type
+   #:smpte-time-flags
+   #:smpte-time-hours
+   #:smpte-time-minutes
+   #:smpte-time-seconds
+   #:smpte-time-frames
+   #:audio-time-stamp
+   #:audio-time-stamp-sample-time
+   #:audio-time-stamp-host-time
+   #:audio-time-stamp-rate-scalar
+   #:audio-time-stamp-word-clock-time
+   #:audio-time-stamp-smpte-time
+   #:audio-time-stamp-flags
+   #:audio-time-stamp-reserved
+   #:audio-buffer
+   #:audio-buffer-number-channels
+   #:audio-buffer-data-byte-size
+   #:audio-buffer-data
+   #:audio-buffer-list
+   #:audio-buffer-list-number-buffers
+   #:audio-buffer-list-buffers
+   #:audio-component-find-next
+   #:audio-component-instance-new
+   #:audio-component-instance-dispose
+   #:audio-unit-set-property
+   #:audio-unit-initialize
+   #:audio-unit-uninitialize
+   #:audio-output-unit-start
+   #:audio-output-unit-stop
+   #:ring-buffer
+   #:ring-buffer-data
+   #:ring-buffer-size
+   #:ring-buffer-read-start
+   #:ring-buffer-write-start
+   #:make-ring-buffer
+   #:free-ring-buffer
+   #:ring-buffer-write
+   #:ring-buffer-read
+   #:ring-buffer-render))
 (in-package #:org.shirakumo.fraf.harmony.drains.coreaudio.cffi)
 
 ;; https://github.com/rweichler/coreaudio-examples/blob/master/CH07_AUGraphSineWave/main.c
 (define-foreign-library audio-unit
-    (:darwin (:framework "AudioUnit")))
+  (:darwin (:framework "AudioUnit")))
 
 (define-foreign-library audio-toolbox
-    (:darwin (:framework "AudioToolbox")))
+  (:darwin (:framework "AudioToolbox")))
 
 (use-foreign-library audio-unit)
 (use-foreign-library audio-toolbox)
@@ -73,7 +163,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 
 ;; Enums
 (defcenum render-action-flags
-    (:pre-render #.(ash 1 2))
+  (:pre-render #.(ash 1 2))
   (:post-render #.(ash 1 3))
   (:output-is-silence #.(ash 1 4))
   (:preflight #.(ash 1 5))
@@ -84,17 +174,17 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 
 ;; Structs
 (defcstruct (component-instance-record :conc-name component-instance-record-)
-    (data :long :count 1))
+  (data :long :count 1))
 
 (defcstruct (audio-component-description :conc-name audio-component-description-)
-    (component-type os-type)
+  (component-type os-type)
   (component-sub-type os-type)
   (component-manufacturer os-type)
   (component-flags :uint32)
   (component-flags-mask :uint32))
 
 (defcstruct (audio-stream-basic-description :conc-name audio-stream-basic-description-)
-    (sample-rate :double)
+  (sample-rate :double)
   (format-id audio-format-id)
   (format-flags audio-format-flags)
   (bytes-per-packet :uint32)
@@ -105,11 +195,11 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (reserved :uint32))
 
 (defcstruct (au-render-callback-struct :conc-name au-render-callback-struct-)
-    (input-proc :pointer)
+  (input-proc :pointer)
   (input-proc-ref-con :pointer))
 
 (defcstruct (smpte-time :conc-name smpte-time-)
-    (subframes :int16)
+  (subframes :int16)
   (subframe-divisor :int16)
   (counter :uint32)
   (type :uint32)
@@ -120,7 +210,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (frames :int16))
 
 (defcstruct (audio-time-stamp :conc-name audio-time-stamp-)
-    (sample-time :double)
+  (sample-time :double)
   (host-time :uint64)
   (rate-scalar :double)
   (word-clock-time :uint64)
@@ -129,12 +219,12 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (reserved :uint32))
 
 (defcstruct (audio-buffer :conc-name audio-buffer-)
-    (number-channels :uint32)
+  (number-channels :uint32)
   (data-byte-size :uint32)
   (data :pointer))
 
 (defcstruct (audio-buffer-list :conc-name audio-buffer-list-)
-    (number-buffers :uint32)
+  (number-buffers :uint32)
   (buffers (:struct audio-buffer) :count 1))
 
 ;; Funcs
@@ -149,7 +239,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 (defcfun (audio-component-instance-dispose "AudioComponentInstanceDispose") os-status
   (component audio-component-instance))
 
-(defcfun (audio-unit-set-property "AudioUnitSetProperty") component-result
+(defcfun (audio-unit-set-property "AudioUnitSetProperty") os-status
   (unit audio-unit)
   (property audio-unit-property-id)
   (scope audio-unit-scope)
@@ -157,10 +247,10 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (data :pointer)
   (size :uint32))
 
-(defcfun (audio-unit-initialize "AudioUnitInitialize") component-result
+(defcfun (audio-unit-initialize "AudioUnitInitialize") os-status
   (unit audio-unit))
 
-(defcfun (audio-unit-uninitialize "AudioUnitUninitialize") component-result
+(defcfun (audio-unit-uninitialize "AudioUnitUninitialize") os-status
   (unit audio-unit))
 
 (defcfun (audio-output-unit-start "AudioOutputUnitStart") os-status
@@ -238,19 +328,23 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
           (audio-component-instance-dispose unit))))))
 
 ;; Ring buffer impl
-(defcstruct (ring-buffer :conc-name ring-buffer-)
-    (data :pointer)
+(defcstruct (ring-buffer :class ring-buffer :conc-name ring-buffer-)
+  (data :pointer)
   (size :uint32)
   (read-start :uint32)
   (write-start :uint32))
 
-(defun make-ring-buffer (size)
-  (let ((ring (foreign-alloc '(:struct ring-buffer))))
-    (setf (ring-buffer-data ring) (foreign-alloc :uint8 :count size))
-    (setf (ring-buffer-size ring) size)
-    (setf (ring-buffer-read-start ring) 0)
-    (setf (ring-buffer-write-start ring) 0)
-    ring))
+(cffi:defcfun (memcpy "memcpy") :pointer
+  (dest :pointer)
+  (source :pointer)
+  (num :uint64))
+
+(defun make-ring-buffer (size &optional (ring (foreign-alloc '(:struct ring-buffer))))
+  (setf (ring-buffer-data ring) (foreign-alloc :uint8 :count size))
+  (setf (ring-buffer-size ring) size)
+  (setf (ring-buffer-read-start ring) 0)
+  (setf (ring-buffer-write-start ring) 0)
+  ring)
 
 (defun free-ring-buffer (ring)
   (foreign-free (ring-buffer-data ring))
@@ -266,18 +360,18 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
         (read-start (ring-buffer-read-start ring))
         (write-start (ring-buffer-write-start ring)))
     (declare (type foreign-pointer buffer)
-             (type (integer 1 #.(expt 2 32)) size)
-             (type (unsigned-byte 32) read-start write-start))
+             (type (unsigned-byte 32) size read-start write-start))
     (loop for free of-type (unsigned-byte 32) = (mod (- read-start write-start 1) size)
-          do (print free)
-             (cond ((< write-start read-start)
+          do (cond ((< write-start read-start)
                     (memcpy (inc-pointer buffer write-start) data (min free bytes)))
+                   ((<= bytes (- size write-start))
+                    (memcpy (inc-pointer buffer write-start) data bytes))
                    (T
                     (let ((to-end (- size write-start)))
                       (memcpy (inc-pointer buffer write-start) data to-end)
                       (memcpy buffer (inc-pointer data to-end) (- (min free bytes) to-end)))))
              (setf write-start (setf (ring-buffer-write-start ring)
-                                     (print (mod (1- read-start) size))))
+                                     (mod (+ write-start (min free bytes)) size)))
              (cond ((<= bytes free)
                     (return))
                    (T ;; Wait for more data to write to be available
@@ -296,17 +390,18 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
         (read-start (ring-buffer-read-start ring))
         (write-start (ring-buffer-write-start ring)))
     (declare (type foreign-pointer buffer)
-             (type (integer 1 #.(expt 2 32)) size)
-             (type (unsigned-byte 32) read-start write-start))
+             (type (unsigned-byte 32) size read-start write-start))
     (loop for free of-type (unsigned-byte 32) = (mod (- write-start read-start) size)
           do (cond ((< read-start write-start)
-                    (memcpy (inc-pointer buffer read-start) data (min free bytes)))
+                    (memcpy data (inc-pointer buffer read-start) (min free bytes)))
+                   ((<= bytes (- size read-start))
+                    (memcpy data (inc-pointer buffer read-start) bytes))
                    (T
                     (let ((to-end (- size read-start)))
-                      (memcpy (inc-pointer buffer read-start) data to-end)
-                      (memcpy buffer (inc-pointer data to-end) (- (min free bytes) to-end)))))
+                      (memcpy data (inc-pointer buffer read-start) to-end)
+                      (memcpy (inc-pointer data to-end) buffer (- (min free bytes) to-end)))))
              (setf read-start (setf (ring-buffer-read-start ring)
-                                    (mod write-start size)))
+                                    (mod (+ read-start (min free bytes)) size)))
              (cond ((<= bytes free)
                     (return))
                    (T ;; Wait for more data to read to be available
@@ -315,3 +410,19 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                                     (the (unsigned-byte 32) (ring-buffer-write-start ring)))
                           do (sleep 0.0001))
                     (setf write-start read-start))))))
+
+(defcallback ring-buffer-render os-status ((ring :pointer)
+                                           (action-flags :pointer)
+                                           (time-stamp :pointer)
+                                           (bus-number :uint32)
+                                           (frames :uint32)
+                                           (io-data :pointer))
+  (declare (ignore action-flags time-stamp bus-number))
+  (let (#+sbcl (sb-sys:*interrupts-enabled* NIL)
+        #+sbcl (sb-kernel:*gc-inhibit* T)
+        (buffer (foreign-slot-pointer io-data '(:struct audio-buffer-list) 'buffers)))
+    (dotimes (i (audio-buffer-list-number-buffers io-data))
+      (ring-buffer-read ring (audio-buffer-data buffer) frames)
+      (incf-pointer ring (foreign-type-size '(:struct ring-buffer)))
+      (incf-pointer buffer (foreign-type-size '(:struct audio-buffer)))))
+  no-err)
