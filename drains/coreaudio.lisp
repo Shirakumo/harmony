@@ -71,7 +71,7 @@
   (setf (harmony-coreaudio-cffi:audio-stream-basic-description-format-flags stream)
         harmony-coreaudio-cffi:kAudioFormatFlagsNativeFloatPacked)
   (setf (harmony-coreaudio-cffi:audio-stream-basic-description-bytes-per-packet stream)
-        4)
+        (* 4 channels))
   (setf (harmony-coreaudio-cffi:audio-stream-basic-description-frames-per-packet stream)
         1)
   (setf (harmony-coreaudio-cffi:audio-stream-basic-description-bytes-per-frame stream)
