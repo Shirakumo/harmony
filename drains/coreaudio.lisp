@@ -40,7 +40,7 @@
 
 (defmethod cl-mixed:info ((drain coreaudio-drain))
   (list :min-inputs (channels drain)
-        :max-inputs (channels drain)(ring-buffers drain)
+        :max-inputs (channels drain)
         :outputs 0))
 
 (defmethod (setf paused-p) :before (value (drain coreaudio-drain))
