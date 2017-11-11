@@ -24,7 +24,7 @@
        (when (/= ,error 0)
          (error 'coreaudio-error :code ,error)))))
 
-(defclass coreaudio-drain (cl-mixed:virtual drain)
+(defclass coreaudio-drain (drain cl-mixed:virtual)
   ((audio-unit :initform NIL :accessor audio-unit)
    (paused-p :initform NIL :accessor paused-p)
    (ring-buffers :initform NIL :accessor ring-buffers)
