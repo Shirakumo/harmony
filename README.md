@@ -70,6 +70,10 @@ As part of the contract of subclassing `source`, we need to implement a method o
 
 We'll be using the `sine-phase` to track the current phase of our sine wave, so in order to "seek" we'll need to adjust it here. Naturally you won't really be able to hear the effects of seeking on a sine wave generator, but for other sources proper seeking behaviour can be vital.
 
+Another function we need to implement a method for is `sample-count` which returns the number of samples the source can return. Our sine wave generator can return an unbounded number, so we return `T` instead of an integer.
+
+    (defmethod harmony:sample-count ((source sine)) T)
+
 Finally we need to implement the actual sample generation, which for all `source`s happens in `process`:
     
     (defmethod harmony:process ((source sine) samples)

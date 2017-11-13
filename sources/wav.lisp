@@ -114,6 +114,11 @@
                     (min (* position (samplesize source))
                          (data-end source)))))
 
+(defmethod sample-count ((source wav-source))
+  (/ (- (data-end source) (data-start source))
+     (cl-mixed:channels (packed-audio source))
+     (samplesize source)))
+
 (defun read-directly (source buffer bytes)
   (let* ((stream (wav-stream source))
          (bytes (min bytes (- (data-end source) (file-position stream))))

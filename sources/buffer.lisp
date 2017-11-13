@@ -17,6 +17,9 @@
 (defmethod seek-to-sample ((source buffer-source) position)
   (setf (sample-position source) position))
 
+(defmethod sample-count ((source buffer-source))
+  (cl-mixed:size (aref (buffers source) 0)))
+
 (defmethod process ((source buffer-source) samples)
   (let* ((buffers (buffers source))
          (outputs (outputs source))

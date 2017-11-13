@@ -69,6 +69,8 @@
 
 (defgeneric seek-to-sample (source position))
 
+(defgeneric sample-count (source))
+
 (cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let ((source (pointer->object segment)))
     (when (and source (not (paused-p source)))

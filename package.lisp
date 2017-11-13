@@ -111,6 +111,7 @@
    #:stop
    #:seek
    #:seek-to-sample
+   #:sample-count
    #:play
    #:unpack-source
    #:remix-factor

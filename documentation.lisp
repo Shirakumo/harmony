@@ -771,6 +771,7 @@ See RESUME
 See STOP
 See SEEK
 See SEEK-TO-SAMPLE
+See SAMPLE-COUNT
 See PLAY")
   
   (function looping-p
@@ -862,10 +863,21 @@ See SEEK-TO-SAMPLE")
   (function seek-to-sample
     "Seek to the specified sample.
 
-This position is absolute. Every source
-must implement a method for this function.
+This position is absolute. Every source must
+implement a method for this function.
 
 See SEEK
+See SOURCE")
+
+  (function sample-count
+    "Return the number of samples the source can play back.
+
+Note that this function may return T instead of
+an integer if the number of samples is unbounded.
+
+Every source must implement a method for this
+function.
+
 See SOURCE")
 
   (function play
