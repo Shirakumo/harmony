@@ -64,6 +64,11 @@ See HARMONY:SEGMENT")
 
 See HARMONY:PLAY")
 
+  (function decode
+    "Wrapper around HARMONY:DECODE to make sure the samplerate matches with the server.
+
+See HARMONY:DECODE")
+
   (function initialize
     "Constructs and starts the harmony server.
 

@@ -8,7 +8,7 @@
 (defpackage #:harmony-simple
   (:nicknames #:org.shirakumo.fraf.harmony.simple)
   (:use #:cl #:harmony)
-  (:shadow #:start #:started-p #:stop #:pause #:paused-p #:resume #:play #:segment)
+  (:shadow #:start #:started-p #:stop #:pause #:paused-p #:resume #:play  #:decode #:segment)
   ;; default.lisp
   (:export
    #:*server*
@@ -17,6 +17,7 @@
    #:make-segment
    #:make-pipeline
    #:play
+   #:decode
    #:segment)
   ;; files.lisp
   (:export
