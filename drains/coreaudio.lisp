@@ -65,7 +65,7 @@
   (let* (#+sbcl (sb-sys:*interrupts-enabled* NIL)
          #+sbcl (sb-kernel:*gc-inhibit* T)
          (drain (cl-mixed:pointer->object handle))
-         (bytes (* frames (cffi:foreign-type-size 4)))
+         (bytes (* frames (cffi:foreign-type-size :float)))
          (buffer (cffi:foreign-slot-pointer io-data
                                             '(:struct harmony-coreaudio-cffi:audio-buffer-list)
                                             'harmony-coreaudio-cffi::buffers)))
