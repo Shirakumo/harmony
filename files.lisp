@@ -24,5 +24,10 @@
     (apply #'play server (or class (source-type (pathname-type file))) mixer
            :file file initargs)))
 
+(defmethod decode ((file pathname) &rest initargs &key class &allow-other-keys)
+  (let ((initargs (copy-list initargs)))
+    (remf initargs :class)
+    (apply #'decode (or class (source-type (pathname-type file))) :file file initargs)))
+
 (defclass file-source (source)
   ((file :initarg :file :accessor file)))

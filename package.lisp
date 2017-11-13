@@ -116,6 +116,7 @@
    #:seek-to-sample
    #:sample-count
    #:play
+   #:decode
    #:unpack-source
    #:remix-factor
    #:packed-audio

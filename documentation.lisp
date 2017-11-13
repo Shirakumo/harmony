@@ -909,6 +909,31 @@ existing sources.
 
 See SOURCE")
 
+  (function decode
+    "Conveniently decode a source to a list of buffers.
+
+This allows you to fully store a source as decompressed
+samples in-memory, ready for direct playback from the
+internal buffers.
+
+Mostly this should be used for small effects and clips
+that need minimal latency upon playback.
+
+You can use the BUFFER-SOURCE to play the buffers back
+directly.
+
+Note that the source will not get a SERVER instance as
+the context, but instead a constructed MIXING-CONTEXT.
+It will also not be part of a pipeline, and will instead
+just be connected to the output buffers, started, mixed,
+and ended in that order. The source should thus be
+tricked into thinking it's playing just like normal,
+meaning a source should not require any additional code
+to allow being decoded.
+
+See SOURCE
+See BUFFER-SOURCE")
+
   (type unpack-source
     "Superclass for sources that unpack from a compact format first.
 

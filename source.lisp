@@ -104,6 +104,28 @@
     (cl-mixed:start source)
     (add source mixer)))
 
+(defgeneric decode (source-ish &key buffers &allow-other-keys))
+
+(defmethod decode ((class symbol) &rest initargs)
+  (apply #'decode (find-class class) initargs))
+
+(defmethod decode ((class class) &rest initargs &key (samplerate 44100) buffers)
+  (let ((initargs (copy-list initargs))
+        (context (make-instance 'mixing-context :samplerate samplerate)))
+    (remf initargs :samplerate)
+    (remf initargs :buffers)
+    (let ((source (apply #'make-instance class :context context initargs)))
+      (setf (buffersize context) (sample-count source))
+      (let ((buffers (or buffers (loop repeat (getf (cl-mixed:info source) :outputs)
+                                       collect (cl-mixed:make-buffer (buffersize context))))))
+        (loop for i from 0
+              for buffer in buffers
+              do (setf (cl-mixed:output i source) buffer))
+        (cl-mixed:start source)
+        (cl-mixed:mix (buffersize context) source)
+        (cl-mixed:end source)
+        buffers))))
+
 (defclass unpack-source (source)
   ((remix-factor :initform 0 :accessor remix-factor)
    (packed-audio :initform NIL :accessor packed-audio)
