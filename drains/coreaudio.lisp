@@ -33,12 +33,16 @@
    :channels 2))
 
 (defmethod initialize-instance :after ((drain coreaudio-drain) &key)
-  (setf (samples (context drain))
-        (setf (buffersize (context drain)) 512))
   (setf (cl-mixed-cffi:direct-segment-start (cl-mixed:handle drain)) (cffi:callback start))
   (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
 (defmethod initialize-packed-audio ((drain coreaudio-drain))
+  ;; FIXME: IDK if the number of samples is fixed to 512 everywhere,
+  ;;        or if I'm just lucky here. Probably I'm just lucky, so this
+  ;;        needs a proper fix at some point. Not sure how to go about
+  ;;        it right now and I'm pretty fed up with it, so w/e.
+  (setf (samples (context drain))
+        (setf (buffersize (context drain)) 512))
   (cl-mixed:make-packed-audio
    NIL
    (* (buffersize (context drain))
@@ -65,7 +69,7 @@
   (let* (#+sbcl (sb-sys:*interrupts-enabled* NIL)
          #+sbcl (sb-kernel:*gc-inhibit* T)
          (drain (cl-mixed:pointer->object handle))
-         (bytes (* frames (cffi:foreign-type-size :float)))
+         (bytes (* frames (channels drain) (cffi:foreign-type-size :float)))
          (buffer (cffi:foreign-slot-pointer io-data
                                             '(:struct harmony-coreaudio-cffi:audio-buffer-list)
                                             'harmony-coreaudio-cffi::buffers)))
