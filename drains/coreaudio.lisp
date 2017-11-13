@@ -24,7 +24,7 @@
        (when (/= ,error 0)
          (error 'coreaudio-error :code ,error)))))
 
-(defclass coreaudio-drain (drain cl-mixed:virtual)
+(defclass coreaudio-drain (pack-drain)
   ((audio-unit :initform NIL :accessor audio-unit)
    (paused-p :initform NIL :accessor paused-p)
    (channels :initarg :channels :reader channels)
@@ -34,7 +34,20 @@
 
 (defmethod initialize-instance :after ((drain coreaudio-drain) &key)
   (setf (samples (context drain))
-        (setf (buffersize (context drain)) 512)))
+        (setf (buffersize (context drain)) 512))
+  (setf (cl-mixed-cffi:direct-segment-start (cl-mixed:handle drain)) (cffi:callback start))
+  (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
+
+(defmethod initialize-packed-audio ((drain coreaudio-drain))
+  (cl-mixed:make-packed-audio
+   NIL
+   (* (buffersize (context drain))
+      (cl-mixed:samplesize :float)
+      (channels channels))
+   :float
+   (channels channels)
+   :alternating
+   (samplerate (context drain))))
 
 (defmethod process ((drain coreaudio-drain) samples)
   (setf (processed drain) T)
@@ -49,27 +62,20 @@
      (frames :uint32)
      (io-data :pointer))
   (declare (ignore action-flags time-stamp bus-number))
-  (let (#+sbcl (sb-sys:*interrupts-enabled* NIL)
-        #+sbcl (sb-kernel:*gc-inhibit* T)
-        (bytes (* frames (cffi:foreign-type-size :float)))
-        (drain (cl-mixed:pointer->object handle))
-        (buffer (cffi:foreign-slot-pointer io-data
-                                           '(:struct harmony-coreaudio-cffi:audio-buffer-list)
-                                           'harmony-coreaudio-cffi::buffers)))
+  (let* (#+sbcl (sb-sys:*interrupts-enabled* NIL)
+         #+sbcl (sb-kernel:*gc-inhibit* T)
+         (drain (cl-mixed:pointer->object handle))
+         (bytes (* frames (cffi:foreign-type-size 4)))
+         (buffer (cffi:foreign-slot-pointer io-data
+                                            '(:struct harmony-coreaudio-cffi:audio-buffer-list)
+                                            'harmony-coreaudio-cffi::buffers)))
     (loop until (processed drain)
           do (sleep 0.005))
-    (loop for input across (cl-mixed:inputs drain)
-          do (memcpy (harmony-coreaudio-cffi:audio-buffer-data buffer)
-                     (cl-mixed:data input)
-                     bytes)
-             (cffi:incf-pointer buffer (cffi:foreign-type-size '(:struct harmony-coreaudio-cffi:audio-buffer))))
+    (memcpy (harmony-coreaudio-cffi:audio-buffer-data buffer)
+            (cl-mixed:data (packed-audio drain))
+            bytes)
     (setf (processed drain) NIL))
   harmony-coreaudio-cffi:no-err)
-
-(defmethod cl-mixed:info ((drain coreaudio-drain))
-  (list :min-inputs (channels drain)
-        :max-inputs (channels drain)
-        :outputs 0))
 
 (defmethod (setf paused-p) :before (value (drain coreaudio-drain))
   (with-body-in-mixing-context ((context drain))
@@ -115,51 +121,55 @@
   (setf (harmony-coreaudio-cffi:au-render-callback-struct-input-proc-ref-con callback)
         data))
 
-(defmethod cl-mixed:start ((drain coreaudio-drain))
-  (cffi:with-foreign-objects ((description '(:struct harmony-coreaudio-cffi:audio-component-description))
-                              (stream '(:struct harmony-coreaudio-cffi:audio-stream-basic-description))
-                              (callback '(:struct harmony-coreaudio-cffi:au-render-callback-struct))
-                              (unit 'harmony-coreaudio-cffi:audio-unit))
-    ;; Prepare needed information
-    (create-component-description description)
-    (create-stream-description stream (samplerate (context drain)) (channels drain))
-    (create-callback-description callback (cl-mixed:handle drain))
-    ;; Search for device
-    (let ((component (harmony-coreaudio-cffi:audio-component-find-next (cffi:null-pointer) description)))
-      (when (cffi:null-pointer-p component)
-        (error "No component found."))
-      (with-error ()
-        (harmony-coreaudio-cffi:audio-component-instance-new component unit))
-      (let ((unit (cffi:mem-ref unit :pointer)))
-        ;; Set unit properties
-        (with-error ()
-          (harmony-coreaudio-cffi:audio-unit-set-property
-           unit
-           harmony-coreaudio-cffi:kAudioUnitProperty_SetRenderCallback
-           harmony-coreaudio-cffi:kAudioUnitScope_Input
-           0
-           callback
-           (cffi:foreign-type-size '(:struct harmony-coreaudio-cffi:au-render-callback-struct))))
-        (with-error ()
-          (harmony-coreaudio-cffi:audio-unit-set-property
-           unit
-           harmony-coreaudio-cffi:kAudioUnitProperty_StreamFormat
-           harmony-coreaudio-cffi:kAudioUnitScope_Input
-           0
-           stream
-           (cffi:foreign-type-size '(:struct harmony-coreaudio-cffi:audio-stream-basic-description))))
-        ;; Fire it up!
-        (with-error ()
-          (harmony-coreaudio-cffi:audio-unit-initialize unit))
-        (with-error ()
-          (harmony-coreaudio-cffi:audio-output-unit-start unit))
-        (setf (audio-unit drain) unit))))
-  (if (audio-unit drain) 1 0))
+(cffi:defcallback start :int ((segment :pointer))
+  (let ((drain (cl-mixed:pointer->object segment)))
+    (when drain
+      (cffi:with-foreign-objects ((description '(:struct harmony-coreaudio-cffi:audio-component-description))
+                                  (stream '(:struct harmony-coreaudio-cffi:audio-stream-basic-description))
+                                  (callback '(:struct harmony-coreaudio-cffi:au-render-callback-struct))
+                                  (unit 'harmony-coreaudio-cffi:audio-unit))
+        ;; Prepare needed information
+        (create-component-description description)
+        (create-stream-description stream (samplerate (context drain)) (channels drain))
+        (create-callback-description callback (cl-mixed:handle drain))
+        ;; Search for device
+        (let ((component (harmony-coreaudio-cffi:audio-component-find-next (cffi:null-pointer) description)))
+          (when (cffi:null-pointer-p component)
+            (error "No component found."))
+          (with-error ()
+            (harmony-coreaudio-cffi:audio-component-instance-new component unit))
+          (let ((unit (cffi:mem-ref unit :pointer)))
+            ;; Set unit properties
+            (with-error ()
+              (harmony-coreaudio-cffi:audio-unit-set-property
+               unit
+               harmony-coreaudio-cffi:kAudioUnitProperty_SetRenderCallback
+               harmony-coreaudio-cffi:kAudioUnitScope_Input
+               0
+               callback
+               (cffi:foreign-type-size '(:struct harmony-coreaudio-cffi:au-render-callback-struct))))
+            (with-error ()
+              (harmony-coreaudio-cffi:audio-unit-set-property
+               unit
+               harmony-coreaudio-cffi:kAudioUnitProperty_StreamFormat
+               harmony-coreaudio-cffi:kAudioUnitScope_Input
+               0
+               stream
+               (cffi:foreign-type-size '(:struct harmony-coreaudio-cffi:audio-stream-basic-description))))
+            ;; Fire it up!
+            (with-error ()
+              (harmony-coreaudio-cffi:audio-unit-initialize unit))
+            (with-error ()
+              (harmony-coreaudio-cffi:audio-output-unit-start unit))
+            (setf (audio-unit drain) unit))))
+      (if (audio-unit drain) 1 0))))
 
-(defmethod cl-mixed:end ((drain coreaudio-drain))
-  (let ((unit (audio-unit drain)))
-    (when unit
-      (harmony-coreaudio-cffi:audio-output-unit-stop unit)
-      (harmony-coreaudio-cffi:audio-unit-uninitialize unit)
-      (harmony-coreaudio-cffi:audio-component-instance-dispose unit)))
-  1)
+(cffi:defcallback end :int ((segment :pointer))
+  (let ((drain (cl-mixed:pointer->object segment)))
+    (when drain
+      (let ((unit (audio-unit drain)))
+        (when unit
+          (harmony-coreaudio-cffi:audio-output-unit-stop unit)
+          (harmony-coreaudio-cffi:audio-unit-uninitialize unit)
+          (harmony-coreaudio-cffi:audio-component-instance-dispose unit)))
+      1)))
