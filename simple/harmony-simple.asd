@@ -17,7 +17,9 @@
                (:file "default")
                (:file "documentation"))
   :depends-on (:harmony
-               :harmony-out123
+               (:feature :linux :harmony-alsa)
+               (:feature :windows :harmony-wasapi)
+               (:feature :darwin :harmony-coreaudio)
                :harmony-mp3
                :harmony-wav
                :documentation-utils))

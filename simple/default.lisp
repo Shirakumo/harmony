@@ -11,7 +11,9 @@
 (defclass default-server (server)
   ((output-spec :initarg :output-spec :accessor output-spec))
   (:default-initargs
-   :output-spec '(harmony-out123:out123-drain)))
+   :output-spec '(#+linux harmony-alsa:alsa-drain
+                  #+windows harmony-wasapi:wasapi-drain
+                  #+darinw harmony-coreaudio:coreaudio-drain)))
 
 (defmethod initialize-instance :after ((server default-server) &key)
   (let ((pipeline (make-pipeline server)))
