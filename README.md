@@ -31,6 +31,17 @@ You can choose a backend, and customise its options, with the `:output-spec` ini
 
 A number of the backends include extra options like `:program-name` that allows you to change the appearance of your program in the system's volume mixer.
 
+## In-Memory Source Playback
+Certain kinds of audio need to be played back often and with minimal latency. This is where buffering the audio in memory can be very useful. Harmony allows you to do this with the `decode` function, which constructs a source just like `play` and runs it in such a way that it decodes everything to its output buffers. The list of buffers is then returned. Once you have the buffers you can store them somewhere, so that when you want to play them back, all you need to do is create a `buffer-source` with those buffers as the source.
+
+As an example, this is how it might work in your code:
+
+    (defvar *explosion* (harmony-simple:decode #p"explosion.mp3"))
+    
+    (harmony-simple:play 'harmony:buffer-source :sfx :buffers *explosion*)
+
+Since the buffer source merely indexes into the buffers and doesn't change them, you can easily instantiate as many as you need from the same buffers.
+
 ## Constructing Your Own Pipeline
 If you want a pipeline that is a bit more involved than what harmony-simple gives you, perhaps to add certain effects or other kinds of shenanigans, you can easily build that pipeline. Before you do, though, you should get briefly acquainted with [cl-mixed](https://shirakumo.github.io/cl-mixed), or at least with the segments it provides. Harmony uses libmixed underneath to do most of the audio processing and mixing, and in itself only provides a sound server, and a convenient way to handle segments and create a pipeline.
 
