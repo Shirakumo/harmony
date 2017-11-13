@@ -29,9 +29,7 @@
     (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)
       (cl-mixed:make-packed-audio
        NIL
-       (* (buffersize (context source))
-          (cl-mixed:samplesize encoding)
-          channels)
+       0
        encoding
        channels
        :alternating

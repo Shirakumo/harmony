@@ -98,9 +98,7 @@
            (setf (data-end source) (+ start size))
            (cl-mixed:make-packed-audio
             NIL
-            (* (buffersize (context source))
-               (cl-mixed-cffi:samplesize sampleformat)
-               channels)
+            0
             sampleformat
             channels
             :alternating

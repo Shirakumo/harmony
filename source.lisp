@@ -115,6 +115,7 @@
   (setf (remix-factor source) (coerce (/ (samplerate (packed-audio source))
                                          (samplerate (context source)))
                                       'single-float))
+  (setf (cl-mixed-cffi:direct-segment-start (cl-mixed:handle source)) (cffi:callback start-unpack))
   (cl-mixed::with-error-on-failure ()
     (cl-mixed-cffi:make-segment-unpacker (handle (packed-audio source)) (samplerate (context source)) (handle source)))
   (setf (unpack-mix-function source) (cl-mixed-cffi:direct-segment-mix (handle source))))
@@ -128,6 +129,16 @@
      (unpack-mix-function source) ()
      cl-mixed-cffi:size_t samples
      :pointer (handle source))))
+
+(cffi:defcallback start-unpack :int ((segment :pointer))
+  (let ((source (cl-mixed:pointer->object segment)))
+    (when source
+      (let ((pack (packed-audio source)))
+        (setf (cl-mixed:size pack)
+              (* (buffersize (context source))
+                 (cl-mixed-cffi:samplesize (cl-mixed:encoding pack))
+                 (cl-mixed:channels pack))))))
+  1)
 
 ;; Convenience
 (defun fill-for-unpack-source (source samples direct-read arg)
