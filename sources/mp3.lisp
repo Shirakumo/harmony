@@ -39,7 +39,7 @@
   (cl-mpg123:seek (file source) position :mode :absolute :by :sample))
 
 (defmethod sample-count ((source mp3-source))
-  (cl-mpg123:frame-count (mp3-file source)))
+  (cl-mpg123:sample-count (mp3-file source)))
 
 (defmethod process ((source mp3-source) samples)
   (fill-for-unpack-source source samples #'cl-mpg123:read-directly (mp3-file source)))
