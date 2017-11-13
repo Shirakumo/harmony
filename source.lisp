@@ -95,12 +95,14 @@
   (apply #'play server source-ish (segment mixer server) initargs))
 
 (defmethod play ((context mixing-context) (class class) (mixer mixer) &rest initargs)
-  (add (apply #'make-instance class :context context initargs)
-       mixer))
+  (let ((source (apply #'make-instance class :context context initargs)))
+    (cl-mixed:start source)
+    (add source mixer)))
 
 (defmethod play ((context mixing-context) (source source) (mixer mixer) &rest initargs)
-  (add (apply #'reinitialize-instance source :context context initargs)
-       mixer))
+  (let ((source (apply #'reinitialize-instance source :context context initargs)))
+    (cl-mixed:start source)
+    (add source mixer)))
 
 (defclass unpack-source (source)
   ((remix-factor :initform 0 :accessor remix-factor)
