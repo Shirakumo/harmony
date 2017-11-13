@@ -6,7 +6,7 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
-(defclass buffer-source (cl-mixed:virtual source)
+(defclass buffer-source (source cl-mixed:virtual)
   ((buffers :initform #() :accessor buffers))
   (:default-initargs
    :buffers (error "BUFFERS required.")))
