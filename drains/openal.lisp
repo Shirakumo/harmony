@@ -50,13 +50,13 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
           (setf (context drain) context))))
     (cl-mixed:make-packed-audio
      NIL
-     (* (buffersize (server drain))
+     (* (buffersize (context drain))
         (cl-mixed:samplesize :float)
         2)
      :float
      2
      :alternating
-     (samplerate (server drain)))))
+     (samplerate (context drain)))))
 
 (defmethod process ((drain openal-drain) samples)
   (let* ((packed-audio (cl-mixed:packed-audio drain))
@@ -73,7 +73,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (al:source-queue-buffers source (list buffer)))))
 
 (defmethod (setf paused-p) :after (value (drain openal-drain))
-  (with-body-in-server-thread ((server drain))
+  (with-body-in-mixing-context ((context drain))
     (if value
         (al:source-pause (source drain))
         (al:source-play (source drain)))))

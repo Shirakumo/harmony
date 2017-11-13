@@ -36,13 +36,13 @@
 (defmethod initialize-packed-audio ((drain alsa-drain))
   (cl-mixed:make-packed-audio
    NIL
-   (* (buffersize (server drain))
+   (* (buffersize (context drain))
       (cl-mixed:samplesize :float)
       2)
    :float
    2
    :alternating
-   (samplerate (server drain))))
+   (samplerate (context drain))))
 
 (defmethod process ((drain alsa-drain) samples)
   (let* ((pack (cl-mixed:packed-audio drain))
@@ -54,7 +54,7 @@
           (error 'alsa-error :code error))))))
 
 (defmethod (setf paused-p) :before (value (drain alsa-drain))
-  (with-body-in-server-thread ((server drain))
+  (with-body-in-mixing-context ((context drain))
     (with-error ()
       (harmony-alsa-cffi:pcm-pause (pcm drain) (if value 1 0)))))
 
@@ -67,7 +67,7 @@
         (let ((pcm (cffi:mem-ref pcm :pointer)))
           (with-error ()
             (harmony-alsa-cffi:pcm-set-params pcm :float-le :rw-interleaved 2
-                                              (samplerate (server drain))
+                                              (samplerate (context drain))
                                               1 10000)) ;; 1ms
           (setf (pcm drain) pcm))))
     (if (pcm drain) 1 0)))

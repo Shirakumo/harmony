@@ -24,7 +24,7 @@
   (let ((out (cl-out123:make-output NIL :name (or (program-name drain)
                                                   (cl-out123:device-default-name "Harmony")))))
     (cl-out123:connect out)
-    (cl-out123:start out :rate (samplerate (server drain))
+    (cl-out123:start out :rate (samplerate (context drain))
                          :channels 2
                          :encoding :float)
     (setf (device drain) out)
@@ -32,7 +32,7 @@
       (cl-out123:stop out)
       (cl-mixed:make-packed-audio
        NIL
-       (* (buffersize (server drain))
+       (* (buffersize (context drain))
           (cl-mixed:samplesize encoding)
           channels)
        encoding
@@ -52,17 +52,17 @@
   (not (cl-out123:playing (device drain))))
 
 (defmethod (setf paused-p) (value (drain out123-drain))
-  (with-body-in-server-thread ((server drain))
+  (with-body-in-mixing-context ((context drain))
     (if value
         (cl-out123:pause (device drain))
         (cl-out123:resume (device drain)))))
 
 (defmethod pause ((drain out123-drain))
-  (with-body-in-server-thread ((server drain))
+  (with-body-in-mixing-context ((context drain))
     (cl-out123:pause (device drain))))
 
 (defmethod resume ((drain out123-drain))
-  (with-body-in-server-thread ((server drain))
+  (with-body-in-mixing-context ((context drain))
     (cl-out123:resume (device drain))))
 
 (cffi:defcallback start :int ((segment :pointer))

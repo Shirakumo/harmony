@@ -14,7 +14,7 @@
 (defmethod initialize-instance :after ((segment mixer) &key)
   (let ((buffers (make-array (channels-per-source segment))))
     (dotimes (i (length buffers))
-      (setf (aref buffers i) (cl-mixed:make-buffer (buffersize (server segment)))))
+      (setf (aref buffers i) (cl-mixed:make-buffer (buffersize (context segment)))))
     (setf (buffers segment) buffers)))
 
 (defmethod add :before ((segment cl-mixed:segment) (mixer mixer))
@@ -23,14 +23,14 @@
       (setf (cl-mixed:output-field :buffer i segment) (aref buffers i)))))
 
 (defmethod add :around ((segment cl-mixed:segment) (mixer mixer))
-  (with-body-in-server-thread ((server mixer)
+  (with-body-in-mixing-context ((context mixer)
                                ;; Apparently synchronising is unbearably slow.
                                #-(and sbcl windows) :synchronize #-(and sbcl windows) T)
     (call-next-method))
   segment)
 
 (defmethod withdraw :around ((segment cl-mixed:segment) (mixer mixer))
-  (with-body-in-server-thread ((server mixer) :synchronize T)
+  (with-body-in-mixing-context ((context mixer) :synchronize T)
     (call-next-method))
   segment)
 

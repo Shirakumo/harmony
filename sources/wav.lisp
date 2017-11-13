@@ -98,7 +98,7 @@
            (setf (data-end source) (+ start size))
            (cl-mixed:make-packed-audio
             NIL
-            (* (buffersize (server source))
+            (* (buffersize (context source))
                (cl-mixed-cffi:samplesize sampleformat)
                channels)
             sampleformat

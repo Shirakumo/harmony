@@ -35,7 +35,7 @@
 (defmethod (setf paused-p) :before (value (source source))
   (when value
     (unless (paused-p source)
-      (with-body-in-server-thread ((server source))
+      (with-body-in-mixing-context ((context source))
         (map NIL #'clear (outputs source))))))
 
 (defmethod pause ((source source))
@@ -95,11 +95,11 @@
   (apply #'play server source-ish (segment mixer server) initargs))
 
 (defmethod play ((server server) (class class) (mixer mixer) &rest initargs)
-  (add (apply #'make-instance class :server server initargs)
+  (add (apply #'make-instance class :context server initargs)
        mixer))
 
 (defmethod play ((server server) (source source) (mixer mixer) &rest initargs)
-  (add (apply #'reinitialize-instance source :server server initargs)
+  (add (apply #'reinitialize-instance source :context server initargs)
        mixer))
 
 (defclass unpack-source (source)
@@ -113,10 +113,10 @@
   (call-next-method)
   (setf (packed-audio source) (initialize-packed-audio source))
   (setf (remix-factor source) (coerce (/ (samplerate (packed-audio source))
-                                         (samplerate (server source)))
+                                         (samplerate (context source)))
                                       'single-float))
   (cl-mixed::with-error-on-failure ()
-    (cl-mixed-cffi:make-segment-unpacker (handle (packed-audio source)) (samplerate (server source)) (handle source)))
+    (cl-mixed-cffi:make-segment-unpacker (handle (packed-audio source)) (samplerate (context source)) (handle source)))
   (setf (unpack-mix-function source) (cl-mixed-cffi:direct-segment-mix (handle source))))
 
 (defmethod process :around ((source unpack-source) samples)

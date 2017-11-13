@@ -18,7 +18,7 @@
     (compile-pipeline pipeline server)))
 
 (defun make-segment (type &rest args)
-  (apply #'make-instance type :server *server* args))
+  (apply #'make-instance type :context *server* args))
 
 (defmethod make-pipeline ((server default-server))
   (let* ((*server* server)

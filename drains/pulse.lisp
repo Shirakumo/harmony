@@ -38,13 +38,13 @@
 (defmethod initialize-packed-audio ((drain pulse-drain))
   (cl-mixed:make-packed-audio
    NIL
-   (* (buffersize (server drain))
+   (* (buffersize (context drain))
       (cl-mixed:samplesize :float)
       2)
    :float
    2
    :alternating
-   (samplerate (server drain))))
+   (samplerate (context drain))))
 
 (defmethod process ((drain pulse-drain) samples)
   (let* ((pack (cl-mixed:packed-audio drain))
@@ -57,7 +57,7 @@
 
 (defmethod (setf paused-p) :before (value (drain pulse-drain))
   (when value
-    (with-body-in-server-thread ((server drain))
+    (with-body-in-mixing-context ((context drain))
       (with-error (err)
         (harmony-pulse-cffi:simple-drain (simple drain) err)))))
 
@@ -66,7 +66,7 @@
     (unless (simple drain)
       (cffi:with-foreign-object (sample-spec '(:struct harmony-pulse-cffi:sample-spec))
         (setf (harmony-pulse-cffi:sample-spec-format sample-spec) :float32le)
-        (setf (harmony-pulse-cffi:sample-spec-rate sample-spec) (samplerate (server drain)))
+        (setf (harmony-pulse-cffi:sample-spec-rate sample-spec) (samplerate (context drain)))
         (setf (harmony-pulse-cffi:sample-spec-channels sample-spec) 2)
         (with-error (error)
           (setf (simple drain) (harmony-pulse-cffi:simple-new

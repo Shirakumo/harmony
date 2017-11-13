@@ -37,7 +37,7 @@ See DEFAULT-SERVER")
     "Create an instance of a segment.
 
 This is a wrapper around MAKE-INSTANCE, making sure to
-supply the current *SERVER* as an initarg.
+supply the current *SERVER* as the :context initarg.
 
 See *SERVER*")
 

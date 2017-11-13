@@ -158,8 +158,8 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 (defun probe-buffer-size (drain)
   (let ((client (find-audio-client (audio-client-id drain)))
         (mode (mode drain))
-        (buffer-duration (seconds->reference-time (/ (buffersize (server drain))
-                                                     (samplerate (server drain))))))
+        (buffer-duration (seconds->reference-time (/ (buffersize (context drain))
+                                                     (samplerate (context drain))))))
     (unwind-protect
          (progn (harmony-wasapi-cffi:i-audio-client-initialize
                  client
@@ -195,19 +195,19 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (let ((client (find-audio-client (audio-client-id drain))))
     (unwind-protect
          (multiple-value-bind (ok samplerate channels sample-format)
-             (format-supported-p client (samplerate (server drain)) 2 :float)
+             (format-supported-p client (samplerate (context drain)) 2 :float)
            (declare (ignore ok))
            (setf (client drain) client)
            ;; WASAPI will only give us the size of the audio buffer once
            ;; a client has been fully initialised. However, we /need/ to
            ;; know this size at this very moment in order to be able to
-           ;; adjust the server's buffersize before any other segments
+           ;; adjust the context's buffersize before any other segments
            ;; are created.
            ;;
            ;; If we did this at any other point, such as what would be
            ;; preferable namely during START, the internal buffers and
            ;; packed audio arrays would already be readied for the size
-           ;; that the server was initially configured with.
+           ;; that the context was initially configured with.
            ;;
            ;; It would be possible to resize buffers at START, but some
            ;; segments might contain internal data arrays that would
@@ -217,11 +217,11 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
            ;; feasible.
            ;;
            ;; For now we opt for this hack of probing the buffer size
-           ;; with a fresh client, and adjusting the server's buffer
+           ;; with a fresh client, and adjusting the context's buffer
            ;; size before any other segments are created or the
            ;; pipeline is finalised. While this represents an implicit
            ;; protocol constraint, I will take it for now.
-           (setf (buffersize (server drain)) (probe-buffer-size drain))
+           (setf (buffersize (context drain)) (probe-buffer-size drain))
            ;; Construct the audio pack in case we need to convert.
            ;; Usually WASAPI seems to want 44100, 2, float, for shared
            ;; so we should be fine. In case that's not always what we
@@ -229,7 +229,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
            ;; do it proper, though.
            (cl-mixed:make-packed-audio
             NIL
-            (* (buffersize (server drain))
+            (* (buffersize (context drain))
                (cl-mixed:samplesize sample-format)
                channels)
             sample-format
@@ -242,7 +242,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 (defmethod process ((drain wasapi-drain) frames)
   (let* ((pack (cl-mixed:packed-audio drain))
          (source (cl-mixed:data pack))
-         (server (server drain))
+         (context (context drain))
          (client (client drain))
          (render (render drain))
          (target (with-deref (target :pointer)
@@ -258,11 +258,11 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
                           (with-deref (frames :uint32)
                             (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
           (when (< 0 frames)
-            (setf (samples server) frames)
+            (setf (samples context) frames)
             (return)))))
 
 (defmethod (setf paused-p) :before (value (drain wasapi-drain))
-  (with-body-in-server-thread ((server drain))
+  (with-body-in-mixing-context ((context drain))
     (with-error ()
       (if value
           (harmony-wasapi-cffi:i-audio-client-stop (client drain))
@@ -274,8 +274,8 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
          (client (client drain))
          (format (mix-format client))
          ;; Attempt to get a buffer as large as our internal ones.
-         (buffer-duration (seconds->reference-time (/ (buffersize (server drain))
-                                                      (samplerate (server drain))))))
+         (buffer-duration (seconds->reference-time (/ (buffersize (context drain))
+                                                      (samplerate (context drain))))))
     (unless (render drain)
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-initialize
@@ -299,7 +299,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-start client))
       ;; Force sample count to 0 for an empty first run.
-      (setf (samples (server drain)) 0))
+      (setf (samples (context drain)) 0))
     (if (render drain) 1 0)))
 
 (cffi:defcallback end :int ((segment :pointer))

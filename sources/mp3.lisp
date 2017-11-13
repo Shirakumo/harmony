@@ -21,7 +21,7 @@
 
 (defmethod initialize-packed-audio ((source mp3-source))
   (let ((file (cl-mpg123:make-file (file source)
-                                   :accepted-format (list (samplerate (server source))
+                                   :accepted-format (list (samplerate (context source))
                                                           (channels source)
                                                           :float))))
     (cl-mpg123:connect file)
@@ -29,7 +29,7 @@
     (multiple-value-bind (rate channels encoding) (cl-mpg123:file-format file)
       (cl-mixed:make-packed-audio
        NIL
-       (* (buffersize (server source))
+       (* (buffersize (context source))
           (cl-mixed:samplesize encoding)
           channels)
        encoding

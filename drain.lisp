@@ -25,11 +25,11 @@
 (defmethod initialize-instance ((drain pack-drain) &key)
   (call-next-method)
   (setf (packed-audio drain) (initialize-packed-audio drain))
-  (setf (remix-factor drain) (coerce (/ (samplerate (server drain))
+  (setf (remix-factor drain) (coerce (/ (samplerate (context drain))
                                         (samplerate (packed-audio drain)))
                                      'single-float))
   (cl-mixed::with-error-on-failure ()
-    (cl-mixed-cffi:make-segment-packer (handle (packed-audio drain)) (samplerate (server drain)) (handle drain)))
+    (cl-mixed-cffi:make-segment-packer (handle (packed-audio drain)) (samplerate (context drain)) (handle drain)))
   (setf (pack-mix-function drain) (cl-mixed-cffi:direct-segment-mix (handle drain))))
 
 (defmethod process :around ((drain pack-drain) samples)

@@ -33,8 +33,8 @@
    :channels 2))
 
 (defmethod initialize-instance :after ((drain coreaudio-drain) &key)
-  (setf (samples (server drain))
-        (setf (buffersize (server drain)) 512)))
+  (setf (samples (context drain))
+        (setf (buffersize (context drain)) 512)))
 
 (defmethod process ((drain coreaudio-drain) samples)
   (setf (processed drain) T)
@@ -72,7 +72,7 @@
         :outputs 0))
 
 (defmethod (setf paused-p) :before (value (drain coreaudio-drain))
-  (with-body-in-server-thread ((server drain))
+  (with-body-in-mixing-context ((context drain))
     (with-error ()
       (if value
           (harmony-coreaudio-cffi:audio-output-unit-stop (audio-unit drain))
@@ -122,7 +122,7 @@
                               (unit 'harmony-coreaudio-cffi:audio-unit))
     ;; Prepare needed information
     (create-component-description description)
-    (create-stream-description stream (samplerate (server drain)) (channels drain))
+    (create-stream-description stream (samplerate (context drain)) (channels drain))
     (create-callback-description callback (cl-mixed:handle drain))
     ;; Search for device
     (let ((component (harmony-coreaudio-cffi:audio-component-find-next (cffi:null-pointer) description)))

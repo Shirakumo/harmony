@@ -275,6 +275,90 @@ See MAX-DISTANCE
 See ROLLOFF
 See ATTENUATION"))
 
+;; mixing-context.lisp
+(docs:define-docs
+  (type mixing-context
+    "A context that holds information about the global state of a mixing pipeline.
+
+Upon construction the context must know the general
+buffer size and the sample rate used throughout the
+pipeline. These properties may not change unless
+you completely recreate every segment and recompile
+the pipeline.
+
+The buffer size defaults to 441 and the sample rate
+to 44100. Note that having too high a buffer size
+will result in degraded output quality for some
+operations like fading. Note that having a sample
+rate that differs from your inputs or the output
+device will likely result in bad audio quality and
+distortions, as the audio data needs to be
+resampled.
+
+The number of actual samples being processed each
+run is controlled by the SAMPLES field, and can be
+changed at runtime. Note however that setting this
+to a value higher than BUFFERSIZE will most likely
+spawn demons in your pants and crash your Lisp.
+
+See SAMPLES
+See BUFFERSIZE
+See SAMPLERATE
+See CALL-IN-MIXING-CONTEXT
+See WITH-BODY-IN-MIXING-CONTEXT")
+
+  (function samples
+    "Accessor to the number of samples the context processes each iteration.
+
+See MIXING-CONTEXT")
+  
+  (function buffersize
+    "Accessor to the number of samples in a buffer on the context.
+
+This is SETFable, but note that this will only
+adapt the buffers constructed through the pipeline.
+Buffers, and especially internal data arrays, are
+not adjusted and may not be able to hold the
+required amount of data if you increase the buffer
+size. Use at your own risk.
+
+See MIXING-CONTEXT")
+  
+  (function samplerate
+    "Returns the sample rate (in Hz) that the segments on the context operate by.
+
+See MIXING-CONTEXT")
+  
+  (function call-in-mixing-context
+    "Causes the given function to be evaluated in the context.
+
+For a SERVER the following additional arguments are
+recognised:
+
+If SYNCHRONIZE is non-NIL, then this function does
+not return until the given function has been
+evaluated. If additionally VALUES is non-NIL, the
+values as produced by the given function are
+returned after evaluation.
+
+If TIMEOUT is given, it should be the number of
+seconds after which this function gives up waiting
+for the given function to be evaluated or to finish
+evaluating.
+
+Note that if *IN-PROCESSING-THREAD* is non-NIL, or
+if the server has no thread, the function is
+evaluated directly and immediately. Otherwise it
+is placed onto the server's evaluation-queue.
+
+See WITH-BODY-IN-MIXING-CONTEXT
+See *IN-PROCESSING-THREAD*")
+  
+  (function with-body-in-mixing-context
+    "Shorthand macro to evaluate the body in the mixing context.
+
+See CALL-IN-MIXING-CONTEXT"))
+
 ;; pipeline.lisp
 (docs:define-docs
   (type out-port
@@ -506,27 +590,7 @@ be done through the PIPELINE class, which can then
 compile its information down to a format suitable
 for the server. 
 
-Upon construction the server must know the general
-buffer size and the sample rate used throughout the
-pipeline. These properties may not change unless
-you completely recreate every segment and recompile
-the pipeline.
-
-The buffer size defaults to 441 and the sample rate
-to 44100. Note that having too high a buffer size
-will result in degraded output quality for some
-operations like fading. Note that having a sample
-rate that differs from your inputs or the output
-device will likely result in bad audio quality and
-distortions, as the audio data needs to be
-resampled.
-
-The number of actual samples being processed each
-run is controlled by the SAMPLES field, and can be
-changed at runtime. Note however that setting this
-to a value higher than BUFFERSIZE will most likely
-spawn demons in your pants and crash your Lisp.
-
+See MIXING-CONTEXT
 See SEGMENT-MAP
 See SAMPLES
 See BUFFERSIZE
@@ -558,28 +622,6 @@ This map is usually populated by COMPILE-PIPELINE.
 See NAME
 See SERVER
 See SEGMENT")
-
-  (function samples
-    "Accessor to the number of samples the server processes each iteration.
-
-See SERVER")
-  
-  (function buffersize
-    "Accessor to the number of samples in a buffer on the server.
-
-This is SETFable, but note that this will only
-adapt the buffers constructed through the pipeline.
-Buffers, and especially internal data arrays, are
-not adjusted and may not be able to hold the
-required amount of data if you increase the buffer
-size. Use at your own risk.
-
-See SERVER")
-  
-  (function samplerate
-    "Returns the sample rate (in Hz) that the segments on the server operate by.
-
-See SERVER")
   
   (function device
     "Accessor to the device segment of the server.
@@ -706,40 +748,7 @@ T.
 If the device of the server is PAUSED-P, then
 BT:THREAD-YIELD is called.
 
-See SERVER")
-  
-  (function call-in-server-thread
-    "Causes the given function to be evaluated in the server's processing thread.
-
-If SYNCHRONIZE is non-NIL, then this function does
-not return until the given function has been
-evaluated. If additionally VALUES is non-NIL, the
-values as produced by the given function are
-returned after evaluation.
-
-If TIMEOUT is given, it should be the number of
-seconds after which this function gives up waiting
-for the given function to be evaluated or to finish
-evaluating.
-
-Note that if *IN-PROCESSING-THREAD* is non-NIL, or
-if the server has no thread, the function is
-evaluated directly and immediately. Otherwise it
-is placed onto the server's evaluation-queue.
-
-Any call to this will acquire the evaluation-lock
-of the server at least once.
-
-See WITH-BODY-IN-SERVER-THREAD
-See *IN-PROCESSING-THREAD*
-See EVALUATION-QUEUE-HEAD
-See EVALUATION-QUEUE-TAIL
-See EVALUATION-LOCK")
-  
-  (function with-body-in-server-thread
-    "Shorthand macro to evaluate the body in the server's processing thread.
-
-See CALL-IN-SERVER-THREAD"))
+See SERVER"))
 
 ;; source.lisp
 (docs:define-docs

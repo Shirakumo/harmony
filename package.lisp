@@ -56,6 +56,14 @@
    #:max-distance
    #:rolloff
    #:attenuation)
+  ;; mixing-context.lisp
+  (:export
+   #:mixing-context
+   #:samples
+   #:buffersize
+   #:samplerate
+   #:call-in-mxiing-context
+   #:with-body-in-mixing-context)
   ;; pipeline.lisp
   (:export
    #:out-port
@@ -79,22 +87,17 @@
   ;; segment.lisp
   (:export
    #:segment
-   #:server
+   #:context
    #:name
    #:volume)
   ;; server.lisp
   (:export
    #:server
-   #:samples
-   #:buffersize
-   #:samplerate
    #:device
    #:start
    #:started-p
    #:stop
    #:run
-   #:call-in-server-thread
-   #:with-body-in-server-thread
    #:paused-p
    #:pause
    #:resume)

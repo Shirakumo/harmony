@@ -14,6 +14,7 @@
   :serial T
   :components ((:file "package")
                (:file "toolkit")
+               (:file "mixing-context")
                (:file "segment")
                (:file "server")
                (:file "mixers")

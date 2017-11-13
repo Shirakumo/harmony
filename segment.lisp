@@ -7,10 +7,10 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defclass segment (cl-mixed:segment)
-  ((server :initarg :server :accessor server)
+  ((context :initarg :context :accessor context)
    (name :initarg :name :reader name))
   (:default-initargs
-   :server (error "SERVER initarg required.")
+   :context (error "CONTEXT initarg required.")
    :name NIL))
 
 (defmethod print-object ((segment segment) stream)

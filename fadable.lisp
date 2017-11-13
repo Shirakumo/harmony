@@ -18,11 +18,11 @@
     (fade fadable volume fade-time :from (or fade-from 0.0))))
 
 (defmethod fade ((fadable fadable) to time &key (by (easing-function fadable)) from)
-  (let ((target (floor (* time (samplerate (server fadable)))))
+  (let ((target (floor (* time (samplerate (context fadable)))))
         (from  (coerce (or from (volume fadable)) 'single-float))
         (to (coerce to 'single-float)))
     (check-type by function)
-    (with-body-in-server-thread ((server fadable))
+    (with-body-in-mixing-context ((context fadable))
       (setf (fade-count fadable) 0)
       (setf (fade-end fadable) target)
       (setf (easing-function fadable) by)

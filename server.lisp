@@ -8,11 +8,8 @@
 
 (defvar *in-processing-thread* NIL)
 
-(defclass server ()
-  ((segment-map :initform NIL :accessor segment-map)
-   (samples :initarg :samples :initform 0 :accessor samples)
-   (buffersize :initarg :buffersize :initform 0 :accessor buffersize)
-   (samplerate :initarg :samplerate :initform 0 :reader samplerate)
+(defclass server (mixing-context)
+  ((segment-map :initform (make-hash-table :test 'eql) :accessor segment-map)
    (device :initarg :device :accessor device)
    (segment-sequence :initform NIL :accessor segment-sequence)
    (buffers :initform NIL :accessor buffers)
@@ -20,21 +17,9 @@
    ;; Synchronisation state
    (evaluation-queue-head :initform NIL :accessor evaluation-queue-head)
    (evaluation-queue-tail :initform NIL :accessor evaluation-queue-tail)
-   (evaluation-lock :initform NIL :accessor evaluation-lock))
-  (:default-initargs
-   :buffersize 441
-   :samplerate 44100))
+   (evaluation-lock :initform NIL :accessor evaluation-lock)))
 
-(defmethod initialize-instance :after ((server server) &key samples buffersize samplerate)
-  (check-type samples (or null (integer 1)))
-  (check-type buffersize (or null (integer 1)))
-  (check-type samplerate (integer 1))
-  (setf (segment-map server) (make-hash-table :test 'eql))
-  (unless buffersize (setf (slot-value server 'buffersize) (/ samplerate 100)))
-  (if samples
-      (when (< (buffersize server) samples)
-        (error "Number of samples cannot be greater than the buffer size."))
-      (setf (samples server) (buffersize server)))
+(defmethod initialize-instance :after ((server server) &key)
   (let ((cons (cons T NIL)))
     (setf (evaluation-queue-head server) cons)
     (setf (evaluation-queue-tail server) cons))
@@ -118,7 +103,7 @@
                              (cl-mixed-cffi:segment-sequence-mix (samples server) sequence)))))
         (cl-mixed:end (segment-sequence server))))))
 
-(defun call-in-server-thread (function server &key synchronize timeout values)
+(defmethod call-in-mixing-context (function (server server) &key (synchronize T) timeout (values T))
   (flet ((push-function (function)
            (let ((cons (cons function NIL)))
              (setf (cdr (evaluation-queue-tail server)) cons)
@@ -145,11 +130,6 @@
           (T
            (bt:with-lock-held ((evaluation-lock server))
              (push-function function))))))
-
-(defmacro with-body-in-server-thread ((server &key synchronize timeout values) &body body)
-  `(call-in-server-thread (lambda () ,@body) ,server :synchronize ,synchronize
-                                                     :timeout ,timeout
-                                                     :values ,values))
 
 (defmethod paused-p ((server server))
   (paused-p (device server)))

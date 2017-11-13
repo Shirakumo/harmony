@@ -149,7 +149,7 @@
           do (add (complete-segment node) sequence)
              (setf (segment (name segment) server) segment)
           finally (setf device segment))
-    (with-body-in-server-thread (server :synchronize T)
+    (with-body-in-mixing-context (server :synchronize T)
       (when (and (started-p server) old-sequence)
         (cl-mixed:end old-sequence))
       (setf (device server) device)
