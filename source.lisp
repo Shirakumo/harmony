@@ -86,20 +86,20 @@
              (perform-fading source samples)
              (incf (sample-position source) samples))))))
 
-(defgeneric play (server source-ish mixer &key paused loop fade volume name &allow-other-keys))
+(defgeneric play (context source-ish mixer &key paused loop fade volume name &allow-other-keys))
 
-(defmethod play (server (class symbol) mixer &rest initargs)
-  (apply #'play server (find-class class) mixer initargs))
+(defmethod play (context (class symbol) mixer &rest initargs)
+  (apply #'play context (find-class class) mixer initargs))
 
 (defmethod play ((server server) source-ish (mixer symbol) &rest initargs)
   (apply #'play server source-ish (segment mixer server) initargs))
 
-(defmethod play ((server server) (class class) (mixer mixer) &rest initargs)
-  (add (apply #'make-instance class :context server initargs)
+(defmethod play ((context mixing-context) (class class) (mixer mixer) &rest initargs)
+  (add (apply #'make-instance class :context context initargs)
        mixer))
 
-(defmethod play ((server server) (source source) (mixer mixer) &rest initargs)
-  (add (apply #'reinitialize-instance source :context server initargs)
+(defmethod play ((context mixing-context) (source source) (mixer mixer) &rest initargs)
+  (add (apply #'reinitialize-instance source :context context initargs)
        mixer))
 
 (defclass unpack-source (source)
