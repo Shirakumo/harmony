@@ -4,7 +4,6 @@
  Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
-(in-package #:cl-user)
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defclass buffer-source (cl-mixed:virtual source)

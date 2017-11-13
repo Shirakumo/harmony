@@ -17,10 +17,6 @@
                 #:direction #:up #:input-location #:input-velocity
                 #:soundspeed #:doppler-factor #:min-distance
                 #:max-distance #:rolloff #:attenuation)
-  ;; sources/buffer.lisp
-  (:export
-   #:buffer-source
-   #:buffers)
   ;; drain.lisp
   (:export
    #:drain
@@ -130,4 +126,12 @@
    #:ease-linear
    #:ease-cubic-in
    #:ease-cubic-out
-   #:ease-cubic-in-out))
+   #:ease-cubic-in-out)
+  ;; drains/buffer.lisp
+  (:export
+   #:buffer-drain
+   #:buffers)
+  ;; sources/buffer.lisp
+  (:export
+   #:buffer-source
+   #:buffers))

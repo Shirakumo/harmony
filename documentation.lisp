@@ -1009,6 +1009,29 @@ X -> 1+(x-1)³")
 X -> (2*x)³/2       | If x <  0.5
      1+(2*(x-1))³/2 | otherwise"))
 
+;; drains/buffer.lisp
+(docs:define-docs
+  (type buffer-drain
+    "In-memory buffer drain.
+
+This drain simply copies the data from the input
+buffers to its preset buffers as it is mixed.
+
+This is mostly useful for transferring a mixer
+pipeline to internal buffers, or for reading a file
+source into buffers for in-memory playback through
+a buffer-source later.
+
+Note that if the number of written samples exceeds
+the size of the first buffer, no further samples
+are written and the input data is simply thrown
+away. You are responsible for making the buffers be
+the appropriate size yourself.
+
+See CL-MIXED:VIRTUAL
+See DRAIN
+See BUFFER-SOURCE"))
+
 ;; sources/buffer.lisp
 (docs:define-docs
   (type buffer-source
@@ -1025,4 +1048,5 @@ buffer-sources from those whenever the effect should
 be played.
 
 See CL-MIXED:VIRTUAL
-See SOURCE"))
+See SOURCE
+See BUFFER-DRAIN"))
