@@ -43,9 +43,9 @@
    NIL
    (* (buffersize (context drain))
       (cl-mixed:samplesize :float)
-      (channels channels))
+      (channels drain))
    :float
-   (channels channels)
+   (channels drain)
    :alternating
    (samplerate (context drain))))
 
