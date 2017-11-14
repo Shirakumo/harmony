@@ -22,4 +22,5 @@
                (:feature :darwin :harmony-coreaudio)
                :harmony-mp3
                :harmony-wav
+               :harmony-flac
                :documentation-utils))
