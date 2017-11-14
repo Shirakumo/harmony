@@ -36,7 +36,7 @@
        rate))))
 
 (defmethod seek-to-sample ((source mp3-source) position)
-  (cl-mpg123:seek (file source) position :mode :absolute :by :sample))
+  (cl-mpg123:seek (mp3-file source) position :mode :absolute :by :sample))
 
 (defmethod sample-count ((source mp3-source))
   (cl-mpg123:sample-count (mp3-file source)))
