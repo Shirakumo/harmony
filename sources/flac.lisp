@@ -15,9 +15,7 @@
 (define-source-type "flac" flac-source)
 
 (defclass flac-source (unpack-source file-source)
-  ((flac-file :initform NIL :accessor flac-file)
-   (channels :initarg :channels :accessor channels))
-  (:default-initargs :channels 2))
+  ((flac-file :initform NIL :accessor flac-file)))
 
 (defmethod initialize-packed-audio ((source flac-source))
   (let ((file (cl-flac:make-file (file source))))
