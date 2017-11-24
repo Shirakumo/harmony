@@ -11,9 +11,10 @@
 (defclass default-server (server)
   ((output-spec :initarg :output-spec :accessor output-spec))
   (:default-initargs
-   :output-spec '(#+linux harmony-alsa:alsa-drain
-                  #+windows harmony-wasapi:wasapi-drain
-                  #+darinw harmony-coreaudio:coreaudio-drain)))
+   :output-spec #+linux '(harmony-alsa:alsa-drain)
+                #+windows '(harmony-wasapi:wasapi-drain)
+                #+darwin '(harmony-coreaudio:coreaudio-drain)
+                #-(or linux windows darwin) (error "Platform not supported.")))
 
 (defmethod initialize-instance :after ((server default-server) &key)
   (let ((pipeline (make-pipeline server)))
