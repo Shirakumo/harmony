@@ -125,6 +125,12 @@
   (setf (harmony-coreaudio-cffi:au-render-callback-struct-input-proc-ref-con callback)
         data))
 
+(defmacro with-float-traps-masked (() &body body)
+  #+sbcl `(sb-int:with-float-traps-masked (:divide-by-zero)
+            ,@body)
+  #-sbcl `(progn
+            ,@body))
+
 (cffi:defcallback start :int ((segment :pointer))
   (let ((drain (cl-mixed:pointer->object segment)))
     (when drain
@@ -161,10 +167,11 @@
                stream
                (cffi:foreign-type-size '(:struct harmony-coreaudio-cffi:audio-stream-basic-description))))
             ;; Fire it up!
-            (with-error ()
-              (harmony-coreaudio-cffi:audio-unit-initialize unit))
-            (with-error ()
-              (harmony-coreaudio-cffi:audio-output-unit-start unit))
+            (with-float-traps-masked ()
+              (with-error ()
+                (harmony-coreaudio-cffi:audio-unit-initialize unit))
+              (with-error ()
+                (harmony-coreaudio-cffi:audio-output-unit-start unit)))
             (setf (audio-unit drain) unit))))
       (if (audio-unit drain) 1 0))))
 
@@ -173,7 +180,8 @@
     (when drain
       (let ((unit (audio-unit drain)))
         (when unit
-          (harmony-coreaudio-cffi:audio-output-unit-stop unit)
-          (harmony-coreaudio-cffi:audio-unit-uninitialize unit)
-          (harmony-coreaudio-cffi:audio-component-instance-dispose unit)))
+          (with-float-traps-masked ()
+            (harmony-coreaudio-cffi:audio-output-unit-stop unit)
+            (harmony-coreaudio-cffi:audio-unit-uninitialize unit)
+            (harmony-coreaudio-cffi:audio-component-instance-dispose unit))))
       1)))
