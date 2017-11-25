@@ -58,6 +58,16 @@
   (loop while (processed drain)
         do (sleep 0.005)))
 
+(defmacro with-no-interrupts (() &body body)
+  ;; On SBCL using WITHOUT-INTERRUPTS would cause interrupts
+  ;; to be processed explicitly on exit. We want to avoid that.
+  #+sbcl `(let ((sb-sys:*interrupts-enabled* NIL)
+                (sb-kernel:*gc-inhibit* T))
+            ,@body)
+  #+ccl `(ccl:without-interrupts
+           ,@body)
+  #-(or sbcl ccl) `(progn ,@body))
+
 (cffi:defcallback buffer-render harmony-coreaudio-cffi:os-status
     ((handle :pointer)
      (action-flags :pointer)
@@ -66,19 +76,18 @@
      (frames :uint32)
      (io-data :pointer))
   (declare (ignore action-flags time-stamp bus-number))
-  (let* (#+sbcl (sb-sys:*interrupts-enabled* NIL)
-         #+sbcl (sb-kernel:*gc-inhibit* T)
-         (drain (cl-mixed:pointer->object handle))
-         (bytes (* frames (channels drain) (cffi:foreign-type-size :float)))
-         (buffer (cffi:foreign-slot-pointer io-data
-                                            '(:struct harmony-coreaudio-cffi:audio-buffer-list)
-                                            'harmony-coreaudio-cffi::buffers)))
-    (loop until (processed drain)
-          do (sleep 0.005))
-    (memcpy (harmony-coreaudio-cffi:audio-buffer-data buffer)
-            (cl-mixed:data (packed-audio drain))
-            bytes)
-    (setf (processed drain) NIL))
+  (with-no-interrupts ()
+    (let* ((drain (cl-mixed:pointer->object handle))
+           (bytes (* frames (channels drain) (cffi:foreign-type-size :float)))
+           (buffer (cffi:foreign-slot-pointer io-data
+                                              '(:struct harmony-coreaudio-cffi:audio-buffer-list)
+                                              'harmony-coreaudio-cffi::buffers)))
+      (loop until (processed drain)
+            do (sleep 0.005))
+      (memcpy (harmony-coreaudio-cffi:audio-buffer-data buffer)
+              (cl-mixed:data (packed-audio drain))
+              bytes)
+      (setf (processed drain) NIL)))
   harmony-coreaudio-cffi:no-err)
 
 (defmethod (setf paused-p) :before (value (drain coreaudio-drain))
