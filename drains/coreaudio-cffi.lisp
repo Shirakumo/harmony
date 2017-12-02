@@ -249,7 +249,10 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 (defcfun (audio-output-unit-stop "AudioOutputUnitStop") os-status
   (unit audio-unit))
 
+#+sbcl
 (sb-ext:defglobal +phase+ 0)
+
+#+sbcl
 (defcallback sine-wave-render os-status ((ref-con :pointer)
                                          (action-flags :pointer)
                                          (time-stamp :pointer)
@@ -269,6 +272,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
         (setf +phase+ (mod (1+ +phase+) 44100)))))
   no-err)
 
+#+sbcl
 (defun test ()
   (with-foreign-objects ((description '(:struct audio-component-description))
                          (stream '(:struct audio-stream-basic-description))
