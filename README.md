@@ -77,7 +77,7 @@ The class inherits from `source` to get useful functionality for fading, pausing
 As part of the contract of subclassing `source`, we need to implement a method on `seek-to-sample`. Let's do that:
     
     (defmethod harmony:seek-to-sample ((source sine) position)
-      (setf (sine-phase source) (mod position (harmony:samplerate (harmony:server source)))))
+      (setf (sine-phase source) (mod position (harmony:samplerate (harmony:context source)))))
 
 We'll be using the `sine-phase` to track the current phase of our sine wave, so in order to "seek" we'll need to adjust it here. Naturally you won't really be able to hear the effects of seeking on a sine wave generator, but for other sources proper seeking behaviour can be vital.
 
@@ -90,7 +90,7 @@ Finally we need to implement the actual sample generation, which for all `source
     (defmethod harmony:process ((source sine) samples)
       (let* ((buffers (cl-mixed:outputs source))
              (phase (sine-phase source))
-             (samplerate (harmony:samplerate (harmony:server source)))
+             (samplerate (harmony:samplerate (harmony:context source)))
              (factor (* 2 PI 440 (/ samplerate))))
         (loop for i from 0 below samples
               for sample = (sin (coerce (* factor phase) 'single-float))
@@ -127,7 +127,7 @@ Next we'll need to actually instantiate the buffers on start.
         (dotimes (i (length buffers))
           (setf (aref buffers i) (make-array (ceiling (* (delay echo)
                                                          (harmony:samplerate
-                                                          (harmony:server echo))))
+                                                          (harmony:context echo))))
                                              :element-type 'single-float
                                              :initial-element 0.0s0)))))
 
