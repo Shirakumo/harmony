@@ -541,9 +541,9 @@ See SEGMENT-MAP"))
   (type segment
     "Base class for all Harmony segments that can appear in a pipeline.
 
-A segment must carry a reference to the server
+A segment must carry a reference to the context
 that it is running on. This reference can be
-supplied through the :SERVER initarg.
+supplied through the :CONTEXT initarg.
 
 Segments can have a name, which allows them to be
 found again through the server object, when they
@@ -554,13 +554,14 @@ from this class, but rather the underlying class
 CL-MIXED:SEGMENT may be used in a pipeline.
 
 See CL-MIXED:SEGMENT
-See SERVER
+See CONTEXT
 See NAME")
   
-  (function server
-    "Accessor to the segment's server.
+  (function context
+    "Accessor to the segment's context.
 
-See SEGMENT")
+See SEGMENT
+See MIXING-CONTEXT")
   
   (function name
     "Accessor to the name of the segment.
