@@ -641,11 +641,13 @@ To set a vector, the value should be a list or a vector
 of three floats. When reading, the returned value is
 always a vector of three floats.
 
-See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:VOLUME"> </a> <article id="ACCESSOR HARMONY:VOLUME"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AVOLUME">VOLUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the outputting volume of the volume control segment.
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY:VOLUME"> </a> <article id="ACCESSOR HARMONY:VOLUME"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY%3AVOLUME">VOLUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the outputting volume of the segment.
 
 Must be in the range [0, infinity[.
 
-See <a href="NIL">VOLUME-CONTROL</a></pre></div> </article> </li><li> <a name="HARMONY:ALLOCATE-BUFFERS"> </a> <article id="FUNCTION HARMONY:ALLOCATE-BUFFERS"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AALLOCATE-BUFFERS">ALLOCATE-BUFFERS</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NODES BUFFERSIZE &amp;OPTIONAL OLD-BUFFERS</code><code>)</code>  </header> <div class="docstring"><pre>Handle the allocation of the necessary buffers for the nodes.
+See <a href="NIL">VOLUME-CONTROL</a>
+See <a href="NIL">NOISE</a>
+See <a href="NIL">GENERATOR</a></pre></div> </article> </li><li> <a name="HARMONY:ALLOCATE-BUFFERS"> </a> <article id="FUNCTION HARMONY:ALLOCATE-BUFFERS"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY%3AALLOCATE-BUFFERS">ALLOCATE-BUFFERS</a></code></h4> <code class="qualifiers"></code> <code class="arguments">NODES BUFFERSIZE &amp;OPTIONAL OLD-BUFFERS</code><code>)</code>  </header> <div class="docstring"><pre>Handle the allocation of the necessary buffers for the nodes.
 
 The number of buffers necessary is determined by
 looking at the BUFFER attribute of each port and
@@ -991,11 +993,13 @@ To set a vector, the value should be a list or a vector
 of three floats. When reading, the returned value is
 always a vector of three floats.
 
-See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:VOLUME"> </a> <article id="ACCESSOR HARMONY-SIMPLE:VOLUME"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3AVOLUME">VOLUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the outputting volume of the volume control segment.
+See <a href="#HARMONY:SPACE-MIXER">SPACE-MIXER</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:VOLUME"> </a> <article id="ACCESSOR HARMONY-SIMPLE:VOLUME"> <header class="accessor"> <span class="type">accessor</span>  <code>(</code><h4 class="name"><code><a href="#ACCESSOR%20HARMONY-SIMPLE%3AVOLUME">VOLUME</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SEGMENT2</code><code>)</code>  </header> <div class="docstring"><pre>Accessor to the outputting volume of the segment.
 
 Must be in the range [0, infinity[.
 
-See <a href="NIL">VOLUME-CONTROL</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:DECODE"> </a> <article id="FUNCTION HARMONY-SIMPLE:DECODE"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3ADECODE">DECODE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE-ISH &amp;REST INITARGS &amp;KEY (SERVER *SERVER*) &amp;ALLOW-OTHER-KEYS</code><code>)</code>  </header> <div class="docstring"><pre>Wrapper around HARMONY:DECODE to make sure the samplerate matches with the server.
+See <a href="NIL">VOLUME-CONTROL</a>
+See <a href="NIL">NOISE</a>
+See <a href="NIL">GENERATOR</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:DECODE"> </a> <article id="FUNCTION HARMONY-SIMPLE:DECODE"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3ADECODE">DECODE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">SOURCE-ISH &amp;REST INITARGS &amp;KEY (SERVER *SERVER*) &amp;ALLOW-OTHER-KEYS</code><code>)</code>  </header> <div class="docstring"><pre>Wrapper around HARMONY:DECODE to make sure the samplerate matches with the server.
 
 See <a href="#HARMONY:DECODE">HARMONY:DECODE</a></pre></div> </article> </li><li> <a name="HARMONY-SIMPLE:INITIALIZE"> </a> <article id="FUNCTION HARMONY-SIMPLE:INITIALIZE"> <header class="function"> <span class="type">function</span>  <code>(</code><h4 class="name"><code><a href="#FUNCTION%20HARMONY-SIMPLE%3AINITIALIZE">INITIALIZE</a></code></h4> <code class="qualifiers"></code> <code class="arguments">&amp;REST INITARGS</code><code>)</code>  </header> <div class="docstring"><pre>Constructs and starts the harmony server.
 
