@@ -876,6 +876,12 @@ See SEEK-TO-SAMPLE")
 This position is absolute. Every source must
 implement a method for this function.
 
+You should /not/ call this function yourself.
+It is for internal use only, and exported for
+the sole purpose of allowing you to define a
+method on it for your custom source. To do the
+seeking on a source, use SEEK instead.
+
 See SEEK
 See SOURCE")
 
