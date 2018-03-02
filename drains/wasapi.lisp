@@ -247,19 +247,20 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
          (render (render drain))
          (target (with-deref (target :pointer)
                    (harmony-wasapi-cffi:i-audio-render-client-get-buffer render frames target))))
-    (memcpy target source (* frames
-                             (cl-mixed:samplesize (cl-mixed:encoding pack))
-                             (cl-mixed:channels pack)))
-    (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frames 0)
-    ;; Wait for next render period
-    (loop (harmony-wasapi-cffi:wait-for-single-object (event drain) harmony-wasapi-cffi:INFINITE)
-          (setf frames (- (with-deref (frames :uint32)
-                            (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
-                          (with-deref (frames :uint32)
-                            (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
-          (when (< 0 frames)
-            (setf (samples context) frames)
-            (return)))))
+    (unless (sb-sys:sap= target (sb-sys:int-sap #x00000000))
+      (memcpy target source (* frames
+                               (cl-mixed:samplesize (cl-mixed:encoding pack))
+                               (cl-mixed:channels pack)))
+      (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frames 0)
+      ;; Wait for next render period
+      (loop (harmony-wasapi-cffi:wait-for-single-object (event drain) harmony-wasapi-cffi:INFINITE)
+            (setf frames (- (with-deref (frames :uint32)
+                              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
+                            (with-deref (frames :uint32)
+                              (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
+            (when (< 0 frames)
+              (setf (samples context) frames)
+              (return))))))
 
 (defmethod (setf paused-p) :before (value (drain wasapi-drain))
   (with-body-in-mixing-context ((context drain))
