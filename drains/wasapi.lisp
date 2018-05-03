@@ -1,7 +1,7 @@
 #|
-This file is a part of harmony
-(c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
-Author: Nicolas Hafner <shinmera@tymoon.eu>
+ This file is a part of harmony
+ (c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
+ Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
 (in-package #:cl-user)
@@ -179,6 +179,9 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
    (client :initform NIL :accessor client)
    (render :initform NIL :accessor render)
    (event :initform NIL :accessor event)
+   (frames-to-write :initform 0 :accessor frames-to-write)
+   (frame-buffer-size :initform 0 :accessor frame-buffer-size)
+   (frame-buffer :initform (cffi:null-pointer) :accessor frame-buffer)
    (program-name :initform NIL :initarg :program-name :accessor program-name)
    (audio-client-id :initform NIL :initarg :audio-client-id :accessor audio-client-id))
   (:default-initargs
@@ -198,30 +201,6 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
              (format-supported-p client (samplerate (context drain)) 2 :float)
            (declare (ignore ok))
            (setf (client drain) client)
-           ;; WASAPI will only give us the size of the audio buffer once
-           ;; a client has been fully initialised. However, we /need/ to
-           ;; know this size at this very moment in order to be able to
-           ;; adjust the context's buffersize before any other segments
-           ;; are created.
-           ;;
-           ;; If we did this at any other point, such as what would be
-           ;; preferable namely during START, the internal buffers and
-           ;; packed audio arrays would already be readied for the size
-           ;; that the context was initially configured with.
-           ;;
-           ;; It would be possible to resize buffers at START, but some
-           ;; segments might contain internal data arrays that would
-           ;; need to be adjusted as well. A generic API extension for
-           ;; libmixed would be necessary that would allow for the
-           ;; adjustment of buffer size (and sample rate) to make this
-           ;; feasible.
-           ;;
-           ;; For now we opt for this hack of probing the buffer size
-           ;; with a fresh client, and adjusting the context's buffer
-           ;; size before any other segments are created or the
-           ;; pipeline is finalised. While this represents an implicit
-           ;; protocol constraint, I will take it for now.
-           (setf (buffersize (context drain)) (probe-buffer-size drain))
            ;; Construct the audio pack in case we need to convert.
            ;; Usually WASAPI seems to want 44100, 2, float, for shared
            ;; so we should be fine. In case that's not always what we
@@ -239,28 +218,53 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (unless (client drain)
         (harmony-wasapi-cffi:com-release client)))))
 
-(defmethod process ((drain wasapi-drain) frames)
+(defmethod process ((drain wasapi-drain) processed-frames)
   (let* ((pack (cl-mixed:packed-audio drain))
          (source (cl-mixed:data pack))
-         (context (context drain))
-         (client (client drain))
          (render (render drain))
-         (target (with-deref (target :pointer)
-                   (harmony-wasapi-cffi:i-audio-render-client-get-buffer render frames target))))
-    (unless (sb-sys:sap= target (sb-sys:int-sap #x00000000))
-      (memcpy target source (* frames
-                               (cl-mixed:samplesize (cl-mixed:encoding pack))
-                               (cl-mixed:channels pack)))
-      (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frames 0)
-      ;; Wait for next render period
-      (loop (harmony-wasapi-cffi:wait-for-single-object (event drain) harmony-wasapi-cffi:INFINITE)
-            (setf frames (- (with-deref (frames :uint32)
-                              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
-                            (with-deref (frames :uint32)
-                              (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
-            (when (< 0 frames)
-              (setf (samples context) frames)
-              (return))))))
+         (client (client drain))
+         (frame-buffer-size (frame-buffer-size drain))
+         (frames-to-write (frames-to-write drain))
+         (frame-buffer (frame-buffer drain)))
+    (loop
+       (cond ((<= processed-frames 0)
+              ;; No more frames processed, abort write loop.
+              ;; If we happen to have a completed buffer though, send it out.
+              (when (<= frames-to-write 0)
+                (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frame-buffer-size 0)
+                (setf frame-buffer (cffi:null-pointer)))
+              ;; Sync to object
+              (setf (frame-buffer-size drain) frame-buffer-size)
+              (setf (frames-to-write drain) frames-to-write)
+              (setf (frame-buffer drain) frame-buffer)
+              (return))
+             ((<= frames-to-write 0)
+              ;; No more frames to write, fetch a new buffer.
+              (unless (cffi:null-pointer-p frame-buffer)
+                (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frame-buffer-size 0))
+              (setf frame-buffer-size
+                    (- (with-deref (frames :uint32)
+                         (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
+                       (with-deref (frames :uint32)
+                         (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
+              (setf frames-to-write frame-buffer-size)
+              (setf frame-buffer
+                    (with-deref (target :pointer)
+                      (harmony-wasapi-cffi:i-audio-render-client-get-buffer render frames-to-write target))))
+             ((<= processed-frames frames-to-write)
+              ;; We can fit our entire buffer into the target, so write.
+              (memcpy frame-buffer source (* processed-frames
+                                             (cl-mixed:samplesize (cl-mixed:encoding pack))
+                                             (cl-mixed:channels pack)))
+              (decf frames-to-write processed-frames)
+              (setf processed-frames 0))
+             (T
+              ;; We can't fit the entire buffer in there, write what we can for now.
+              (memcpy frame-buffer source (* frames-to-write
+                                             (cl-mixed:samplesize (cl-mixed:encoding pack))
+                                             (cl-mixed:channels pack)))
+              (decf processed-frames frames-to-write)
+              (setf frames-to-write 0))))))
 
 (defmethod (setf paused-p) :before (value (drain wasapi-drain))
   (with-body-in-mixing-context ((context drain))
@@ -294,13 +298,15 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (when (program-name drain)
         (setf (audio-client-label client) (program-name drain)))
       (harmony-wasapi-cffi:co-task-mem-free format)
-      (setf (render drain) (with-deref (render :pointer)
-                             (harmony-wasapi-cffi:i-audio-client-get-service
-                              client HARMONY-WASAPI-CFFI:IID-IAUDIORENDERCLIENT render)))
+      (setf (frame-buffer-size drain)
+            (with-deref (frames :uint32)
+              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames)))
+      (setf (render drain)
+            (with-deref (render :pointer)
+              (harmony-wasapi-cffi:i-audio-client-get-service
+               client HARMONY-WASAPI-CFFI:IID-IAUDIORENDERCLIENT render)))
       (with-error ()
-        (harmony-wasapi-cffi:i-audio-client-start client))
-      ;; Force sample count to 0 for an empty first run.
-      (setf (samples (context drain)) 0))
+        (harmony-wasapi-cffi:i-audio-client-start client)))
     (if (render drain) 1 0)))
 
 (cffi:defcallback end :int ((segment :pointer))
