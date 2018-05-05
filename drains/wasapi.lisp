@@ -1,7 +1,7 @@
 #|
- This file is a part of harmony
- (c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
- Author: Nicolas Hafner <shinmera@tymoon.eu>
+This file is a part of harmony
+(c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
+Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
 (in-package #:cl-user)
@@ -19,6 +19,13 @@
 (define-condition wasapi-error (error)
   ((code :initarg :code :accessor code))
   (:report (lambda (c s) (format s "WASAPI error: ~a" (code c)))))
+
+(defmacro with-null-check (() &body body)
+  (let ((result (gensym "RESULT")))
+    `(let ((,result (progn ,@body)))
+       (if (cffi:null-pointer-p ,result)
+           (error 'wasapi-error :code (harmony-wasapi-cffi:get-last-error))
+           ,result))))
 
 (defmacro with-error (() &body body)
   (let ((error (gensym "ERROR")))
@@ -155,24 +162,6 @@
       (cffi:foreign-free label))
     label))
 
-(defun probe-buffer-size (drain)
-  (let ((client (find-audio-client (audio-client-id drain)))
-        (mode (mode drain))
-        (buffer-duration (seconds->reference-time (/ (buffersize (context drain))
-                                                     (samplerate (context drain))))))
-    (unwind-protect
-         (progn (harmony-wasapi-cffi:i-audio-client-initialize
-                 client
-                 mode
-                 harmony-wasapi-cffi:AUDCLNT-STREAMFLAGS-EVENTCALLBACK
-                 buffer-duration
-                 (ecase mode (:shared 0) (:exclusive buffer-duration))
-                 (mix-format client)
-                 (cffi:null-pointer))
-                (with-deref (frames :uint32)
-                  (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames)))
-      (harmony-wasapi-cffi:com-release client))))
-
 (defclass wasapi-drain (pack-drain)
   ((paused-p :initform NIL :accessor paused-p)
    (mode :initform :shared :accessor mode)
@@ -194,7 +183,6 @@
 (defmethod initialize-packed-audio ((drain wasapi-drain))
   ;; FIXME: allow picking a device
   ;; FIXME: allow picking shared/exclusive mode
-  (setf (event drain) (harmony-wasapi-cffi:create-event (cffi:null-pointer) 0 0 (cffi:null-pointer)))
   (let ((client (find-audio-client (audio-client-id drain))))
     (unwind-protect
          (multiple-value-bind (ok samplerate channels sample-format)
@@ -219,6 +207,7 @@
         (harmony-wasapi-cffi:com-release client)))))
 
 (defmethod process ((drain wasapi-drain) processed-frames)
+  (declare (optimize speed))
   (let* ((pack (cl-mixed:packed-audio drain))
          (source (cl-mixed:data pack))
          (render (render drain))
@@ -226,43 +215,39 @@
          (frame-buffer-size (frame-buffer-size drain))
          (frames-to-write (frames-to-write drain))
          (frame-buffer (frame-buffer drain)))
+    (declare (type (unsigned-byte 32) processed-frames frame-buffer-size frames-to-write))
+    (declare (type cffi:foreign-pointer frame-buffer))
     (loop
-       (cond ((<= processed-frames 0)
-              ;; No more frames processed, abort write loop.
-              ;; If we happen to have a completed buffer though, send it out.
-              (when (<= frames-to-write 0)
-                (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frame-buffer-size 0)
-                (setf frame-buffer (cffi:null-pointer)))
-              ;; Sync to object
-              (setf (frame-buffer-size drain) frame-buffer-size)
-              (setf (frames-to-write drain) frames-to-write)
-              (setf (frame-buffer drain) frame-buffer)
-              (return))
-             ((<= frames-to-write 0)
+       (cond ((<= frames-to-write 0)
               ;; No more frames to write, fetch a new buffer.
-              (unless (cffi:null-pointer-p frame-buffer)
-                (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frame-buffer-size 0))
+             ;;;; For whatever fucking reason I can't get the event waiting to work. It just
+             ;;;; always returns immediately.
+              ;; (harmony-wasapi-cffi:wait-for-single-object (event drain) harmony-wasapi-cffi:INFINITE)
+              (harmony-wasapi-cffi:sleep (floor (* processed-frames (/ 1000 44100 2))))
               (setf frame-buffer-size
-                    (- (with-deref (frames :uint32)
-                         (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
-                       (with-deref (frames :uint32)
-                         (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames))))
+                    (min processed-frames
+                         (- (with-deref (frames :uint32)
+                              (harmony-wasapi-cffi:i-audio-client-get-buffer-size client frames))
+                            (with-deref (frames :uint32)
+                              (harmony-wasapi-cffi:i-audio-client-get-current-padding client frames)))))
               (setf frames-to-write frame-buffer-size)
               (setf frame-buffer
                     (with-deref (target :pointer)
                       (harmony-wasapi-cffi:i-audio-render-client-get-buffer render frames-to-write target))))
-             ((<= processed-frames frames-to-write)
+             ((= processed-frames frames-to-write)
               ;; We can fit our entire buffer into the target, so write.
               (memcpy frame-buffer source (* processed-frames
                                              (cl-mixed:samplesize (cl-mixed:encoding pack))
                                              (cl-mixed:channels pack)))
-              (decf frames-to-write processed-frames)
-              (setf processed-frames 0))
+              (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frame-buffer-size 0)
+              (setf (frames-to-write drain) 0)
+              (return))
              (T
               ;; We can't fit the entire buffer in there, write what we can for now.
               (memcpy frame-buffer source (* frames-to-write
                                              (cl-mixed:samplesize (cl-mixed:encoding pack))
                                              (cl-mixed:channels pack)))
+              (harmony-wasapi-cffi:i-audio-render-client-release-buffer render frame-buffer-size 0)
               (decf processed-frames frames-to-write)
               (setf frames-to-write 0))))))
 
@@ -291,6 +276,8 @@
          (ecase mode (:shared 0) (:exclusive buffer-duration))
          format
          (cffi:null-pointer)))
+      (setf (event drain) (with-null-check ()
+                            (harmony-wasapi-cffi:create-event (cffi:null-pointer) 0 0 (cffi:null-pointer))))
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-set-event-handle
          client
@@ -311,6 +298,8 @@
 
 (cffi:defcallback end :int ((segment :pointer))
   (let ((drain (cl-mixed:pointer->object segment)))
+    (when (event drain)
+      (harmony-wasapi-cffi:close-handle (event drain)))
     (with-error ()
       (harmony-wasapi-cffi:i-audio-client-stop (client drain)))
     (when (render drain)

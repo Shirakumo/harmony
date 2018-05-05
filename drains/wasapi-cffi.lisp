@@ -8,7 +8,7 @@
 (defpackage #:harmony-wasapi-cffi
   (:nicknames #:org.shirakumo.fraf.harmony.drains.wasapi.cffi)
   (:use #:cl #:cffi)
-  (:shadow #:byte)
+  (:shadow #:byte #:sleep)
   (:export
    #:ole32
    #:avrt
@@ -30,6 +30,7 @@
    #:lpcguid
    #:handle
    #:lpdword
+   #:wait-result
    #:sharedmode
    #:bufferflags
    #:hresult
@@ -134,6 +135,8 @@
    #:av-set-mm-thread-characteristics
    #:av-revert-mm-thread-characteristics
    #:wait-for-single-object
+   #:sleep
+   #:get-last-error
    #:create-event
    #:close-handle
    #:set-event
@@ -190,6 +193,12 @@
 (defctype lpcguid :pointer)
 (defctype handle :pointer)
 (defctype lpdword :pointer)
+
+(defcenum (wait-result dword)
+  (:abandoned #x00000080)
+  (:object-0  #x00000000)
+  (:timeout   #x00000102)
+  (:failed    #xFFFFFFFF))
 
 (defcenum sharemode
   :shared
@@ -326,80 +335,80 @@
   (vtbl :pointer))
 
 (defcomstruct imm-device-enumerator
-  (enum-audio-endpoints hresult
-    (data-flow dataflow)
-    (state-mask dword)
-    (devices :pointer))
+    (enum-audio-endpoints hresult
+                          (data-flow dataflow)
+                          (state-mask dword)
+                          (devices :pointer))
 
   (get-default-audio-endpoint hresult
-    (data-flow dataflow)
-    (role role)
-    (endpoint :pointer))
+                              (data-flow dataflow)
+                              (role role)
+                              (endpoint :pointer))
 
   (get-device hresult
-    (pwstrid wstring)
-    (device :pointer))
+              (pwstrid wstring)
+              (device :pointer))
 
   (register-endpoint-notification-callback hresult
-    (client :pointer))
+                                           (client :pointer))
 
   (unregister-endpoint-notification-callback hresult
-    (client :pointer)))
+                                             (client :pointer)))
 
 (defcomstruct imm-device-collection
-  (get-count hresult
-    (devices :pointer))
+    (get-count hresult
+               (devices :pointer))
   
   (item hresult
-    (device-id :uint)
-    (device :pointer)))
+        (device-id :uint)
+        (device :pointer)))
 
 (defcomstruct imm-device
-  (activate hresult
-    (id refiid)
-    (cls-ctx dword)
-    (activation-params :pointer)
-    (interface :pointer))
+    (activate hresult
+              (id refiid)
+              (cls-ctx dword)
+              (activation-params :pointer)
+              (interface :pointer))
   
   (open-property-store hresult
-    (access dword)
-    (properties :pointer))
+                       (access dword)
+                       (properties :pointer))
   
   (get-id hresult
-    (str-id :pointer))
+          (str-id :pointer))
   
   (get-state hresult
-    (state :pointer)))
+             (state :pointer)))
 
 (defcomstruct i-audio-client
-  (initialize hresult
-    (share-mode sharemode)
-    (stream-flags dword)
-    (buffer-duration reference-time)
-    (preiodicity reference-time)
-    (format :pointer)
-    (audio-session-guid lpcguid))
+    (initialize hresult
+                (share-mode sharemode)
+                (stream-flags dword)
+                (buffer-duration reference-time)
+                (preiodicity reference-time)
+                (format :pointer)
+                (audio-session-guid lpcguid))
   
   (get-buffer-size hresult
-    (num-buffer-frames :pointer))
+                   (num-buffer-frames :pointer))
   
   (get-stream-latency hresult
-    (latency :pointer))
+                      (latency :pointer))
   
   (get-current-padding hresult
-    (num-padding-frames :pointer))
+                       (num-padding-frames :pointer))
   
   (is-format-supported hresult
-    (share-mode sharemode)
-    (format :pointer)
-    (closest-match :pointer))
+                       (share-mode sharemode)
+                       (format :pointer)
+                       (closest-match :pointer))
   
   (get-mix-format hresult
-    (device-format :pointer))
+                  (device-format :pointer))
   
   (get-device-period hresult
-    (default-device-period :pointer)
-    (minimum-device-period :pointer))
+                     (default-device-period :pointer)
+                     (minimum-device-period :pointer))
   
   (start hresult)
   
@@ -408,69 +417,69 @@
   (reset hresult)
   
   (set-event-handle hresult
-    (event-handle handle))
+                    (event-handle handle))
   
   (get-service hresult
-    (riid refiid)
-    (service :pointer)))
+               (riid refiid)
+               (service :pointer)))
 
 (defcomstruct i-audio-render-client
-  (get-buffer hresult
-    (num-frames-requested :uint32)
-    (data :pointer))
+    (get-buffer hresult
+                (num-frames-requested :uint32)
+                (data :pointer))
   
   (release-buffer hresult
-    (num-frames-written :uint32)
-    (flags bufferflags)))
+                  (num-frames-written :uint32)
+                  (flags bufferflags)))
 
 (defcomstruct i-property-store
-  (commit hresult)
+    (commit hresult)
   
   (get-at hresult
-    (prop dword)
-    (pkey :pointer))
+          (prop dword)
+          (pkey :pointer))
 
   (get-count hresult
-    (props :pointer))
+             (props :pointer))
 
   (get-value hresult
-    (key :pointer)
-    (value :pointer))
+             (key :pointer)
+             (value :pointer))
 
   (set-value hresult
-    (key :pointer)
-    (value :pointer)))
+             (key :pointer)
+             (value :pointer)))
 
 (defcomstruct i-audio-session-control
-  (get-state hresult
-    (retval :pointer))
+    (get-state hresult
+               (retval :pointer))
 
   (get-display-name hresult
-    (retval :pointer))
+                    (retval :pointer))
 
   (set-display-name hresult
-    (value :pointer)
-    (event-context :pointer))
+                    (value :pointer)
+                    (event-context :pointer))
 
   (get-icon-path hresult
-    (retval :pointer))
+                 (retval :pointer))
 
   (set-icon-path hresult
-    (value :pointer)
-    (event-context :pointer))
+                 (value :pointer)
+                 (event-context :pointer))
 
   (get-grouping-param hresult
-    (retval :pointer))
+                      (retval :pointer))
 
   (set-grouping-param hresult
-    (value :pointer)
-    (event-context :pointer))
+                      (value :pointer)
+                      (event-context :pointer))
 
   (register-audio-session-notification hresult
-    (new-notifications :pointer))
+                                       (new-notifications :pointer))
   
   (unregister-audio-session-notification hresult
-    (new-notifications :pointer)))
+                                         (new-notifications :pointer)))
 
 (defcfun (co-initialize "CoInitializeEx") hresult
   (nullable :pointer)
@@ -495,9 +504,14 @@
 (defcfun (av-revert-mm-thread-characteristics "AvRevertMmThreadCharacteristics") :bool
   (handle handle))
 
-(defcfun (wait-for-single-object "WaitForSingleObject") dword
+(defcfun (wait-for-single-object "WaitForSingleObject") wait-result
   (handle handle)
   (milliseconds dword))
+
+(defcfun (sleep "Sleep") :void
+  (miliseconds dword))
+
+(defcfun (get-last-error "GetLastError") dword)
 
 (defcfun (create-event "CreateEventW") handle
   (event-attribute :pointer)
