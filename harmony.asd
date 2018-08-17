@@ -10,7 +10,9 @@
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
   :description "A common lisp sound server and sound processing library."
-  :homepage "https://github.com/Shirakumo/harmony"
+  :homepage "https://Shirakumo.github.io/harmony/"
+  :bug-tracker "https://github.com/Shirakumo/harmony/issues"
+  :source-control (:git "https://github.com/Shirakumo/harmony.git")
   :serial T
   :components ((:file "package")
                (:file "toolkit")

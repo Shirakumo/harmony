@@ -11,7 +11,9 @@
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
   :description "An easy to use common lisp sound system."
-  :homepage "https://github.com/Shirakumo/harmony"
+  :homepage "https://Shirakumo.github.io/harmony/"
+  :bug-tracker "https://github.com/Shirakumo/harmony/issues"
+  :source-control (:git "https://github.com/Shirakumo/harmony.git")
   :serial T
   :components ((:file "package")
                (:file "default")
