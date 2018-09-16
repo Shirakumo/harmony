@@ -18,6 +18,7 @@
   :components ((:file "package")
                (:file "default")
                (:file "documentation"))
+  :defsystem-depends-on (:trivial-features)
   :depends-on (:harmony
                (:feature :linux :harmony-alsa)
                (:feature :windows :harmony-wasapi)
