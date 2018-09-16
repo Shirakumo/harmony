@@ -1,7 +1,7 @@
 #|
-This file is a part of harmony
-(c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
-Author: Nicolas Hafner <shinmera@tymoon.eu>
+ This file is a part of harmony
+ (c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
+ Author: Nicolas Hafner <shinmera@tymoon.eu>
 |#
 
 (in-package #:cl-user)
@@ -181,30 +181,15 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
   (setf (cl-mixed-cffi:direct-segment-end (cl-mixed:handle drain)) (cffi:callback end)))
 
 (defmethod initialize-packed-audio ((drain wasapi-drain))
-  ;; FIXME: allow picking a device
-  ;; FIXME: allow picking shared/exclusive mode
-  (let ((client (find-audio-client (audio-client-id drain))))
-    (unwind-protect
-         (multiple-value-bind (ok samplerate channels sample-format)
-             (format-supported-p client (samplerate (context drain)) 2 :float)
-           (declare (ignore ok))
-           (setf (client drain) client)
-           ;; Construct the audio pack in case we need to convert.
-           ;; Usually WASAPI seems to want 44100, 2, float, for shared
-           ;; so we should be fine. In case that's not always what we
-           ;; get, and in case we ever support exclusive mode, let's
-           ;; do it proper, though.
-           (cl-mixed:make-packed-audio
-            NIL
-            (* (buffersize (context drain))
-               (cl-mixed:samplesize sample-format)
-               channels)
-            sample-format
-            channels
-            :alternating
-            samplerate))
-      (unless (client drain)
-        (harmony-wasapi-cffi:com-release client)))))
+  (cl-mixed:make-packed-audio
+   NIL
+   (* (buffersize (context drain))
+      (cl-mixed:samplesize :float)
+      2)
+   :float
+   2
+   :alternating
+   44100))
 
 (defmethod process ((drain wasapi-drain) processed-frames)
   (declare (optimize speed))
@@ -259,13 +244,33 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
           (harmony-wasapi-cffi:i-audio-client-start (client drain))))))
 
 (cffi:defcallback start :int ((segment :pointer))
+  ;; FIXME: allow picking a device
+  ;; FIXME: allow picking shared/exclusive mode
   (let* ((drain (cl-mixed:pointer->object segment))
          (mode (mode drain))
-         (client (client drain))
-         (format (mix-format client))
          ;; Attempt to get a buffer as large as our internal ones.
          (buffer-duration (seconds->reference-time (/ (buffersize (context drain))
-                                                      (samplerate (context drain))))))
+                                                      (samplerate (context drain)))))
+         (pack (packed-audio drain))
+         (client (find-audio-client (audio-client-id drain)))
+         (format (mix-format client)))
+    (unwind-protect
+         (multiple-value-bind (ok samplerate channels sample-format)
+             (format-supported-p client (samplerate (context drain)) 2 :float)
+           (declare (ignore ok))
+           (setf (client drain) client)
+           ;; Construct the audio pack in case we need to convert.
+           ;; Usually WASAPI seems to want 44100, 2, float, for shared
+           ;; so we should be fine. In case that's not always what we
+           ;; get, and in case we ever support exclusive mode, let's
+           ;; do it proper, though.
+           (setf (cl-mixed:channels pack) channels)
+           (setf (cl-mixed:samplerate pack) samplerate)
+           (setf (cl-mixed:encoding pack) sample-format)
+           (setf (cl-mixed:size pack) (* (buffersize (context drain))
+                                         (cl-mixed:samplesize sample-format)
+                                         channels))))
+    ;; Initialise the rest
     (unless (render drain)
       (with-error ()
         (harmony-wasapi-cffi:i-audio-client-initialize
@@ -304,5 +309,8 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
       (harmony-wasapi-cffi:i-audio-client-stop (client drain)))
     (when (render drain)
       (harmony-wasapi-cffi:i-audio-render-client-release (render drain))
-      (setf (render drain) NIL)))
+      (setf (render drain) NIL))
+    (when (client drain)
+      (harmony-wasapi-cffi:i-audio-client-release (client drain))
+      (setf (client drain) NIL)))
   1)

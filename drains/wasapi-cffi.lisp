@@ -234,7 +234,11 @@
   (:out-of-order 2290679815)
   (:service-not-running 2290679824)
   (:unsupported-format 2290679816)
-  (:wrong-endpoint-type 2290679811))
+  (:wrong-endpoint-type 2290679811)
+  (:class-not-registered 2147746132)
+  (:no-aggregation 2147746064)
+  (:no-interface 2147500034)
+  (:pointer 2147500035))
 
 (defcenum dataflow
   :render
