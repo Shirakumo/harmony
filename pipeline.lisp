@@ -10,7 +10,8 @@
   ())
 
 (defclass in-port (flow:in-port flow:1-port)
-  ())
+  ((optional :initarg :optional :accessor optional-p))
+  (:default-initargs :optional NIL))
 
 (defclass in-ports (flow:in-port flow:n-port)
   ())
@@ -26,7 +27,7 @@
   (setf (flow:attribute node 'segment) segment))
 
 (defmethod make-node ((segment cl-mixed:segment))
-  (destructuring-bind (&key max-inputs outputs flags &allow-other-keys)
+  (destructuring-bind (&key max-inputs min-inputs outputs flags &allow-other-keys)
       (info segment)
     (let ((node (make-instance 'node :segment segment)))
       (loop for i from 0 below outputs
@@ -37,7 +38,7 @@
       (if (< (expt 2 32) max-inputs) ;; "infinity-large"
           (push (make-instance 'in-ports :node node :name 'n) (flow:ports node))
           (dotimes (i max-inputs)
-            (push (make-instance 'in-port :node node :name i) (flow:ports node))))
+            (push (make-instance 'in-port :node node :name i :optional (<= min-inputs i)) (flow:ports node))))
       (setf (flow:ports node) (nreverse (flow:ports node)))
       node)))
 
@@ -49,8 +50,9 @@
                     (setf (output (flow:name port) segment)
                           (flow:attribute port 'buffer)))
                    ((typep port 'in-port)
-                    (let ((buffer (flow:attribute (flow:left (first (flow:connections port))) 'buffer)))
-                      (setf (input (flow:name port) segment) buffer)))
+                    (let ((left (flow:left (first (flow:connections port)))))
+                      (when left
+                        (setf (input (flow:name port) segment) (flow:attribute left 'buffer)))))
                    ((typep port 'in-ports)
                     (dolist (connection (flow:connections port))
                       (setf (input in segment)
