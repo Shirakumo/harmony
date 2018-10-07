@@ -146,8 +146,9 @@
     (clrhash (segment-map server))
     (loop for node in nodes
           for segment = (complete-segment node)
-          do (add (complete-segment node) sequence)
-             (setf (segment (name segment) server) segment)
+          do (add segment sequence)
+             (when (typep segment 'segment)
+               (setf (segment (name segment) server) segment))
           finally (setf device segment))
     (with-body-in-mixing-context (server :synchronize T)
       (when (and (started-p server) old-sequence)
