@@ -71,7 +71,7 @@
 
 (defgeneric sample-count (source))
 
-(cffi:defcallback source-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
+(cffi:defcallback source-mix :int ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let ((source (pointer->object segment)))
     (when (and source (not (paused-p source)))
       ;; We need to handle ended-p like this in order to make
@@ -84,7 +84,8 @@
              (process source samples)
              ;; Count current stream position
              (perform-fading source samples)
-             (incf (sample-position source) samples))))))
+             (incf (sample-position source) samples)))))
+  (if (ended-p source) 0 1))
 
 (defgeneric play (context source-ish mixer &key paused loop fade volume name &allow-other-keys))
 

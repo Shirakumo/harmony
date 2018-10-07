@@ -12,10 +12,11 @@
 (defmethod initialize-instance :after ((drain drain) &key)
   (setf (cl-mixed-cffi:direct-segment-mix (handle drain)) (cffi:callback drain-mix)))
 
-(cffi:defcallback drain-mix :void ((samples cl-mixed-cffi:size_t) (segment :pointer))
+(cffi:defcallback drain-mix :int ((samples cl-mixed-cffi:size_t) (segment :pointer))
   (let ((drain (pointer->object segment)))
     (when drain
-      (process drain samples))))
+      (process drain samples)))
+  1)
 
 (defclass pack-drain (drain)
   ((remix-factor :initform 0 :accessor remix-factor)
