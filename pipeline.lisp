@@ -6,18 +6,34 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
+(defgeneric check-complete (port))
+
 (defclass out-port (flow:out-port flow:n-port)
   ())
+
+(defmethod check-complete ((port out-port))
+  (unless (flow:port-value-boundp port)
+    (warn "Output port ~a is not connected." port)))
 
 (defclass in-port (flow:in-port flow:1-port)
   ((optional :initarg :optional :accessor optional-p))
   (:default-initargs :optional NIL))
 
+(defmethod check-complete ((port in-port))
+  (unless (or (optional-p port)
+              (flow:port-value-boundp port))
+    (error "Required input port ~a is not connected." port)))
+
 (defclass in-ports (flow:in-port flow:n-port)
   ())
 
+(defmethod check-complete ((port in-ports)))
+
 (defclass node (flow:dynamic-node)
   ())
+
+(defmethod check-complete ((node node))
+  (mapc #'check-complete (flow:ports node)))
 
 (defmethod print-object ((node node) stream)
   (print-unreadable-object (node stream :type T)
@@ -121,6 +137,7 @@
   pipeline)
 
 (defun allocate-buffers (nodes buffersize &optional old-buffers)
+  (mapc #'check-complete nodes)
   (let* ((buffer-count (1+ (loop for node in nodes
                                  when (flow:ports node)
                                  maximize (loop for port in (flow:ports node)
