@@ -25,7 +25,8 @@
 (in-package #:org.shirakumo.fraf.harmony.drains.alsa.cffi)
 
 (define-foreign-library libasound
-  (t (:default "libasound")))
+  (:unix (:or "libasound.so.2.0.0" "libasound.so.2" "libasound.so"))
+  (T (:or (:default "libasound") (:default "asound"))))
 
 (use-foreign-library libasound)
 
