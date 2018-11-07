@@ -58,7 +58,7 @@
 (defun decode (source-ish &rest initargs &key (server *server*) &allow-other-keys)
   (let ((initargs (copy-list initargs)))
     (remf initargs :server)
-    (apply #'harmony:decode source-ish initargs :samplerate (samplerate server))))
+    (apply #'harmony:decode source-ish :samplerate (samplerate server) initargs)))
 
 (defmethod add ((source source) (name symbol))
   (add source (ensure-segment name *server*)))
