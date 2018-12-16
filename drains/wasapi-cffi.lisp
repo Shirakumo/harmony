@@ -280,8 +280,9 @@
   (:speed-over-memory #x8))
 
 (defmacro defcomfun ((struct method &rest options) return-type &body args)
-  (let ((structg (gensym "STRUCT"))
-        (name (intern (format NIL "~a-~a" struct method))))
+  (let* ((*print-case* (readtable-case *readtable*))
+         (structg (gensym "STRUCT"))
+         (name (intern (format NIL "~a-~a" struct method))))
     `(progn
        (declaim (inline ,name))
        (defun ,name (,structg ,@(mapcar #'first args))
