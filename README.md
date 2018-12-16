@@ -129,7 +129,7 @@ Next we'll need to actually instantiate the buffers on start.
                                                          (harmony:samplerate
                                                           (harmony:context echo))))
                                              :element-type 'single-float
-                                             :initial-element 0.0s0)))))
+                                             :initial-element 0.0f0)))))
 
 Since we don't need to share these buffers with any C parts, we can just use a CL array for our convenience.
 
