@@ -64,7 +64,7 @@
   (add source (ensure-segment name *server*)))
 
 (defmethod withdraw ((source source) (name symbol))
-  (add source (ensure-segment name *server*)))
+  (withdraw source (ensure-segment name *server*)))
 
 (defun initialize (&rest initargs)
   (unless *server*
