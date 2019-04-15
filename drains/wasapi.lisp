@@ -8,6 +8,7 @@
 (defpackage #:harmony-wasapi
   (:nicknames #:org.shirakumo.fraf.harmony.drains.wasapi)
   (:use #:cl #:harmony)
+  (:shadow #:start #:end)
   (:export
    #:wasapi-error
    #:code

@@ -8,6 +8,7 @@
 (defpackage #:harmony-out123
   (:nicknames #:org.shirakumo.fraf.harmony.drains.out123)
   (:use #:cl #:harmony)
+  (:shadow #:start #:end)
   (:export
    #:out123-drain))
 (in-package #:org.shirakumo.fraf.harmony.drains.out123)

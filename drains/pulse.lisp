@@ -8,6 +8,7 @@
 (defpackage #:harmony-pulse
   (:nicknames #:org.shirakumo.fraf.harmony.drains.pulse)
   (:use #:cl #:harmony)
+  (:shadow #:start #:end)
   (:export
    #:pulse-error
    #:code

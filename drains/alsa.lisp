@@ -8,6 +8,7 @@
 (defpackage #:harmony-alsa
   (:nicknames #:org.shirakumo.fraf.harmony.drains.alsa)
   (:use #:cl #:harmony)
+  (:shadow #:start #:end)
   (:export
    #:alsa-error
    #:code

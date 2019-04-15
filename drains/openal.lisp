@@ -8,6 +8,7 @@ Author: Nicolas Hafner <shinmera@tymoon.eu>
 (defpackage #:harmony-openal
   (:nicknames #:org.shirakumo.fraf.harmony.drains.openal)
   (:use #:cl #:harmony)
+  (:shadow #:start #:end)
   (:export
    #:openal-drain))
 (in-package #:org.shirakumo.fraf.harmony.drains.openal)

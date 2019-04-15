@@ -8,6 +8,7 @@
 (defpackage #:harmony-coreaudio
   (:nicknames #:org.shirakumo.fraf.harmony.drains.coreaudio)
   (:use #:cl #:harmony)
+  (:shadow #:start #:end)
   (:export
    #:coreaudio-error
    #:code
