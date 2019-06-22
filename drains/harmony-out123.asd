@@ -7,7 +7,7 @@
 
 (asdf:defsystem harmony-out123
   :version "1.0.0"
-  :license "Artistic"
+  :license "zlib"
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
   :description "OUT123 based playback drain for Harmony"

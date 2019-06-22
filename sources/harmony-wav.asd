@@ -6,7 +6,7 @@
 
 (asdf:defsystem harmony-wav
   :version "1.0.0"
-  :license "Artistic"
+  :license "zlib"
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
   :description "WAV sound source for Harmony."

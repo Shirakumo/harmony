@@ -6,7 +6,7 @@
 
 (asdf:defsystem harmony-coreaudio
   :version "1.0.0"
-  :license "Artistic"
+  :license "zlib"
   :author "Nicolas Hafner <shinmera@tymoon.eu>"
   :maintainer "Nicolas Hafner <shinmera@tymoon.eu>"
   :description "Apple Core Audio based playback drain for Harmony"
