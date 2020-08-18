@@ -1,55 +1,22 @@
-#|
- This file is a part of harmony
- (c) 2017 Shirakumo http://tymoon.eu (shinmera@tymoon.eu)
- Author: Nicolas Hafner <shinmera@tymoon.eu>
-|#
 
-(in-package #:org.shirakumo.fraf.harmony)
+(defun detect-platform-drain ()
+  (cond ((org.shirakumo.fraf.mixed.jack:jack-present-p)
+         'org.shirakumo.fraf.mixed.jack:drain)
+        (T
+         #+windows
+         (let ((major (ldb (byte 8 8) (cffi:foreign-funcall "GetVersion" :int32))))
+           (if (<= 6 major) ; WASAPI started with Windows Vista (6.0)
+               'org.shirakumo.fraf.mixed.wasapi:drain
+               'org.shirakumo.fraf.mixed.winmm:drain))
+         #+linux
+         (if (org.shirakumo.fraf.mixed.pulse:pulse-present-p)
+             'org.shirakumo.fraf.mixed.pulse:drain
+             'org.shirakumo.fraf.mixed.alsa:drain)
+         #+darwin
+         'org.shirakumo.fraf.mixed.coreaudio:drain
+         #+bsd
+         'org.shirakumo.fraf.mixed.oss:drain)))
 
-(defclass drain (segment)
-  ())
-
-(defmethod initialize-instance :after ((drain drain) &key)
-  (setf (cl-mixed-cffi:direct-segment-mix (handle drain)) (cffi:callback drain-mix)))
-
-(cffi:defcallback drain-mix :int ((samples cl-mixed-cffi:size_t) (segment :pointer))
-  (let ((drain (pointer->object segment)))
-    (when drain
-      (process drain samples)))
-  1)
-
-(defclass pack-drain (drain)
-  ((remix-factor :initform 0 :accessor remix-factor)
-   (packed-audio :initform NIL :accessor packed-audio)
-   (pack-mix-function :initform NIL :accessor pack-mix-function)))
-
-(defmethod initialize-instance ((drain pack-drain) &key)
-  (call-next-method)
-  (setf (packed-audio drain) (initialize-packed-audio drain))
-  (setf (remix-factor drain) (coerce (/ (samplerate (packed-audio drain))
-                                        (samplerate (context drain)))
-                                     'single-float))
-  (cl-mixed::with-error-on-failure ()
-    (cl-mixed-cffi:make-segment-packer (handle (packed-audio drain)) (samplerate (context drain)) (handle drain)))
-  (setf (pack-mix-function drain) (cl-mixed-cffi:direct-segment-mix (handle drain))))
-
-(defmethod process :around ((drain pack-drain) samples)
-  (let ((endpoint-samples (floor (* samples (remix-factor drain)))))
-    ;; Pack
-    (cffi:foreign-funcall-pointer
-     (pack-mix-function drain) ()
-     cl-mixed-cffi:size_t samples
-     :pointer (handle drain))
-    ;; Encode
-    (call-next-method drain endpoint-samples)))
-
-(defmethod pause ((drain drain))
-  (setf (paused-p drain) T)
-  drain)
-
-(defmethod resume ((drain drain))
-  (setf (paused-p drain) NIL)
-  drain)
-
-(cl-mixed::define-field-accessor volume pack-drain :float :volume)
-(cl-mixed::define-field-accessor bypass pack-drain :bool :bypass)
+(defun make-drain (&key (channels 2) (target-samplerate 48000) (program-name "Harmony"))
+  (let ((pack (mixed:make-pack 100 :float channels target-samplerate)))
+    (make-instance (detect-platform-drain) :program-name program-name)))

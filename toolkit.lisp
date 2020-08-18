@@ -6,20 +6,6 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
-(cffi:defcfun (memcpy "memcpy") :pointer
-  (dest :pointer)
-  (source :pointer)
-  (num cl-mixed-cffi:size_t))
-
-(cffi:defcfun (memset "memset") :pointer
-  (dest :pointer)
-  (source :int)
-  (num cl-mixed-cffi:size_t))
-
-(declaim (inline memclear))
-(defun memclear (dest num)
-  (memset dest 0 num))
-
 (defun ease-linear (x)
   (declare (optimize speed))
   (declare (type single-float x))

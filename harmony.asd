@@ -17,19 +17,18 @@
   :components ((:file "package")
                (:file "toolkit")
                (:file "mixing-context")
-               (:file "segment")
                (:file "server")
                (:file "mixers")
                (:file "fadable")
-               (:file "source")
-               (:file "drain")
-               (:file "pipeline")
                (:file "files")
-               (:module "drains"
-                :components ((:file "buffer")))
-               (:module "sources"
-                :components ((:file "buffer")))
                (:file "documentation"))
+  :defsystem-depends-on (:trivial-features)
   :depends-on (:cl-mixed
-               :flow
-               :bordeaux-threads))
+               :bordeaux-threads
+               (:if-feature :windows :cl-mixed-wasapi)
+               (:if-feature :windows :cl-mixed-winmm)
+               (:if-feature :linux :cl-mixed-alsa)
+               (:if-feature :linux :cl-mixed-pulse)
+               (:if-feature :darwin :cl-mixed-coreaudio)
+               (:if-feature :bsd :cl-mixed-oss)
+               :cl-mixed-jack))
