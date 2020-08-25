@@ -8,9 +8,8 @@
 
 (defvar *in-processing-thread* NIL)
 
-(defclass server (mixing-context)
+(defclass server (mixed:segment-sequence)
   ((segment-map :initform (make-hash-table :test 'eql) :accessor segment-map)
-   (device :initarg :device :accessor device)
    (segment-sequence :initform NIL :accessor segment-sequence)
    (buffers :initform NIL :accessor buffers)
    (thread :initform NIL :accessor thread)
@@ -38,12 +37,6 @@
 (defmethod start ((server server))
   (when (started-p server)
     (error "~a is already running." server))
-  (unless (device server)
-    (error "No device has been assigned to ~a yet.~
-            Did you compile a pipeline?" server))
-  (unless (segment-sequence server)
-    (error "No mixer object has been assigned to ~a yet.~
-            Did you compile a pipeline?" server))
   (setf (thread server) T)
   (let ((thread (bt:make-thread (lambda ()
                                   (unwind-protect (run server)
@@ -130,23 +123,3 @@
           (T
            (bt:with-lock-held ((evaluation-lock server))
              (push-function function))))))
-
-(defmethod paused-p ((server server))
-  (paused-p (device server)))
-
-(defmethod (setf paused-p) (value (server server))
-  (setf (paused-p (device server)) value))
-
-(defmethod pause ((server server))
-  (pause (device server))
-  server)
-
-(defmethod resume ((server server))
-  (resume (device server))
-  server)
-
-(defmethod (setf buffersize) :before (size (server server))
-  (unless (= size (buffersize server))
-    (when (buffers server)
-      (loop for buffer across (buffers server)
-            do (setf (cl-mixed:size buffer) size)))))
