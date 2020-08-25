@@ -27,3 +27,15 @@
   (if (< x 0.5)
       (/ (expt (* 2 x) 3) 2)
       (1+ (/ (expt (* 2 (1- x)) 3) 2))))
+
+(defmacro push* (value place)
+  (let ((val (gensym "VAL"))
+        (old (gensym "OLD")))
+    `(loop with ,val = ,value
+           for ,old = ,place
+           until (atomics:cas ,place ,old (list* ,val ,old)))))
+
+(defmacro pop* (place)
+  `(loop for ,old = ,place
+         until (atomics:cas ,place ,old (rest ,old))
+         finally (return (car ,old))))

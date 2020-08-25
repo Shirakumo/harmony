@@ -7,26 +7,34 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defvar *in-processing-thread* NIL)
+(defvar *server* NIL)
 
 (defclass server (mixed:segment-sequence)
-  ((segment-map :initform (make-hash-table :test 'eql) :accessor segment-map)
-   (segment-sequence :initform NIL :accessor segment-sequence)
-   (buffers :initform NIL :accessor buffers)
+  ((segment-map :initform (make-hash-table :test 'eql) :reader segment-map)
+   (free-buffers :initform () :accessor free-buffers)
+   (free-unpackers :initform () :accessor free-unpackers)
    (thread :initform NIL :accessor thread)
-   ;; Synchronisation state
-   (evaluation-queue-head :initform NIL :accessor evaluation-queue-head)
-   (evaluation-queue-tail :initform NIL :accessor evaluation-queue-tail)
-   (evaluation-lock :initform NIL :accessor evaluation-lock)))
+   (queue :initform (make-array 32 :element-type T) :reader queue)
+   (samplerate :initform 48000 :initarg :samplerate :accessor samplerate)
+   (buffersize :initform NIL :initarg :buffersize :accessor)))
 
 (defmethod initialize-instance :after ((server server) &key)
-  (let ((cons (cons T NIL)))
-    (setf (evaluation-queue-head server) cons)
-    (setf (evaluation-queue-tail server) cons))
-  (setf (evaluation-lock server) (bt:make-lock (format NIL "~a evaluation lock." server))))
+  (setf *server* server)
+  (unless (buffersize server)
+    (setf (buffersize server) (floor (samplerate server) 100))))
 
 (defmethod print-object ((server server) stream)
   (print-unreadable-object (server stream :type T)
     (format stream "~@[~*running~]" (thread server))))
+
+(defmethod allocate-buffer ((server server))
+  (or (pop* (free-buffers server))
+      (mixed:make-buffer (buffersize server))))
+
+(defmethod free-buffer (buffer (server server))
+  (setf (from buffer) NIL)
+  (setf (to buffer) NIL)
+  (push* buffer (free-buffers server)))
 
 (defmethod segment ((name symbol) (server server))
   (gethash name (segment-map server)))
@@ -34,14 +42,25 @@
 (defmethod (setf segment) ((segment segment) (name symbol) (server server))
   (setf (gethash name (segment-map server)) segment))
 
-(defmethod start ((server server))
+(defmethod mixed:free :before ((server server))
+  (mixed:end server))
+
+(defmethod mixed:free :after ((server server))
+  (loop for buffer = (pop (free-buffers server))
+        while buffer do (mixed:free buffer))
+  (loop for segment being the hash-values of (segment-map server)
+        do (mixed:free buffer))
+  (clrhash (segment-map server)))
+
+(defmethod mixed:start :before ((server server))
   (when (started-p server)
-    (error "~a is already running." server))
+    (error "~a is already running." server)))
+
+(defmethod mixed:start ((server server))
+  (call-next-method)
   (setf (thread server) T)
-  (let ((thread (bt:make-thread (lambda ()
-                                  (unwind-protect (run server)
-                                    (setf (thread server) NIL)))
-                                :name (format NIL "~a process thread." server)
+  (let ((thread (bt:make-thread (lambda () (run server))
+                                :name (format NIL "~a processing thread" server)
                                 :initial-bindings `((*standard-output* . ,*standard-output*)
                                                     (*error-output* . ,*error-output*)
                                                     (*query-io* . ,*query-io*)
@@ -51,75 +70,77 @@
 (defmethod started-p ((server server))
   (not (null (thread server))))
 
-(defmethod stop ((server server))
-  (when (thread server)    
-    (let ((thread (thread server)))
-      (setf (thread server) NIL)
-      (restart-case
-          (loop for i from 0
-                while (bt:thread-alive-p thread)
-                do (sleep 0.1)
-                   (when (= i 100)
-                     (with-simple-restart (continue "Continue waiting.")
-                       (error "~a's thread is not shutting down." server))))
-        (abort ()
-          :report "Attempt to forcibly terminate the thread."
-          (bt:destroy-thread thread))
-        (ignore ()
-          :report "Return and ignore the running thread."))
-      thread)))
+(defmethod mixed:end ((server server))
+  (when (thread server)
+    ;; Clear the queue
+    (setf (svref (queue server) 0) 0)
+    (fill (queue server) NIL :start 1)
+    ;; Wait until our processing thread is shut down
+    (unless *in-processing-thread*
+      (let ((thread (thread server)))
+        (setf (thread server) NIL)
+        (restart-case
+            (loop for i from 0
+                  while (bt:thread-alive-p thread)
+                  do (sleep 0.01)
+                     (when (= i 100)
+                       (with-simple-restart (continue "Continue waiting.")
+                         (error "~a's thread is not shutting down." server))))
+          (abort ()
+            :report "Attempt to forcibly terminate the thread."
+            (bt:destroy-thread thread))
+          (ignore ()
+            :report "Return and ignore the running thread."))
+        thread))
+    ;; Call the sequence end.
+    (call-next-method)))
 
 (defmethod run ((server server))
-  (let ((sequence (handle (segment-sequence server)))
-        (device (device server))
-        (evaluation-lock (evaluation-lock server))
-        (evaluation-queue (evaluation-queue-head server)))
-    (let ((*in-processing-thread* T))
-      (cl-mixed:start (segment-sequence server))
-      (unwind-protect
-           (loop while (thread server)
-                 do (with-simple-restart (continue "Continue with fingers crossed.")
-                      (when (cdr evaluation-queue)
-                        (bt:with-lock-held (evaluation-lock)
-                          ;; Process first one and remove it from the queue.
-                          (funcall (cadr evaluation-queue))
-                          (setf (cdr evaluation-queue) (cddr evaluation-queue))
-                          (unless (cdr evaluation-queue)
-                            (setf (evaluation-queue-tail server) evaluation-queue)))
-                        ;; Properties might have changed.
-                        (setf sequence (handle (segment-sequence server)))
-                        (setf device (device server)))
-                      (cond ((paused-p device)
-                             (sleep (/ (buffersize server)
-                                       (samplerate server))))
-                            (T
-                             (cl-mixed-cffi:segment-sequence-mix (samples server) sequence)))))
-        (cl-mixed:end (segment-sequence server))))))
+  (let ((queue (queue server))
+        (*in-processing-thread* T)
+        (*server* server))
+    (unwind-protect
+         (loop while (thread server)
+               do (with-simple-restart (continue "Continue with fingers crossed.")
+                    ;; Loop until we can successfully clear the queue.
+                    (loop with i = 0
+                          for end = (svref queue 0)
+                          while (< 0 end)
+                          ;; Loop until we've reached the end of the queue.
+                          do (loop while (< i end)
+                                   for function = (svref queue (1+ i))
+                                   do (when function
+                                        (funcall function)
+                                        (setf (svref queue (1+ i)) NIL)
+                                        (incf i)))
+                          until (atomics:cas (svref queue 0) end 0))
+                    (mixed:mix server)))
+      (mixed:end server)
+      (setf (thread server) NIL))))
 
-(defmethod call-in-mixing-context (function (server server) &key (synchronize T) timeout (values T))
+(defmethod call-in-mixing-context (function (server server) &key (synchronize T) timeout)
   (flet ((push-function (function)
-           (let ((cons (cons function NIL)))
-             (setf (cdr (evaluation-queue-tail server)) cons)
-             (setf (evaluation-queue-tail server) cons))))
-    (cond ((not (thread server))
-           (funcall function))
-          ((and synchronize (not *in-processing-thread*))
-           (let* ((lock (bt:make-lock))
-                  (monitor (bt:make-condition-variable))
-                  (values-list ()))
-             (bt:with-lock-held (lock)
-               (bt:with-lock-held ((evaluation-lock server))
-                 (push-function (if values
-                                    (lambda ()
-                                      (unwind-protect
-                                           (setf values-list (multiple-value-list (funcall function)))
-                                        (bt:condition-notify monitor)))
-                                    (lambda ()
-                                      (unwind-protect
-                                           (funcall function)
-                                        (bt:condition-notify monitor))))))
-               (bt:condition-wait monitor lock :timeout timeout)
-               (values-list values-list))))
-          (T
-           (bt:with-lock-held ((evaluation-lock server))
-             (push-function function))))))
+           ;; Loop until there's space available and until we actually update the queue.
+           (loop with queue = (queue server)
+                 for old = (svref (queue server) 0)
+                 do (if (<= (length queue) old)
+                        (bt:thread-yield)
+                        (when (atomics:cas (svref queue 0) old (1+ old))
+                          (setf (svref queue (1+ old)) function)
+                          (return))))))
+    (if (or (not synchronize) *in-processing-thread*)
+        (push-function function)
+        (let* ((lock (bt:make-lock))
+               (monitor (bt:make-condition-variable))
+               (values-list ()))
+          (bt:with-lock-held (lock)
+            (push-function (lambda ()
+                             (unwind-protect
+                                  (setf values-list (multiple-value-list (funcall function)))
+                               (bt:condition-notify monitor))))
+            (bt:condition-wait monitor lock :timeout timeout)
+            (values-list values-list))))))
+
+(defmacro with-server ((server &rest args &key synchronize timeout) &body body)
+  (declare (ignore synchronize timeout))
+  `(call-in-mixing-context (lambda () ,@body) ,server ,@args))

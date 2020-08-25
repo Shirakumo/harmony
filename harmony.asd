@@ -24,7 +24,9 @@
                (:file "documentation"))
   :defsystem-depends-on (:trivial-features)
   :depends-on (:cl-mixed
+               :atomics
                :bordeaux-threads
+               :stealth-mixin
                (:if-feature :windows :cl-mixed-wasapi)
                (:if-feature :windows :cl-mixed-winmm)
                (:if-feature :linux :cl-mixed-alsa)
