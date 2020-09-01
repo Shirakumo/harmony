@@ -16,21 +16,18 @@
   :serial T
   :components ((:file "package")
                (:file "toolkit")
-               (:file "mixing-context")
                (:file "server")
-               (:file "mixers")
-               (:file "fadable")
-               (:file "files")
+               (:file "segment")
                (:file "documentation"))
   :defsystem-depends-on (:trivial-features)
   :depends-on (:cl-mixed
                :atomics
                :bordeaux-threads
                :stealth-mixin
-               (:if-feature :windows :cl-mixed-wasapi)
-               (:if-feature :windows :cl-mixed-winmm)
-               (:if-feature :linux :cl-mixed-alsa)
-               (:if-feature :linux :cl-mixed-pulse)
-               (:if-feature :darwin :cl-mixed-coreaudio)
-               (:if-feature :bsd :cl-mixed-oss)
+               (:feature :windows :cl-mixed-wasapi)
+               (:feature :windows :cl-mixed-winmm)
+               (:feature :linux :cl-mixed-alsa)
+               (:feature :linux :cl-mixed-pulse)
+               (:feature :darwin :cl-mixed-coreaudio)
+               (:feature :bsd :cl-mixed-oss)
                :cl-mixed-jack))

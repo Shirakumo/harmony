@@ -9,14 +9,14 @@
 (defvar *in-processing-thread* NIL)
 (defvar *server* NIL)
 
-(defclass server (mixed:segment-sequence)
+(defclass server (mixed:chain)
   ((segment-map :initform (make-hash-table :test 'eql) :reader segment-map)
    (free-buffers :initform () :accessor free-buffers)
    (free-unpackers :initform () :accessor free-unpackers)
    (thread :initform NIL :accessor thread)
    (queue :initform (make-array 32 :element-type T) :reader queue)
    (samplerate :initform 48000 :initarg :samplerate :accessor samplerate)
-   (buffersize :initform NIL :initarg :buffersize :accessor)))
+   (buffersize :initform NIL :initarg :buffersize :accessor buffersize)))
 
 (defmethod initialize-instance :after ((server server) &key)
   (setf *server* server)
@@ -28,18 +28,26 @@
     (format stream "~@[~*running~]" (thread server))))
 
 (defmethod allocate-buffer ((server server))
-  (or (pop* (free-buffers server))
+  (or (pop* (slot-value server 'free-buffers))
       (mixed:make-buffer (buffersize server))))
+
+(defmethod allocate-unpacker ((server server))
+  (or (pop* (slot-value server 'free-unpackers))
+      (mixed:make-unpacker :frames (buffersize server) :samplerate (samplerate server))))
 
 (defmethod free-buffer (buffer (server server))
   (setf (from buffer) NIL)
   (setf (to buffer) NIL)
-  (push* buffer (free-buffers server)))
+  (push* buffer (slot-value server 'free-buffers)))
+
+(defmethod free-unpacker (unpacker (server server))
+  (disconnect unpacker T)
+  (push* unpacker (slot-value server 'free-unpackers)))
 
 (defmethod segment ((name symbol) (server server))
   (gethash name (segment-map server)))
 
-(defmethod (setf segment) ((segment segment) (name symbol) (server server))
+(defmethod (setf segment) ((segment mixed:segment) (name symbol) (server server))
   (setf (gethash name (segment-map server)) segment))
 
 (defmethod mixed:free :before ((server server))
@@ -49,7 +57,7 @@
   (loop for buffer = (pop (free-buffers server))
         while buffer do (mixed:free buffer))
   (loop for segment being the hash-values of (segment-map server)
-        do (mixed:free buffer))
+        do (mixed:free segment))
   (clrhash (segment-map server)))
 
 (defmethod mixed:start :before ((server server))

@@ -36,6 +36,10 @@
            until (atomics:cas ,place ,old (list* ,val ,old)))))
 
 (defmacro pop* (place)
-  `(loop for ,old = ,place
-         until (atomics:cas ,place ,old (rest ,old))
-         finally (return (car ,old))))
+  (let ((old (gensym "OLD")))
+    `(loop for ,old = ,place
+           until (atomics:cas ,place ,old (rest ,old))
+           finally (return (car ,old)))))
+
+(defmethod segment ((idx integer) (chain mixed:chain))
+  (aref (mixed:segments chain) idx))
