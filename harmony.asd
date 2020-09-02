@@ -18,6 +18,7 @@
                (:file "toolkit")
                (:file "server")
                (:file "segment")
+               (:file "simple")
                (:file "documentation"))
   :defsystem-depends-on (:trivial-features)
   :depends-on (:cl-mixed

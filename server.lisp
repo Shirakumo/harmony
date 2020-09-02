@@ -16,7 +16,8 @@
    (thread :initform NIL :accessor thread)
    (queue :initform (make-array 32 :element-type T) :reader queue)
    (samplerate :initform 48000 :initarg :samplerate :accessor samplerate)
-   (buffersize :initform NIL :initarg :buffersize :accessor buffersize)))
+   (buffersize :initform NIL :initarg :buffersize :accessor buffersize)
+   (name :initform "Harmony")))
 
 (defmethod initialize-instance :after ((server server) &key)
   (setf *server* server)
@@ -50,6 +51,10 @@
 (defmethod (setf segment) ((segment mixed:segment) (name symbol) (server server))
   (setf (gethash name (segment-map server)) segment))
 
+(defmethod (setf segment) ((null null) (name symbol) (server server))
+  (remhash name (segment-map server))
+  NIL)
+
 (defmethod mixed:free :before ((server server))
   (mixed:end server))
 
@@ -59,6 +64,14 @@
   (loop for segment being the hash-values of (segment-map server)
         do (mixed:free segment))
   (clrhash (segment-map server)))
+
+(defmethod mixed:add :after ((segment mixed:segment) (server server))
+  (when (name segment)
+    (setf (segment (name segment) server) segment)))
+
+(defmethod mixed:withdraw :after ((segment mixed:segment) (server server))
+  (when (name segment)
+    (setf (segment (name segment) server) NIL)))
 
 (defmethod mixed:start :before ((server server))
   (when (started-p server)

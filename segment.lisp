@@ -88,6 +88,22 @@
 (defclass faucet (mixed:chain)
   ())
 
+(defgeneric make-source-for (source &rest initargs)
+  (:method ((source pathname) &rest initargs)
+    (if (pathname-type source)
+        (apply #'make-source-for-path-type source (intern (string-upcase (pathname-type source)) "KEYWORD") initargs)
+        (error "Pathname has no type:~%  ~a" source))))
+
+(defgeneric make-source-for-path-type (pathname type &rest initargs)
+  (:method (source type &rest initargs)
+    (macrolet ((maybe-make-drain (type)
+                 `(apply #'make-instance (lazy-symbol ,package drain (error "~a is not loaded." ,(string package)))
+                         :file pathname initargs))))
+    (ecase type
+      (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123))
+      (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav))
+      (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac)))))
+
 (defmethod initialize-instance :after ((faucet faucet) &key source segments)
   (let ((unpacker (allocate-unpacker *server*)))
     (mixed:add (make-source-for source :pack (mixed:pack unpacker)) faucet)

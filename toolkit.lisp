@@ -43,3 +43,8 @@
 
 (defmethod segment ((idx integer) (chain mixed:chain))
   (aref (mixed:segments chain) idx))
+
+(defmacro lazy-symbol (package name &optional default)
+  `(or (and (find-package ,(string package))
+            (find-symbol ,(string name) ,(string package)))
+       ,default))
