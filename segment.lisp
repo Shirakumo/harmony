@@ -13,7 +13,8 @@
    (to-location :initform NIL :accessor to-location)))
 
 (stealth-mixin:define-stealth-mixin segment () mixed:segment
-  ((name :initarg :name :initform NIL :reader name)))
+  ((name :initarg :name :initform NIL :reader name)
+   (chain :initform NIL :accessor chain)))
 
 (defmethod (setf mixed:output-field) :after ((buffer buffer) (field (eql :buffer)) (location integer) (segment segment))
   (setf (from buffer) segment)
@@ -53,14 +54,29 @@
                              (:input (getf (info from) :inputs)))
         do (disconnect from i :direction direction)))
 
+(defmethod mixed:add :after ((segment segment) (chain mixed:chain))
+  (setf (chain segment) chain))
+
+(defmethod mixed:withdraw :after ((segment segment) (chain mixed:chain))
+  (when (eql (chain segment) chain)
+    (setf (chain segment) NIL)))
+
+(defmethod mixed:withdraw ((segment segment) (chain (eql T)))
+  (when (chain segment)
+    (mixed:withdraw segment (chain segment))))
+
+(defun default-source-end (source)
+  (disconnect source T))
+
 (stealth-mixin:define-stealth-mixin source (segment) mixed:source
-  ((repeat :initarg :repeat :initform 0 :accessor repeat)))
+  ((repeat :initarg :repeat :initform 0 :accessor repeat)
+   (on-end :initarg :on-end :initform #'default-source-end :accessor on-end)))
 
 (defmethod (setf mixed:done-p) :around (value (source source))
   (case (repeat source)
     ((0 null)
      (call-next-method)
-     (disconnect source T))
+     (funcall (on-end source) source))
     ((T)
      (mixed:seek source 0))
     (T
@@ -85,7 +101,7 @@
 (defmethod (setf mixed:volume) (value (source source))
   (setf (mixed:volume (mixed:unpacker source)) value))
 
-(defclass faucet (mixed:chain)
+(defclass source-chain (mixed:chain)
   ())
 
 (defgeneric make-source-for (source &rest initargs)
@@ -104,47 +120,59 @@
       (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav))
       (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac)))))
 
-(defmethod initialize-instance :after ((faucet faucet) &key source segments)
-  (let ((unpacker (allocate-unpacker *server*)))
-    (mixed:add (make-source-for source :pack (mixed:pack unpacker)) faucet)
-    (mixed:add unpacker faucet)
-    (loop for previous = pack then segment
-          for segment in segments
-          do (connect previous T segment T))))
+(defmethod initialize-instance :after ((source-chain source-chain) &key source segments loop (on-end :free))
+  (flet ((free (_) (declare (ignore _))
+           (mixed:free source-chain))
+         (disconnect (_) (declare (ignore _))
+           (disconnect source-chain T)
+           (mixed:withdraw source-chain T)))
+    (let ((unpacker (allocate-unpacker *server*))
+          (on-end (ecase on-end
+                    (:free #'free)
+                    (:disconnect #'disconnect))))
+      (mixed:add (make-source-for source :pack (mixed:pack unpacker) :loop loop :on-end on-end) source-chain)
+      (mixed:add unpacker source-chain)
+      (loop for previous = pack then segment
+            for segment in segments
+            do (connect previous T segment T)))))
 
-(defmethod mixed:free :after ((faucet faucet))
-  (mixed:free (source faucet))
-  (free-unpacker (mixed:unpacker faucet))
-  (loop for i from 2 below (length (mixed:segments faucet))
-        for segment = (aref (mixed:segments faucet) i)
+(defmethod mixed:free :before ((source-chain source-chain))
+  (mixed:withdraw source-chain T)
+  (mixed:disconnect source-chain T))
+
+(defmethod mixed:free :after ((source-chain source-chain))
+  (mixed:free (source source-chain))
+  (free-unpacker (mixed:unpacker source-chain))
+  (loop for i from 2 below (length (mixed:segments source-chain))
+        for segment = (aref (mixed:segments source-chain) i)
         do (disconnect segment T)
            (mixed:free segment)))
 
-(defmethod source ((faucet faucet))
-  (aref (mixed:segments faucet) 0))
+(defmethod source ((source-chain source-chain))
+  (aref (mixed:segments source-chain) 0))
 
-(defmethod mixed:unpacker ((faucet faucet))
-  (aref (mixed:segments faucet) 1))
+(defmethod mixed:unpacker ((source-chain source-chain))
+  (aref (mixed:segments source-chain) 1))
 
-(defmethod mixed:volume ((faucet faucet))
-  (mixed:volume (mixed:unpacker faucet)))
+(defmethod mixed:volume ((source-chain source-chain))
+  (mixed:volume (mixed:unpacker source-chain)))
 
-(defmethod (setf mixed:volume) (value (faucet faucet))
-  (setf (mixed:volume (mixed:unpacker faucet)) value))
+(defmethod (setf mixed:volume) (value (source-chain source-chain))
+  (setf (mixed:volume (mixed:unpacker source-chain)) value))
 
-(defun faucet-end (faucet)
-  (aref (mixed:segments faucet) (1- (length (mixed:segments faucet)))))
+(defun source-chain-end (source-chain)
+  (aref (mixed:segments source-chain) (1- (length (mixed:segments source-chain)))))
 
-(defmethod mixed:outputs ((from faucet))
-  (mixed:outputs (faucet-end from)))
+(defmethod mixed:outputs ((from source-chain))
+  (mixed:outputs (source-chain-end from)))
 
-(defmethod mixed:output (location (from faucet))
-  (mixed:output location (faucet-end from)))
+(defmethod mixed:output (location (from source-chain))
+  (mixed:output location (source-chain-end from)))
 
-(defmethod connect ((from faucet) from-loc to to-loc)
-  (connect (faucet-end from) from-loc to to-loc))
+(defmethod connect ((from source-chain) from-loc to to-loc)
+  (connect (source-chain-end from) from-loc to to-loc))
 
-(defmethod disconnect ((from faucet) from-loc &key (direction :output))
+(defmethod disconnect ((from source-chain) from-loc &key (direction :output))
   (unless (eq direction :output)
-    (error "Cannot disconnect faucet from input, as it does not have any."))
-  (disconnect (faucet-end from) from-loc :direction :output))
+    (error "Cannot disconnect source-chain from input, as it does not have any."))
+  (disconnect (source-chain-end from) from-loc :direction :output))

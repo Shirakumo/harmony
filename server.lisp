@@ -46,7 +46,8 @@
   (push* unpacker (slot-value server 'free-unpackers)))
 
 (defmethod segment ((name symbol) (server server))
-  (gethash name (segment-map server)))
+  (or (gethash name (segment-map server))
+      (error "No such segment ~s" name)))
 
 (defmethod (setf segment) ((segment mixed:segment) (name symbol) (server server))
   (setf (gethash name (segment-map server)) segment))
@@ -87,6 +88,12 @@
                                                     (*query-io* . ,*query-io*)
                                                     (*trace-output* . ,*trace-output*)))))
     (setf (thread server) thread)))
+
+(defmethod mixed:volume ((name symbol))
+  (mixed:volume (segment name *server*)))
+
+(defmethod mixed:volume (value (name symbol))
+  (setf (mixed:volume (segment name *server*)) value))
 
 (defmethod started-p ((server server))
   (not (null (thread server))))
@@ -162,6 +169,6 @@
             (bt:condition-wait monitor lock :timeout timeout)
             (values-list values-list))))))
 
-(defmacro with-server ((server &rest args &key synchronize timeout) &body body)
+(defmacro with-server ((&optional (server '*server*) &rest args &key synchronize timeout) &body body)
   (declare (ignore synchronize timeout))
   `(call-in-mixing-context (lambda () ,@body) ,server ,@args))
