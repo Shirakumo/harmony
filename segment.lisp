@@ -6,15 +6,23 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
-(stealth-mixin:define-stealth-mixin buffer () mixed:bip-buffer
+(stealth-mixin:define-stealth-mixin buffer () mixed::bip-buffer
   ((from :initform NIL :accessor from)
    (from-location :initform NIL :accessor from-location)
    (to :initform NIL :accessor to)
    (to-location :initform NIL :accessor to-location)))
 
+(defmethod print-object ((buffer buffer) stream)
+  (print-unreadable-object (buffer stream :type T)
+    (format stream "~a <-> ~a" (from buffer) (to buffer))))
+
 (stealth-mixin:define-stealth-mixin segment () mixed:segment
   ((name :initarg :name :initform NIL :reader name)
    (chain :initform NIL :accessor chain)))
+
+(defmethod print-object ((segment segment) stream)
+  (print-unreadable-object (segment stream :type T)
+    (format stream "~@[~s~]" (name segment))))
 
 (defmethod (setf mixed:output-field) :after ((buffer buffer) (field (eql :buffer)) (location integer) (segment segment))
   (setf (from buffer) segment)
@@ -37,16 +45,16 @@
     (mixed:connect from from-loc to to-loc buffer)))
 
 (defmethod connect ((from segment) (all (eql T)) (to segment) (_all (eql T)))
-  (loop for i from 0 below (getf (info from) :outputs)
-        do (connect from i to i *server*)))
+  (loop for i from 0 below (getf (mixed:info from) :outputs)
+        do (connect from i to i)))
 
 (defmethod connect ((from segment) (all (eql T)) (to mixed:basic-mixer) (_all (eql T)))
-  (loop for i from 0 below (getf (info from) :outputs)
+  (loop for i from 0 below (getf (mixed:info from) :outputs)
         for j from (length (mixed:inputs to))
         do (connect from i to j)))
 
 (defmethod connect ((from segment) (all (eql T)) (to mixed:space-mixer) (_all (eql T)))
-  (when (< 1 (getf (info from) :outputs))
+  (when (< 1 (getf (mixed:info from) :outputs))
     (error "Cannot connect a segment with more than one output to a space mixer; dangling buffers."))
   (connect from 0 to (1+ (length (mixed:inputs to)))))
 
@@ -60,8 +68,8 @@
 
 (defmethod disconnect ((from segment) (all (eql T)) &key (direction :output))
   (loop for i from 0 below (ecase direction
-                             (:output (getf (info from) :outputs))
-                             (:input (getf (info from) :inputs)))
+                             (:output (getf (mixed:info from) :outputs))
+                             (:input (getf (mixed:info from) :inputs)))
         do (disconnect from i :direction direction)))
 
 (defmethod mixed:add :after ((segment segment) (chain mixed:chain))

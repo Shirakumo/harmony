@@ -26,7 +26,7 @@
 
 (defmethod print-object ((server server) stream)
   (print-unreadable-object (server stream :type T)
-    (format stream "~@[~*running~]" (thread server))))
+    (format stream "~s~@[~* running~]" (name server) (started-p server))))
 
 (defmethod allocate-buffer ((server server))
   (or (pop* (slot-value server 'free-buffers))
@@ -45,9 +45,15 @@
   (disconnect unpacker T)
   (push* unpacker (slot-value server 'free-unpackers)))
 
+(defmethod segment (name (server (eql T)))
+  (segment name *server*))
+
 (defmethod segment ((name symbol) (server server))
   (or (gethash name (segment-map server))
       (error "No such segment ~s" name)))
+
+(defmethod (setf segment) (segment name (server (eql T)))
+  (setf (segment name *server*) segment))
 
 (defmethod (setf segment) ((segment mixed:segment) (name symbol) (server server))
   (setf (gethash name (segment-map server)) segment))
@@ -60,11 +66,17 @@
   (mixed:end server))
 
 (defmethod mixed:free :after ((server server))
+  (labels ((rec (chain)
+             (loop for segment across (mixed:segments chain)
+                   do (when (typep segment 'mixed:chain)
+                        (rec segment))
+                      (mixed:free segment))))
+    (rec server))
+  (clrhash (segment-map server))
   (loop for buffer = (pop (free-buffers server))
         while buffer do (mixed:free buffer))
-  (loop for segment being the hash-values of (segment-map server)
-        do (mixed:free segment))
-  (clrhash (segment-map server)))
+  (loop for unpacker = (pop (free-unpackers server))
+        while unpacker do (mixed:free unpacker)))
 
 (defmethod mixed:add :after ((segment mixed:segment) (server server))
   (when (name segment)
@@ -87,7 +99,8 @@
                                                     (*error-output* . ,*error-output*)
                                                     (*query-io* . ,*query-io*)
                                                     (*trace-output* . ,*trace-output*)))))
-    (setf (thread server) thread)))
+    (setf (thread server) thread))
+  server)
 
 (defmethod volume ((name symbol))
   (volume (segment name *server*)))
@@ -108,7 +121,9 @@
   (setf (velocity (segment name *server*)) velocity))
 
 (defmethod started-p ((server server))
-  (not (null (thread server))))
+  (and (thread server)
+       (or (null (bt:threadp (thread server)))
+           (bt:thread-alive-p (thread server)))))
 
 (defmethod mixed:end ((server server))
   (when (thread server)
