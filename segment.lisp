@@ -6,7 +6,7 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
-(stealth-mixin:define-stealth-mixin buffer () mixed:buffer
+(stealth-mixin:define-stealth-mixin buffer () mixed:bip-buffer
   ((from :initform NIL :accessor from)
    (from-location :initform NIL :accessor from-location)
    (to :initform NIL :accessor to)
@@ -40,6 +40,16 @@
   (loop for i from 0 below (getf (info from) :outputs)
         do (connect from i to i *server*)))
 
+(defmethod connect ((from segment) (all (eql T)) (to mixed:basic-mixer) (_all (eql T)))
+  (loop for i from 0 below (getf (info from) :outputs)
+        for j from (length (mixed:inputs to))
+        do (connect from i to j)))
+
+(defmethod connect ((from segment) (all (eql T)) (to mixed:space-mixer) (_all (eql T)))
+  (when (< 1 (getf (info from) :outputs))
+    (error "Cannot connect a segment with more than one output to a space mixer; dangling buffers."))
+  (connect from 0 to (1+ (length (mixed:inputs to)))))
+
 (defmethod disconnect ((from segment) from-loc &key (direction :output))
   (let ((buffer (ecase direction
                   (:output (mixed:output from from-loc))
@@ -68,6 +78,12 @@
 (defun default-source-end (source)
   (disconnect source T))
 
+(defmethod downstream ((segment segment) index)
+  (to (mixed:output index segment)))
+
+(defmethod upstream ((segment segment) index)
+  (from (mixed:input index segment)))
+
 (stealth-mixin:define-stealth-mixin source (segment) mixed:source
   ((repeat :initarg :repeat :initform 0 :accessor repeat)
    (on-end :initarg :on-end :initform #'default-source-end :accessor on-end)))
@@ -95,84 +111,8 @@
 (defmethod disconnect ((from source) from-loc &key (direction :output))
   (disconnect (mixed:unpacker from) from-loc :direction direction))
 
-(defmethod mixed:volume ((source source))
-  (mixed:volume (mixed:unpacker source)))
+(defmethod volume ((source source))
+  (volume (mixed:unpacker source)))
 
-(defmethod (setf mixed:volume) (value (source source))
-  (setf (mixed:volume (mixed:unpacker source)) value))
-
-(defclass source-chain (mixed:chain)
-  ())
-
-(defgeneric make-source-for (source &rest initargs)
-  (:method ((source pathname) &rest initargs)
-    (if (pathname-type source)
-        (apply #'make-source-for-path-type source (intern (string-upcase (pathname-type source)) "KEYWORD") initargs)
-        (error "Pathname has no type:~%  ~a" source))))
-
-(defgeneric make-source-for-path-type (pathname type &rest initargs)
-  (:method (source type &rest initargs)
-    (macrolet ((maybe-make-drain (type)
-                 `(apply #'make-instance (lazy-symbol ,package drain (error "~a is not loaded." ,(string package)))
-                         :file pathname initargs))))
-    (ecase type
-      (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123))
-      (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav))
-      (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac)))))
-
-(defmethod initialize-instance :after ((source-chain source-chain) &key source segments loop (on-end :free))
-  (flet ((free (_) (declare (ignore _))
-           (mixed:free source-chain))
-         (disconnect (_) (declare (ignore _))
-           (disconnect source-chain T)
-           (mixed:withdraw source-chain T)))
-    (let ((unpacker (allocate-unpacker *server*))
-          (on-end (ecase on-end
-                    (:free #'free)
-                    (:disconnect #'disconnect))))
-      (mixed:add (make-source-for source :pack (mixed:pack unpacker) :loop loop :on-end on-end) source-chain)
-      (mixed:add unpacker source-chain)
-      (loop for previous = pack then segment
-            for segment in segments
-            do (connect previous T segment T)))))
-
-(defmethod mixed:free :before ((source-chain source-chain))
-  (mixed:withdraw source-chain T)
-  (disconnect source-chain T))
-
-(defmethod mixed:free :after ((source-chain source-chain))
-  (mixed:free (source source-chain))
-  (free-unpacker (mixed:unpacker source-chain))
-  (loop for i from 2 below (length (mixed:segments source-chain))
-        for segment = (aref (mixed:segments source-chain) i)
-        do (disconnect segment T)
-           (mixed:free segment)))
-
-(defmethod source ((source-chain source-chain))
-  (aref (mixed:segments source-chain) 0))
-
-(defmethod mixed:unpacker ((source-chain source-chain))
-  (aref (mixed:segments source-chain) 1))
-
-(defmethod mixed:volume ((source-chain source-chain))
-  (mixed:volume (mixed:unpacker source-chain)))
-
-(defmethod (setf mixed:volume) (value (source-chain source-chain))
-  (setf (mixed:volume (mixed:unpacker source-chain)) value))
-
-(defun source-chain-end (source-chain)
-  (aref (mixed:segments source-chain) (1- (length (mixed:segments source-chain)))))
-
-(defmethod mixed:outputs ((from source-chain))
-  (mixed:outputs (source-chain-end from)))
-
-(defmethod mixed:output (location (from source-chain))
-  (mixed:output location (source-chain-end from)))
-
-(defmethod connect ((from source-chain) from-loc to to-loc)
-  (connect (source-chain-end from) from-loc to to-loc))
-
-(defmethod disconnect ((from source-chain) from-loc &key (direction :output))
-  (unless (eq direction :output)
-    (error "Cannot disconnect source-chain from input, as it does not have any."))
-  (disconnect (source-chain-end from) from-loc :direction :output))
+(defmethod (setf volume) (value (source source))
+  (setf (volume (mixed:unpacker source)) value))

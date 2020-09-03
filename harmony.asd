@@ -18,6 +18,7 @@
                (:file "toolkit")
                (:file "server")
                (:file "segment")
+               (:file "voice")
                (:file "simple")
                (:file "documentation"))
   :defsystem-depends-on (:trivial-features)

@@ -48,3 +48,7 @@
   `(or (and (find-package ,(string package))
             (find-symbol ,(string name) ,(string package)))
        ,default))
+
+(defun add-to (target &rest parts)
+  (dolist (part parts target)
+    (mixed:add part target)))

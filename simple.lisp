@@ -39,15 +39,20 @@
     chain))
 
 (defun create-simple-server (&key (name "Harmony") (samplerate mixed:*default-samplerate*) (latency 0.01))
-  (let ((server (make-instance 'server :name name :samplerate samplerate :buffersize (ceiling (* latency samplerate)))))
-    (mixed:add (make-instance 'mixed:chain :name :sources) server)
-    (mixed:add (make-instance 'mixed:basic-mixer :name :music :channels 2) server)
-    (mixed:add (make-instance 'mixed:basic-mixer :name :speech :channels 2) server)
-    (mixed:add (make-instance 'mixed:space-mixer :name :sfx) server)
-    (mixed:add (construct-output :server server) server)
+  (let* ((server (make-instance 'server :name name :samplerate samplerate :buffersize (ceiling (* latency samplerate))))
+         (sources (make-instance 'mixed:chain :name :sources))
+         (music (make-instance 'mixed:basic-mixer :name :music))
+         (speech (make-instance 'mixed:basic-mixer :name :speech))
+         (effect (make-instance 'mixed:space-mixer :name :effect))
+         (master (make-instance 'mixed:basic-mixer :name :master))
+         (output (construct-output :server server)))
+    (connect music T master T)
+    (connect speech T master T)
+    (connect effect T master T)
+    (add-to server sources music speech effect master output)
     server))
 
-(defun play (source &key name (mixer :sfx) effects (server *server*) loop (on-end :free))
+(defun play (source &key name (mixer :effect) effects (server *server*) loop (on-end :free))
   (let ((mixer (segment mixer server))
         (sources (segment :sources server))
         (segment (make-instance 'faucet :name name :source source :segments effects :loop loop :on-end on-end)))
@@ -55,3 +60,21 @@
       (mixed:add segment sources)
       (mixed:add segment mixer))
     segment))
+
+(defmethod location ((server server))
+  (mixed:location (segment :effect server)))
+
+(defmethod (setf location) (location (server server))
+  (setf (mixed:location (segment :effect server)) location))
+
+(defmethod velocity ((server server))
+  (mixed:velocity (segment :effect server)))
+
+(defmethod (setf velocity) (velocity (server server))
+  (setf (mixed:velocity (segment :effect server)) velocity))
+
+(defmethod volume ((server server))
+  (volume (segment :master server)))
+
+(defmethod (setf volume) (volume (server server))
+  (setf (volume (segment :master server)) volume))

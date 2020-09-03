@@ -89,11 +89,23 @@
                                                     (*trace-output* . ,*trace-output*)))))
     (setf (thread server) thread)))
 
-(defmethod mixed:volume ((name symbol))
-  (mixed:volume (segment name *server*)))
+(defmethod volume ((name symbol))
+  (volume (segment name *server*)))
 
-(defmethod (setf mixed:volume) (value (name symbol))
-  (setf (mixed:volume (segment name *server*)) value))
+(defmethod (setf volume) (value (name symbol))
+  (setf (volume (segment name *server*)) value))
+
+(defmethod location ((name symbol))
+  (location (segment name *server*)))
+
+(defmethod (setf location) (location (name symbol))
+  (setf (location (segment name *server*)) location))
+
+(defmethod velocity ((name symbol))
+  (velocity (segment name *server*)))
+
+(defmethod (setf velocity) (velocity (name symbol))
+  (setf (velocity (segment name *server*)) velocity))
 
 (defmethod started-p ((server server))
   (not (null (thread server))))
