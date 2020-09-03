@@ -50,13 +50,13 @@
     (connect master T (segment 0 output) T)
     (add-to server sources music speech effect master output)))
 
-(defun play (source &key name (mixer :effect) effects (server *server*) loop (on-end :free))
+(defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free))
   (let ((mixer (segment mixer server))
         (sources (segment :sources server))
-        (segment (make-instance 'faucet :name name :source source :segments effects :loop loop :on-end on-end)))
+        (segment (make-instance 'voice :name name :source source :segments effects :repeat repeat :on-end on-end)))
     (with-server (server)
       (mixed:add segment sources)
-      (mixed:add segment mixer))
+      (connect segment T mixer T))
     segment))
 
 (defmethod location ((server server))

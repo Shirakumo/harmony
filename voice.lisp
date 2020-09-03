@@ -17,15 +17,15 @@
 
 (defgeneric make-source-for-path-type (pathname type &rest initargs)
   (:method (source type &rest initargs)
-    (macrolet ((maybe-make-drain (type)
-                 `(apply #'make-instance (lazy-symbol ,package drain (error "~a is not loaded." ,(string package)))
-                         :file pathname initargs))))
-    (ecase type ;; static deferral. Not great, but can't do it otherwise with ASDF.
-      (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123))
-      (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav))
-      (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac)))))
+    (macrolet ((maybe-make-drain (package)
+                 `(apply #'make-instance (lazy-symbol ,package source (error "~a is not loaded." ,(string package)))
+                         :file source initargs)))
+      (ecase type ;; static deferral. Not great, but can't do it otherwise with ASDF.
+        (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123))
+        (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav))
+        (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac))))))
 
-(defmethod initialize-instance :after ((voice voice) &key source effects loop (on-end :free))
+(defmethod initialize-instance :after ((voice voice) &key source effects repeat (on-end :free))
   (flet ((free (_) (declare (ignore _))
            (mixed:free voice))
          (disconnect (_) (declare (ignore _))
@@ -35,9 +35,9 @@
           (on-end (ecase on-end
                     (:free #'free)
                     (:disconnect #'disconnect))))
-      (mixed:add (make-source-for source :pack (mixed:pack unpacker) :loop loop :on-end on-end) voice)
+      (mixed:add (make-source-for source :pack (mixed:pack unpacker) :repeat repeat :on-end on-end) voice)
       (mixed:add unpacker voice)
-      (loop for previous = pack then segment
+      (loop for previous = unpacker then segment
             for segment in effects
             do (connect previous T segment T)))))
 
