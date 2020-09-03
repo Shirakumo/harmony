@@ -10,5 +10,5 @@
    (#:mixed #:org.shirakumo.fraf.mixed)
    (#:atomics #:org.shirakumo.atomics))
   (:use #:cl)
-  (:import-from #:org.shirakumo.fraf.mixed #:volume)
+  (:import-from #:org.shirakumo.fraf.mixed #:volume #:start #:end)
   (:export))

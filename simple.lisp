@@ -36,7 +36,7 @@
         (mixed:add convert chain)))
     (add-to chain packer drain)))
 
-(defun create-simple-server (&key (name "Harmony") (samplerate mixed:*default-samplerate*) (latency 0.01))
+(defun make-simple-server (&key (name "Harmony") (samplerate mixed:*default-samplerate*) (latency 0.01))
   (let* ((server (make-instance 'server :name name :samplerate samplerate :buffersize (ceiling (* latency samplerate))))
          (sources (make-instance 'mixed:chain :name :sources))
          (music (make-instance 'mixed:basic-mixer :name :music :channels 2))
@@ -53,11 +53,16 @@
 (defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free))
   (let ((mixer (segment mixer server))
         (sources (segment :sources server))
-        (segment (make-instance 'voice :name name :source source :segments effects :repeat repeat :on-end on-end)))
+        (voice (make-instance 'voice :name name :source source :effects effects :repeat repeat :on-end on-end)))
+    ;; Allocate buffers and start segment now while we're still synchronous to catch errors
+    ;; and avoid further latency/allocation in the mixing thread.
+    (loop for i from 0 below (length (mixed:outputs voice))
+          do (setf (mixed:output i voice) (allocate-buffer server)))
+    (start voice)
     (with-server (server)
-      (mixed:add segment sources)
-      (connect segment T mixer T))
-    segment))
+      (mixed:add voice sources)
+      (connect voice T mixer T))
+    voice))
 
 (defmethod location ((server server))
   (mixed:location (segment :effect server)))

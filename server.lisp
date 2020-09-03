@@ -63,7 +63,7 @@
   NIL)
 
 (defmethod mixed:free :before ((server server))
-  (mixed:end server))
+  (end server))
 
 (defmethod mixed:free :after ((server server))
   (labels ((rec (chain)
@@ -86,11 +86,11 @@
   (when (name segment)
     (setf (segment (name segment) server) NIL)))
 
-(defmethod mixed:start :before ((server server))
+(defmethod start :before ((server server))
   (when (started-p server)
     (error "~a is already running." server)))
 
-(defmethod mixed:start ((server server))
+(defmethod start ((server server))
   (call-next-method)
   (setf (thread server) T)
   (let ((thread (bt:make-thread (lambda () (run server))
@@ -125,7 +125,7 @@
        (or (null (bt:threadp (thread server)))
            (bt:thread-alive-p (thread server)))))
 
-(defmethod mixed:end ((server server))
+(defmethod end ((server server))
   (when (thread server)
     ;; Clear the queue
     (setf (svref (queue server) 0) 0)
@@ -148,7 +148,8 @@
             :report "Return and ignore the running thread."))
         thread))
     ;; Call the sequence end.
-    (call-next-method)))
+    (call-next-method))
+  server)
 
 (defmethod run ((server server))
   (let ((queue (queue server))
@@ -170,7 +171,7 @@
                                         (incf i)))
                           until (atomics:cas (svref queue 0) end 0))
                     (mixed:mix server)))
-      (mixed:end server)
+      (end server)
       (setf (thread server) NIL))))
 
 (defmethod call-in-mixing-context (function (server server) &key (synchronize T) timeout)

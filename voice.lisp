@@ -42,16 +42,18 @@
             do (connect previous T segment T)))))
 
 (defmethod mixed:free :before ((voice voice))
-  (mixed:withdraw voice T)
-  (disconnect voice T))
+  (when (< 0 (length (mixed:segments voice)))
+    (mixed:withdraw voice T)
+    (disconnect voice T)))
 
 (defmethod mixed:free :after ((voice voice))
-  (mixed:free (source voice))
-  (free-unpacker (mixed:unpacker voice))
-  (loop for i from 2 below (length (mixed:segments voice))
-        for segment = (aref (mixed:segments voice) i)
-        do (disconnect segment T)
-           (mixed:free segment)))
+  (when (< 0 (length (mixed:segments voice)))
+    (mixed:free (source voice))
+    (free-unpacker (mixed:unpacker voice) *server*)
+    (loop for i from 2 below (length (mixed:segments voice))
+          for segment = (aref (mixed:segments voice) i)
+          do (disconnect segment T)
+             (mixed:free segment))))
 
 (defmethod source ((voice voice))
   (aref (mixed:segments voice) 0))
@@ -68,12 +70,6 @@
 (defun voice-end (voice)
   (aref (mixed:segments voice) (1- (length (mixed:segments voice)))))
 
-(defmethod mixed:outputs ((from voice))
-  (mixed:outputs (voice-end from)))
-
-(defmethod mixed:output (location (from voice))
-  (mixed:output location (voice-end from)))
-
 (defmethod connect ((from voice) from-loc to to-loc)
   (connect (voice-end from) from-loc to to-loc))
 
@@ -81,6 +77,21 @@
   (unless (eq direction :output)
     (error "Cannot disconnect voice from input, as it does not have any."))
   (disconnect (voice-end from) from-loc :direction :output))
+
+(defmethod mixed:outputs ((from voice))
+  (mixed:outputs (voice-end from)))
+
+(defmethod mixed:output (location (from voice))
+  (mixed:output location (voice-end from)))
+
+(defmethod (setf mixed:output) (value location (from voice))
+  (setf (mixed:output location (voice-end from)) value))
+
+(defmethod mixed:done-p ((voice voice))
+  (mixed:done-p (source voice)))
+
+(defmethod (setf mixed:done-p) (value (voice voice))
+  (setf (mixed:done-p (source voice)) value))
 
 (defmethod location ((voice voice))
   (let ((buffer (mixed:output 0 voice)))

@@ -41,7 +41,7 @@
   (setf (to-location buffer) location))
 
 (defmethod connect ((from segment) from-loc (to segment) to-loc)
-  (let ((buffer (allocate-buffer *server*)))
+  (let ((buffer (or (mixed:output from-loc from) (allocate-buffer *server*))))
     (mixed:connect from from-loc to to-loc buffer)))
 
 (defmethod connect ((from segment) (all (eql T)) (to segment) (_all (eql T)))
@@ -60,11 +60,14 @@
 
 (defmethod disconnect ((from segment) from-loc &key (direction :output))
   (let ((buffer (ecase direction
-                  (:output (mixed:output from from-loc))
-                  (:input (mixed:input from from-loc)))))
-    (setf (mixed:output (from buffer) (from-location buffer)) NIL)
-    (setf (mixed:input (to buffer) (to-location buffer)) NIL)
-    (free-buffer buffer *server*)))
+                  (:output (mixed:output from-loc from))
+                  (:input (mixed:input from-loc from)))))
+    (when buffer
+      (when (from buffer)
+        (setf (mixed:output (from-location buffer) (from buffer)) NIL))
+      (when (to buffer)
+        (setf (mixed:input (to-location buffer) (to buffer)) NIL))
+      (free-buffer buffer *server*))))
 
 (defmethod disconnect ((from segment) (all (eql T)) &key (direction :output))
   (loop for i from 0 below (ecase direction
@@ -98,7 +101,7 @@
 
 (defmethod (setf mixed:done-p) :around (value (source source))
   (case (repeat source)
-    ((0 null)
+    ((0 NIL)
      (call-next-method)
      (funcall (on-end source) source))
     ((T)
