@@ -138,7 +138,7 @@
 
 (defmethod mixed:free :before ((source-chain source-chain))
   (mixed:withdraw source-chain T)
-  (mixed:disconnect source-chain T))
+  (disconnect source-chain T))
 
 (defmethod mixed:free :after ((source-chain source-chain))
   (mixed:free (source source-chain))

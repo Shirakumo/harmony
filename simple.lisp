@@ -54,4 +54,4 @@
     (with-server (server)
       (mixed:add segment sources)
       (mixed:add segment mixer))
-    segment)
+    segment))

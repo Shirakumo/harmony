@@ -92,7 +92,7 @@
 (defmethod mixed:volume ((name symbol))
   (mixed:volume (segment name *server*)))
 
-(defmethod mixed:volume (value (name symbol))
+(defmethod (setf mixed:volume) (value (name symbol))
   (setf (mixed:volume (segment name *server*)) value))
 
 (defmethod started-p ((server server))
