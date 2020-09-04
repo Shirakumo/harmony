@@ -124,6 +124,12 @@
     (error "Cannot disconnect voice from input, as it does not have any."))
   (disconnect (voice-end from) from-loc :direction :output))
 
+(defmethod repeat ((voice voice))
+  (repeat (source voice)))
+
+(defmethod (setf repeat) (value (voice voice))
+  (setf (repeat (source voice)) value))
+
 (defmethod mixed:outputs ((from voice))
   (mixed:outputs (voice-end from)))
 
