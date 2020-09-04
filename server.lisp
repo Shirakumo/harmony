@@ -39,10 +39,12 @@
 (defmethod free-buffer (buffer (server server))
   (setf (from buffer) NIL)
   (setf (to buffer) NIL)
+  (mixed:clear buffer)
   (push* buffer (slot-value server 'free-buffers)))
 
 (defmethod free-unpacker (unpacker (server server))
   (disconnect unpacker T)
+  (mixed:clear (mixed:pack unpacker))
   (push* unpacker (slot-value server 'free-unpackers)))
 
 (defmethod segment (name (server (eql T)) &optional (errorp T))
