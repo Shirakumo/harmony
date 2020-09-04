@@ -51,7 +51,7 @@
     (connect master T (segment 0 output) T)
     (add-to server sources music speech effect master output)))
 
-(defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free))
+(defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free) location velocity (volume 1.0))
   (when (and name (segment name server NIL))
     (error "A segment with the requested name already exists."))
   (let* ((mixer (segment mixer server))
@@ -61,10 +61,13 @@
     ;; and avoid further latency/allocation in the mixing thread.
     (loop for i from 0 below (length (mixed:outputs voice))
           do (setf (mixed:output i voice) (allocate-buffer server)))
+    (setf (mixed:volume voice) volume)
     (mixed:start voice)
     (with-server (server)
       (mixed:add voice sources)
-      (connect voice T mixer T))
+      (connect voice T mixer T)
+      (when location (setf (mixed:location voice) location))
+      (when velocity (setf (mixed:velocity voice) velocity)))
     voice))
 
 (defmethod voices ((server server))
