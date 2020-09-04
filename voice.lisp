@@ -35,6 +35,17 @@
 (defclass voice (mixed:chain)
   ())
 
+(defmethod print-object ((voice voice) stream)
+  (print-unreadable-object (voice stream :type T)
+    (format stream "~@[~a ~]" (name voice))
+    (let ((source (source voice)))
+      (cond ((mixed:done-p source)
+             (write-string "DONE" stream))
+            ((null (mixed:frame-count source))
+             (write-string "STREAM" stream))
+            (T
+             (format stream "~2d%" (floor (* (/ (mixed:byte-position source) (mixed:framesize source) (mixed:frame-count source)) 100))))))))
+
 (defgeneric make-source-for (source &rest initargs)
   (:method ((source pathname) &rest initargs)
     (if (pathname-type source)
