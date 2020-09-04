@@ -76,6 +76,7 @@
                     (:disconnect #'disconnect))))
       (mixed:add (make-source-for source :pack (mixed:pack unpacker) :repeat repeat :on-end on-end) voice)
       (mixed:add unpacker voice)
+      (mixed:revalidate unpacker)
       (dolist (effect effects)
         (let ((outputs (getf (mixed:info (voice-end voice)) :outputs)))
           (mixed:add (ensure-effect-segment effect outputs) voice)))
