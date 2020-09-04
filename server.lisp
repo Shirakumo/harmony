@@ -44,6 +44,7 @@
 
 (defmethod free-unpacker (unpacker (server server))
   (disconnect unpacker T)
+  (mixed:end unpacker)
   (mixed:clear (mixed:pack unpacker))
   (push* unpacker (slot-value server 'free-unpackers)))
 
