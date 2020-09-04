@@ -53,10 +53,12 @@
 
 (defmethod initialize-instance :after ((voice voice) &key source effects repeat (on-end :free) channels)
   (flet ((free (_) (declare (ignore _))
-           (mixed:free voice))
+           (with-server ()
+             (mixed:free voice)))
          (disconnect (_) (declare (ignore _))
-           (disconnect voice T)
-           (mixed:withdraw voice T)))
+           (with-server ()
+             (disconnect voice T)
+             (mixed:withdraw voice T))))
     (let ((unpacker (allocate-unpacker *server*))
           (on-end (ecase on-end
                     (:free #'free)
