@@ -61,11 +61,11 @@
 (defmethod mixed:unpacker ((voice voice))
   (aref (mixed:segments voice) 1))
 
-(defmethod volume ((voice voice))
-  (volume (mixed:unpacker voice)))
+(defmethod mixed:volume ((voice voice))
+  (mixed:volume (mixed:unpacker voice)))
 
-(defmethod (setf volume) (value (voice voice))
-  (setf (volume (mixed:unpacker voice)) value))
+(defmethod (setf mixed:volume) (value (voice voice))
+  (setf (mixed:volume (mixed:unpacker voice)) value))
 
 (defun voice-end (voice)
   (aref (mixed:segments voice) (1- (length (mixed:segments voice)))))
@@ -93,18 +93,18 @@
 (defmethod (setf mixed:done-p) (value (voice voice))
   (setf (mixed:done-p (source voice)) value))
 
-(defmethod location ((voice voice))
+(defmethod mixed:location ((voice voice))
   (let ((buffer (mixed:output 0 voice)))
     (mixed:input-location buffer (to buffer))))
 
-(defmethod (setf location) (location (voice voice))
+(defmethod (setf mixed:location) (location (voice voice))
   (let ((buffer (mixed:output 0 voice)))
     (setf (mixed:input-location buffer (to buffer)) location)))
 
-(defmethod velocity ((voice voice))
+(defmethod mixed:velocity ((voice voice))
   (let ((buffer (mixed:output 0 voice)))
     (mixed:input-velocity buffer (to buffer))))
 
-(defmethod (setf velocity) (velocity (voice voice))
+(defmethod (setf mixed:velocity) (velocity (voice voice))
   (let ((buffer (mixed:output 0 voice)))
     (setf (mixed:input-velocity buffer (to buffer)) location)))

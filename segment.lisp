@@ -121,8 +121,8 @@
 (defmethod disconnect ((from source) from-loc &key (direction :output))
   (disconnect (mixed:unpacker from) from-loc :direction direction))
 
-(defmethod volume ((source source))
-  (volume (mixed:unpacker source)))
+(defmethod mixed:volume ((source source))
+  (mixed:volume (mixed:unpacker source)))
 
-(defmethod (setf volume) (value (source source))
-  (setf (volume (mixed:unpacker source)) value))
+(defmethod (setf mixed:volume) (value (source source))
+  (setf (mixed:volume (mixed:unpacker source)) value))

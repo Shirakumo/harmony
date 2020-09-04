@@ -59,26 +59,26 @@
     ;; and avoid further latency/allocation in the mixing thread.
     (loop for i from 0 below (length (mixed:outputs voice))
           do (setf (mixed:output i voice) (allocate-buffer server)))
-    (start voice)
+    (mixed:start voice)
     (with-server (server)
       (mixed:add voice sources)
       (connect voice T mixer T))
     voice))
 
-(defmethod location ((server server))
+(defmethod mixed:location ((server server))
   (mixed:location (segment :effect server)))
 
-(defmethod (setf location) (location (server server))
+(defmethod (setf mixed:location) (location (server server))
   (setf (mixed:location (segment :effect server)) location))
 
-(defmethod velocity ((server server))
+(defmethod mixed:velocity ((server server))
   (mixed:velocity (segment :effect server)))
 
-(defmethod (setf velocity) (velocity (server server))
+(defmethod (setf mixed:velocity) (velocity (server server))
   (setf (mixed:velocity (segment :effect server)) velocity))
 
-(defmethod volume ((server server))
-  (volume (segment :master server)))
+(defmethod mixed:volume ((server server))
+  (mixed:volume (segment :master server)))
 
-(defmethod (setf volume) (volume (server server))
-  (setf (volume (segment :master server)) volume))
+(defmethod (setf mixed:volume) (volume (server server))
+  (setf (mixed:volume (segment :master server)) volume))

@@ -63,7 +63,7 @@
   NIL)
 
 (defmethod mixed:free :before ((server server))
-  (end server))
+  (mixed:end server))
 
 (defmethod mixed:free :after ((server server))
   (labels ((rec (chain)
@@ -86,11 +86,11 @@
   (when (name segment)
     (setf (segment (name segment) server) NIL)))
 
-(defmethod start :before ((server server))
+(defmethod mixed:start :before ((server server))
   (when (started-p server)
     (error "~a is already running." server)))
 
-(defmethod start ((server server))
+(defmethod mixed:start ((server server))
   (call-next-method)
   (setf (thread server) T)
   (let ((thread (bt:make-thread (lambda () (run server))
@@ -103,29 +103,29 @@
   server)
 
 (defmethod volume ((name symbol))
-  (volume (segment name *server*)))
+  (mixed:volume (segment name *server*)))
 
-(defmethod (setf volume) (value (name symbol))
-  (setf (volume (segment name *server*)) value))
+(defmethod (setf mixed:volume) (value (name symbol))
+  (setf (mixed:volume (segment name *server*)) value))
 
-(defmethod location ((name symbol))
-  (location (segment name *server*)))
+(defmethod mixed:location ((name symbol))
+  (mixed:location (segment name *server*)))
 
-(defmethod (setf location) (location (name symbol))
-  (setf (location (segment name *server*)) location))
+(defmethod (setf mixed:location) (location (name symbol))
+  (setf (mixed:location (segment name *server*)) location))
 
-(defmethod velocity ((name symbol))
-  (velocity (segment name *server*)))
+(defmethod mixed:velocity ((name symbol))
+  (mixed:velocity (segment name *server*)))
 
-(defmethod (setf velocity) (velocity (name symbol))
-  (setf (velocity (segment name *server*)) velocity))
+(defmethod (setf mixed:velocity) (velocity (name symbol))
+  (setf (mixed:velocity (segment name *server*)) velocity))
 
 (defmethod started-p ((server server))
   (and (thread server)
        (or (null (bt:threadp (thread server)))
            (bt:thread-alive-p (thread server)))))
 
-(defmethod end ((server server))
+(defmethod mixed:end ((server server))
   (when (thread server)
     ;; Clear the queue
     (setf (svref (queue server) 0) 0)
@@ -182,7 +182,7 @@
                                       (incf i))
                           until (atomics:cas (svref queue 0) end 0))
                     (mixed:mix server)))
-      (end server)
+      (mixed:end server)
       (setf (thread server) NIL))))
 
 (defmethod call-in-mixing-context (function (server server) &key (synchronize T) timeout)
