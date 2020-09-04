@@ -6,6 +6,32 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
+(defun ensure-effect-segment (segment-ish channels)
+  (flet ((channel-mismatch (segment)
+           (error "Cannot connect~%  ~a~%as an effect segment as it does not comply with the required channel count of ~d"
+                  segment channels)))
+    (etypecase segment-ish
+      (segment
+       (destructuring-bind (&key min-inputs max-inputs &allow-other-keys) (mixed:info segment-ish)
+         (unless (<= min-inputs channels max-inputs)
+           (channel-mismatch segment-ish))
+         segment-ish))
+      ((or symbol class cons)
+       (let* ((init (if (listp segment-ish) segment-ish (list segment-ish)))
+              (proto (apply #'make-instance init)))
+         (destructuring-bind (&key min-inputs max-inputs &allow-other-keys) (mixed:info proto)
+           (cond ((<= min-inputs channels max-inputs)
+                  proto)
+                 ((= min-inputs max-inputs 1)
+                  (let ((bundle (mixed:make-bundle channels)))
+                    (setf (aref (mixed:segments bundle) 0) proto)
+                    (loop for i from 1 below channels
+                          do (setf (aref (mixed:segments bundle) i) (apply #'make-instance init)))
+                    bundle))
+                 (T
+                  (mixed:free proto)
+                  (channel-mismatch proto)))))))))
+
 (defclass voice (mixed:chain)
   ())
 
@@ -25,7 +51,7 @@
         (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav))
         (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac))))))
 
-(defmethod initialize-instance :after ((voice voice) &key source effects repeat (on-end :free))
+(defmethod initialize-instance :after ((voice voice) &key source effects repeat (on-end :free) channels)
   (flet ((free (_) (declare (ignore _))
            (mixed:free voice))
          (disconnect (_) (declare (ignore _))
@@ -37,9 +63,12 @@
                     (:disconnect #'disconnect))))
       (mixed:add (make-source-for source :pack (mixed:pack unpacker) :repeat repeat :on-end on-end) voice)
       (mixed:add unpacker voice)
-      (loop for previous = unpacker then segment
-            for segment in effects
-            do (connect previous T segment T)))))
+      (dolist (effect effects)
+        (let ((outputs (getf (mixed:info (voice-end voice)) :outputs)))
+          (mixed:add (ensure-effect-segment effect outputs) voice)))
+      (let ((outputs (length (mixed:outputs (voice-end voice)))))
+        (when (and channels (/= channels outputs))
+          (mixed:add (mixed:make-channel-convert :in outputs :out channels) voice))))))
 
 (defmethod mixed:free :before ((voice voice))
   (when (< 0 (length (mixed:segments voice)))
@@ -54,6 +83,10 @@
           for segment = (aref (mixed:segments voice) i)
           do (disconnect segment T)
              (mixed:free segment))))
+
+(defmethod mixed:add :before ((segment segment) (voice voice))
+  (when (< 1 (length (mixed:segments voice)))
+    (connect (voice-end voice) T segment T)))
 
 (defmethod source ((voice voice))
   (aref (mixed:segments voice) 0))
@@ -107,4 +140,4 @@
 
 (defmethod (setf mixed:velocity) (velocity (voice voice))
   (let ((buffer (mixed:output 0 voice)))
-    (setf (mixed:input-velocity buffer (to buffer)) location)))
+    (setf (mixed:input-velocity buffer (to buffer)) velocity)))

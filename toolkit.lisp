@@ -41,8 +41,11 @@
            until (atomics:cas ,place ,old (rest ,old))
            finally (return (car ,old)))))
 
-(defmethod segment ((idx integer) (chain mixed:chain))
-  (aref (mixed:segments chain) idx))
+(defmethod segment ((idx integer) (chain mixed:chain) &optional (errorp T))
+  (let ((segments (mixed:segments chain)))
+    (if (<= 0 idx (1- (length segments)))
+        (aref (mixed:segments chain) idx)
+        (when errorp (error "No segment at index~%  ~d" idx)))))
 
 (defmacro lazy-symbol (package name &optional default)
   `(or (and (find-package ,(string package))

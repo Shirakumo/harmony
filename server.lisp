@@ -10,7 +10,7 @@
 (defvar *server* NIL)
 
 (defclass server (mixed:chain)
-  ((segment-map :initform (make-hash-table :test 'eql) :reader segment-map)
+  ((segment-map :initform (make-hash-table :test 'equal) :reader segment-map)
    (free-buffers :initform () :accessor free-buffers)
    (free-unpackers :initform () :accessor free-unpackers)
    (thread :initform NIL :accessor thread)
@@ -45,17 +45,20 @@
   (disconnect unpacker T)
   (push* unpacker (slot-value server 'free-unpackers)))
 
-(defmethod segment (name (server (eql T)))
-  (segment name *server*))
+(defmethod segment (name (server (eql T)) &optional (errorp T))
+  (segment name *server* errorp))
 
-(defmethod segment ((name symbol) (server server))
+(defmethod segment ((name symbol) (server server) &optional (errorp T))
   (or (gethash name (segment-map server))
-      (error "No such segment ~s" name)))
+      (when errorp (error "No such segment ~s" name))))
 
 (defmethod (setf segment) (segment name (server (eql T)))
   (setf (segment name *server*) segment))
 
 (defmethod (setf segment) ((segment mixed:segment) (name symbol) (server server))
+  (let ((existing (gethash name (segment-map server))))
+    (when (and existing (not (eq segment existing)))
+      (error "Segment with name ~s already exists." name)))
   (setf (gethash name (segment-map server)) segment))
 
 (defmethod (setf segment) ((null null) (name symbol) (server server))
@@ -102,7 +105,7 @@
     (setf (thread server) thread))
   server)
 
-(defmethod volume ((name symbol))
+(defmethod mixed:volume ((name symbol))
   (mixed:volume (segment name *server*)))
 
 (defmethod (setf mixed:volume) (value (name symbol))

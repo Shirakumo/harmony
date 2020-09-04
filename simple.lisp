@@ -52,9 +52,11 @@
     (add-to server sources music speech effect master output)))
 
 (defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free))
-  (let ((mixer (segment mixer server))
-        (sources (segment :sources server))
-        (voice (make-instance 'voice :name name :source source :effects effects :repeat repeat :on-end on-end)))
+  (when (and name (segment name server NIL))
+    (error "A segment with the requested name already exists."))
+  (let* ((mixer (segment mixer server))
+         (sources (segment :sources server))
+         (voice (make-instance 'voice :source source :name name :effects effects :repeat repeat :on-end on-end :channels (mixed:channels mixer))))
     ;; Allocate buffers and start segment now while we're still synchronous to catch errors
     ;; and avoid further latency/allocation in the mixing thread.
     (loop for i from 0 below (length (mixed:outputs voice))
@@ -64,6 +66,9 @@
       (mixed:add voice sources)
       (connect voice T mixer T))
     voice))
+
+(defmethod voices ((server server))
+  (mixed:segments (segment :sources server)))
 
 (defmethod mixed:location ((server server))
   (mixed:location (segment :effect server)))
