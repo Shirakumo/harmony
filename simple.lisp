@@ -25,9 +25,10 @@
          #+bsd
          'org.shirakumo.fraf.mixed.oss:drain)))
 
-(defun construct-output (&key (target-channels 2) (server *server*) (program-name (name server)))
+(defun construct-output (&key (drain (detect-platform-drain)) (target-channels 2) (server *server*) (program-name (name server)))
+  (format *error-output* "[Harmony] Will use ~s for output." drain)
   (let* ((packer (mixed:make-packer :channels target-channels :samplerate (samplerate server)))
-         (drain (make-instance (detect-platform-drain) :pack (mixed:pack packer) :program-name program-name))
+         (drain (make-instance drain :pack (mixed:pack packer) :program-name program-name))
          (channels (mixed:channels packer))
          (chain (make-instance 'mixed:chain :name :output)))
     (when (/= channels target-channels)

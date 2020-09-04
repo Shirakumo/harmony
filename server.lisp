@@ -151,6 +151,18 @@
     (call-next-method))
   server)
 
+(defmethod run-task ((server server) task)
+  (when task
+    (tagbody repeat
+       (restart-case (funcall task)
+         (abort (&optional e)
+           :report "Abort executing the task."
+           (declare (ignore e)))
+         (retry (&optional e)
+           :report "Retry executing the task."
+           (declare (ignore e))
+           (go repeat))))))
+
 (defmethod run ((server server))
   (let ((queue (queue server))
         (*in-processing-thread* T)
@@ -164,11 +176,10 @@
                           while (< 0 end)
                           ;; Loop until we've reached the end of the queue.
                           do (loop while (< i end)
-                                   for function = (svref queue (1+ i))
-                                   do (when function
-                                        (funcall function)
-                                        (setf (svref queue (1+ i)) NIL)
-                                        (incf i)))
+                                   for task = (svref queue (1+ i))
+                                   do (run-task server task)
+                                      (setf (svref queue (1+ i)) NIL)
+                                      (incf i))
                           until (atomics:cas (svref queue 0) end 0))
                     (mixed:mix server)))
       (end server)

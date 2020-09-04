@@ -50,13 +50,12 @@
 
 (defmethod connect ((from segment) (all (eql T)) (to mixed:basic-mixer) (_all (eql T)))
   (loop for i from 0 below (getf (mixed:info from) :outputs)
-        for j from (length (mixed:inputs to))
-        do (connect from i to j)))
+        do (connect from i to T)))
 
 (defmethod connect ((from segment) (all (eql T)) (to mixed:space-mixer) (_all (eql T)))
   (when (< 1 (getf (mixed:info from) :outputs))
     (error "Cannot connect a segment with more than one output to a space mixer; dangling buffers."))
-  (connect from 0 to (1+ (length (mixed:inputs to)))))
+  (connect from 0 to T))
 
 (defmethod disconnect ((from segment) from-loc &key (direction :output))
   (let ((buffer (ecase direction
