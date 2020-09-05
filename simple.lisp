@@ -70,8 +70,11 @@
       (when velocity (setf (mixed:velocity voice) velocity)))
     voice))
 
+(defmethod voices ((server (eql T)))
+  (voices *server*))
+
 (defmethod voices ((server server))
-  (mixed:segments (segment :sources server)))
+  (copy-seq (mixed:segments (segment :sources server))))
 
 (defmethod mixed:location ((server server))
   (mixed:location (segment :effect server)))
