@@ -11,8 +11,8 @@
          'org.shirakumo.fraf.mixed.jack:drain)
         (T
          #+windows
-         (let ((major (ldb (byte 8 8) (cffi:foreign-funcall "GetVersion" :int32)))
-               (minor (ldb (byte 8 0) (cffi:foreign-funcall "GetVersion" :int32))))
+         (let ((minor (ldb (byte 8 8) (cffi:foreign-funcall "GetVersion" :int32)))
+               (major (ldb (byte 8 0) (cffi:foreign-funcall "GetVersion" :int32))))
            (if (<= 6 major) 
                'org.shirakumo.fraf.mixed.wasapi:drain ; WASAPI since Vista (6.0)
                'org.shirakumo.fraf.mixed.winmm:drain))
