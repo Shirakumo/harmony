@@ -72,8 +72,16 @@
    #:outputs
    #:input
    #:inputs
+   #:input-field
+   #:output-field
+   #:field
    #:segment
-   #:segmnets
+   #:segments
+   #:seek
+   #:frame-count
+   #:frame-position
+   #:done-p
+   #:bypass
    #:volume
    #:location
    #:velocity
