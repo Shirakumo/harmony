@@ -187,7 +187,11 @@
                                       (setf (svref queue (1+ i)) NIL)
                                       (incf i))
                           until (atomics:cas (svref queue 0) end 0))
-                    (mixed:mix server)))
+                    ;; KLUDGE: without this attempting a full GC on SBCL
+                    ;;         will cause it to lock up indefinitely. Bad!
+                    (#+sbcl sb-sys:without-gcing
+                     #-sbcl progn
+                      (mixed:mix server))))
       (mixed:end server)
       (setf (thread server) NIL))))
 
