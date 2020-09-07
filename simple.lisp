@@ -7,23 +7,27 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defun detect-platform-drain ()
-  (cond ((org.shirakumo.fraf.mixed.jack:jack-present-p)
-         'org.shirakumo.fraf.mixed.jack:drain)
-        (T
-         #+windows
-         (let ((minor (ldb (byte 8 8) (cffi:foreign-funcall "GetVersion" :int32)))
-               (major (ldb (byte 8 0) (cffi:foreign-funcall "GetVersion" :int32))))
-           (if (<= 6 major) 
-               'org.shirakumo.fraf.mixed.wasapi:drain ; WASAPI since Vista (6.0)
-               'org.shirakumo.fraf.mixed.winmm:drain))
-         #+linux
-         (if (org.shirakumo.fraf.mixed.pulse:pulse-present-p)
-             'org.shirakumo.fraf.mixed.pulse:drain
-             'org.shirakumo.fraf.mixed.alsa:drain)
-         #+darwin
-         'org.shirakumo.fraf.mixed.coreaudio:drain
-         #+bsd
-         'org.shirakumo.fraf.mixed.oss:drain)))
+  (let (#+windows (version (cffi:foreign-funcall "GetVersion" :int32)))
+    (cond ((org.shirakumo.fraf.mixed.jack:jack-present-p)
+           'org.shirakumo.fraf.mixed.jack:drain)
+          #+bsd
+          ((probe-file "/dev/dsp")
+           'org.shirakumo.fraf.mixed.oss:drain)
+          #+windows
+          ((<= 6 (ldb (byte 8 0) version))  ; WASAPI since Vista (6.0)
+           'org.shirakumo.fraf.mixed.wasapi:drain)
+          #+windows
+          (T
+           'org.shirakumo.fraf.mixed.winmm:drain)
+          #+linux
+          ((org.shirakumo.fraf.mixed.pulse:pulse-present-p)
+           'org.shirakumo.fraf.mixed.pulse:drain)
+          #+linux
+          (T
+           'org.shirakumo.fraf.mixed.alsa:drain)
+          #+darwin
+          (T
+           'org.shirakumo.fraf.mixed.coreaudio:drain))))
 
 (defun construct-output (&key (drain (detect-platform-drain)) (target-channels 2) (server *server*) (program-name (name server)))
   (format *error-output* "[Harmony] Will use ~s for output.~%" drain)
