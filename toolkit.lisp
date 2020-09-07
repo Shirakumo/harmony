@@ -47,10 +47,19 @@
         (aref (mixed:segments chain) idx)
         (when errorp (error "No segment at index~%  ~d" idx)))))
 
-(defmacro lazy-symbol (package name &optional default)
-  `(or (and (find-package ,(string package))
-            (find-symbol ,(string name) ,(string package)))
-       ,default))
+(defun find-symbol* (package name)
+  (loop (restart-case
+            (return (or (and (find-package (string package))
+                             (find-symbol (string name) (string package)))
+                        (error "Symbol ~a:~a is not present." (string package) (string name))))
+          (retry ()
+            :report "Retry the evaluation")
+          (use-value (value)
+            :report "Supply a symbol to use"
+            (return value)))))
+
+(defmacro lazy-symbol (package name)
+  `(find-symbol* ,(string package) ,(string name)))
 
 (defun add-to (target &rest parts)
   (dolist (part parts target)

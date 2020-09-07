@@ -55,6 +55,12 @@
     (connect master T (segment 0 output) T)
     (add-to server sources music speech effect master output)))
 
+(defun maybe-start-simple-server (&rest initargs)
+  (unless *server*
+    (apply #'make-simple-server initargs))
+  (unless (started-p *server*)
+    (mixed:start *server*)))
+
 (defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free) location velocity (volume 1.0))
   (when (and name (segment name server NIL))
     (error "A segment with the requested name already exists."))
@@ -78,7 +84,16 @@
   (voices *server*))
 
 (defmethod voices ((server server))
-  (copy-seq (mixed:segments (segment :sources server))))
+  (coerce (mixed:segments (segment :sources server)) 'list))
+
+(defmethod clear ((server (eql T)))
+  (clear *server*))
+
+(defmethod clear ((server server))
+  (let ((sources (segment :sources server)))
+    (with-server (server :synchronize T)
+      (loop until (= 0 (length (mixed:segments sources)))
+            do (mixed:free (aref (mixed:segments sources) 0))))))
 
 (defmethod mixed:location ((server server))
   (mixed:location (segment :effect server)))

@@ -45,8 +45,10 @@
   (:export
    #:detect-platform-drain
    #:make-simple-server
+   #:maybe-start-simple-server
    #:play
-   #:voices)
+   #:voices
+   #:clear)
   ;; toolkit.lisp
   (:export
    #:add-to)
@@ -60,7 +62,7 @@
 (defpackage #:org.shirakumo.fraf.harmony.user
   (:use #:org.shirakumo.fraf.mixed #:org.shirakumo.fraf.harmony)
   (:shadowing-import-from #:org.shirakumo.fraf.harmony
-    #:buffer #:segment #:source #:repeat #:connect #:from #:to)
+    #:buffer #:segment #:source #:repeat #:connect #:from #:to #:clear)
   (:shadowing-import-from #:org.shirakumo.fraf.mixed #:chain)
   (:export
    #:start
@@ -86,8 +88,11 @@
    #:location
    #:velocity
    #:play
+   #:*server*
    #:server
    #:make-simple-server
+   #:maybe-start-simple-server
    #:voices
+   #:clear
    #:started-p
    #:with-server))
