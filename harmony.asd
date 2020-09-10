@@ -31,5 +31,4 @@
                (:feature :linux :cl-mixed-alsa)
                (:feature :linux :cl-mixed-pulse)
                (:feature :darwin :cl-mixed-coreaudio)
-               (:feature :bsd :cl-mixed-oss)
-               :cl-mixed-jack))
+               (:feature :bsd :cl-mixed-oss)))

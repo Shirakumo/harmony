@@ -8,9 +8,7 @@
 
 (defun detect-platform-drain ()
   (let (#+windows (version (cffi:foreign-funcall "GetVersion" :int32)))
-    (cond ((org.shirakumo.fraf.mixed.jack:jack-present-p)
-           'org.shirakumo.fraf.mixed.jack:drain)
-          #+bsd
+    (cond #+bsd
           ((probe-file "/dev/dsp")
            'org.shirakumo.fraf.mixed.oss:drain)
           #+windows
