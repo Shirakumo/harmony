@@ -59,9 +59,17 @@
   (unless (started-p *server*)
     (mixed:start *server*)))
 
-(defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free) location velocity (volume 1.0))
+(defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free) location velocity (volume 1.0) (if-exists :error))
   (when (and name (segment name server NIL))
-    (error "A segment with the requested name already exists."))
+    (ecase if-exists
+      (:error
+       (error "A segment with the requested name already exists."))
+      (:restart
+       (mixed:seek (segment name server NIL) 0))
+      ((:replace :supersede)
+       (setf (mixed:done-p (segment name server NIL)) T))
+      ((:ignore NIL)
+       (return-from play NIL))))
   (let* ((mixer (segment mixer server))
          (sources (segment :sources server))
          (voice (make-instance 'voice :source source :name name :effects effects :repeat repeat :on-end on-end :channels (mixed:channels mixer))))
@@ -70,6 +78,7 @@
     (loop for i from 0 below (length (mixed:outputs voice))
           do (setf (mixed:output i voice) (allocate-buffer server)))
     (setf (mixed:volume voice) volume)
+    (setf (segment name server) voice)
     (mixed:start voice)
     (with-server (server)
       (mixed:add voice sources)
