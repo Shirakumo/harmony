@@ -93,6 +93,8 @@
 (defmethod mixed:free :before ((voice voice))
   (when (< 0 (length (mixed:segments voice)))
     (mixed:withdraw voice T)
+    (when (name voice)
+      (setf (segment (name voice) *server*) NIL))
     (disconnect voice T)))
 
 (defmethod mixed:free :after ((voice voice))
