@@ -69,10 +69,11 @@
       (free-buffer buffer *server*))))
 
 (defmethod disconnect ((from segment) (all (eql T)) &key (direction :output))
-  (loop for i from 0 below (ecase direction
-                             (:output (getf (mixed:info from) :outputs))
-                             (:input (getf (mixed:info from) :inputs)))
-        do (disconnect from i :direction direction)))
+  (when (mixed:handle from)
+    (loop for i from 0 below (ecase direction
+                               (:output (getf (mixed:info from) :outputs))
+                               (:input (getf (mixed:info from) :inputs)))
+          do (disconnect from i :direction direction))))
 
 (defmethod mixed:add :after ((segment segment) (chain mixed:chain))
   (setf (chain segment) chain))
