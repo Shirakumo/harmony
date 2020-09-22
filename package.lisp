@@ -82,6 +82,7 @@
    #:seek
    #:frame-count
    #:frame-position
+   #:repeat
    #:done-p
    #:bypass
    #:volume

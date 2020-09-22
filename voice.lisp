@@ -169,3 +169,6 @@
 (defmethod (setf mixed:velocity) (velocity (voice voice))
   (let ((buffer (mixed:output 0 voice)))
     (setf (mixed:input-velocity buffer (to buffer)) velocity)))
+
+(defmethod mixed:seek ((voice voice) position &rest args)
+  (apply #'mixed:seek (source voice) position args))
