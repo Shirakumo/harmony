@@ -118,9 +118,10 @@
       ;; and avoid further latency/allocation in the mixing thread.
       (loop for i from 0 below (length (mixed:outputs voice))
             do (setf (mixed:output i voice) (allocate-buffer server)))
-      (setf (mixed:volume voice) volume)
-      (setf (segment name server) voice)
+      (when name
+        (setf (segment name server) voice))
       (mixed:start voice)
+      (setf (mixed:volume voice) volume)
       voice)))
 
 (defmethod voices ((server (eql T)))

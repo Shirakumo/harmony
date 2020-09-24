@@ -58,13 +58,15 @@
 (defmethod (setf segment) (segment name (server (eql T)))
   (setf (segment name *server*) segment))
 
-(defmethod (setf segment) ((segment mixed:segment) (name symbol) (server server))
+(defmethod (setf segment) ((segment mixed:segment) name (server server))
+  (unless name
+    (error "NAME cannot be NIL."))
   (let ((existing (gethash name (segment-map server))))
     (when (and existing (not (eq segment existing)))
       (error "Segment with name ~s already exists." name)))
   (setf (gethash name (segment-map server)) segment))
 
-(defmethod (setf segment) ((null null) (name symbol) (server server))
+(defmethod (setf segment) ((null null) name (server server))
   (remhash name (segment-map server))
   NIL)
 
