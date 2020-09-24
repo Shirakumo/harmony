@@ -171,7 +171,8 @@
     (setf (mixed:input-velocity buffer (to buffer)) velocity)))
 
 (defmethod mixed:seek ((voice voice) position &rest args)
-  (apply #'mixed:seek (source voice) position args))
+  (apply #'mixed:seek (source voice) position args)
+  voice)
 
 (defmethod stop ((voice voice))
   (with-server (*server* :synchronize NIL)
