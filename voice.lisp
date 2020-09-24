@@ -80,7 +80,7 @@
           (on-end (ecase on-end
                     (:free #'free)
                     (:disconnect #'disconnect))))
-      (mixed:add (make-source-for source :pack (mixed:pack unpacker) :repeat repeat :on-end on-end) voice)
+      (mixed:add (make-source-for source :pack (mixed:pack unpacker) :repeat repeat :repeat-start repeat-start :on-end on-end) voice)
       (mixed:add unpacker voice)
       (mixed:revalidate unpacker)
       (dolist (effect effects)

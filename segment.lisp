@@ -97,6 +97,7 @@
 
 (stealth-mixin:define-stealth-mixin source (segment) mixed:source
   ((repeat :initarg :repeat :initform 0 :accessor repeat)
+   (repeat-start :initarg :repeat-start :initform 0 :accessor repeat-start)
    (on-end :initarg :on-end :initform #'default-source-end :accessor on-end)))
 
 (defmethod (setf mixed:done-p) :around (value (source source))
@@ -105,9 +106,9 @@
      (call-next-method)
      (funcall (on-end source) source))
     ((T)
-     (mixed:seek source 0))
+     (mixed:seek source (repeat-start source) :by :second))
     (T
-     (mixed:seek source 0)
+     (mixed:seek source (repeat-start source) :by :second)
      (decf (repeat source))))
   value)
 

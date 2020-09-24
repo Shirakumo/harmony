@@ -26,6 +26,7 @@
    #:upstream
    #:source
    #:repeat
+   #:repeat-start
    #:on-end)
   ;; server.lisp
   (:export
@@ -83,6 +84,7 @@
    #:frame-count
    #:frame-position
    #:repeat
+   #:repeat-start
    #:done-p
    #:bypass
    #:volume
