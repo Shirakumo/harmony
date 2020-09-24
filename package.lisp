@@ -48,6 +48,7 @@
    #:make-simple-server
    #:maybe-start-simple-server
    #:play
+   #:create
    #:voices
    #:clear)
   ;; toolkit.lisp
@@ -58,7 +59,8 @@
    #:voice
    #:make-source-for
    #:make-source-for-path-type
-   #:source))
+   #:source
+   #:stop))
 
 (defpackage #:org.shirakumo.fraf.harmony.user
   (:use #:org.shirakumo.fraf.mixed #:org.shirakumo.fraf.harmony)
@@ -91,6 +93,8 @@
    #:location
    #:velocity
    #:play
+   #:create
+   #:stop
    #:*server*
    #:server
    #:make-simple-server

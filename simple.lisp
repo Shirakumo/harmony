@@ -59,11 +59,35 @@
   (unless (started-p *server*)
     (mixed:start *server*)))
 
-(defun play (source &key name (mixer :effect) effects (server *server*) repeat (on-end :free) location velocity (volume 1.0) (if-exists :error))
-  (let ((mixer (segment mixer server))
+(defun ensure-segment (segment-ish &optional (server *server*))
+  (etypecase segment-ish
+    (segment segment-ish)
+    (null (error "No segment given."))
+    (T (segment segment-ish server))))
+
+(defun play (source &key name (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :free) location velocity (volume 1.0) (if-exists :error) synchronize)
+  (let ((mixer (ensure-segment mixer server))
         (sources (segment :sources server))
         (voice (when name (segment name server NIL))))
-    ;; TODO: lotsa overlap, refactor
+    (case if-exists
+      (:ignore
+       (when voice (return-from play voice)))
+      ((NIL)
+       (when voice (return-from play NIL)))
+      (T
+       (setf voice (create source :name name :mixer mixer :effects effects :server server
+                                  :repeat repeat :repeat-start repeat-start :on-end on-end
+                                  :volume volume :if-exists if-exists))))
+    (with-server (server :synchronize synchronize)
+      (mixed:add voice sources)
+      (connect voice T mixer T)
+      (when location (setf (mixed:location voice) location))
+      (when velocity (setf (mixed:velocity voice) velocity)))
+    voice))
+
+(defun create (source &key name (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :disconnect) (volume 1.0) (if-exists :error))
+  (let ((mixer (ensure-segment mixer server))
+        (voice (when name (segment name server NIL))))
     (when voice
       (ecase if-exists
         (:error
@@ -71,21 +95,19 @@
         (:restart
          (mixed:seek voice 0)
          (when volume (setf (mixed:volume voice) volume))
-         (with-server (server)
-           (unless (chain voice)
-             (mixed:add voice sources)
-             (connect voice T mixer T))
-           (when location (setf (mixed:location voice) location))
-           (when velocity (setf (mixed:velocity voice) velocity)))
-         (return-from play voice))
+         (return-from create voice))
+        (:stop
+         (return-from create (stop voice)))
         ((:replace :supersede)
          (setf (repeat voice) NIL)
          (setf (mixed:done-p voice) T))
         (:ignore
-         (return-from play voice))
+         (return-from create voice))
         ((NIL)
-         (return-from play NIL))))
-    (let ((voice (make-instance 'voice :source source :name name :effects effects :repeat repeat :on-end on-end :channels (mixed:channels mixer))))
+         (return-from create NIL))))
+    (let ((voice (make-instance 'voice :source source :name name :effects effects
+                                       :repeat repeat :repeat-start repeat-start
+                                       :on-end on-end :channels (mixed:channels mixer))))
       ;; Allocate buffers and start segment now while we're still synchronous to catch errors
       ;; and avoid further latency/allocation in the mixing thread.
       (loop for i from 0 below (length (mixed:outputs voice))
@@ -93,11 +115,6 @@
       (setf (mixed:volume voice) volume)
       (setf (segment name server) voice)
       (mixed:start voice)
-      (with-server (server)
-        (mixed:add voice sources)
-        (connect voice T mixer T)
-        (when location (setf (mixed:location voice) location))
-        (when velocity (setf (mixed:velocity voice) velocity)))
       voice)))
 
 (defmethod voices ((server (eql T)))
@@ -132,3 +149,9 @@
 
 (defmethod (setf mixed:volume) (volume (server server))
   (setf (mixed:volume (segment :master server)) volume))
+
+(defmethod stop (name)
+  (stop (segment name *server*)))
+
+(defmethod stop ((server server))
+  (mixed:end server))
