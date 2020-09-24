@@ -50,7 +50,12 @@
   (:method ((source pathname) &rest initargs)
     (if (pathname-type source)
         (apply #'make-source-for-path-type source (intern (string-upcase (pathname-type source)) "KEYWORD") initargs)
-        (error "Pathname has no type:~%  ~a" source))))
+        (error "Pathname has no type:~%  ~a" source)))
+  (:method ((source source) &rest initargs &key on-end)
+    (declare (ignore initargs))
+    ;; FIXME: this is not right since we discard the unpacker...
+    (when on-end (setf (on-end source) on-end))
+    source))
 
 (defgeneric make-source-for-path-type (pathname type &rest initargs)
   (:method (source type &rest initargs)
