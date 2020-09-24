@@ -64,3 +64,9 @@
 (defun add-to (target &rest parts)
   (dolist (part parts target)
     (mixed:add part target)))
+
+(defun removef (plist &rest keys)
+  (loop for (key val) on plist by #'cddr
+        for found = (member key keys)
+        unless found collect key
+        unless found collect val))

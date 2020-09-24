@@ -68,7 +68,7 @@
         (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav cl-mixed-wav))
         (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac cl-mixed-flac))))))
 
-(defmethod initialize-instance :after ((voice voice) &key source effects repeat repeat-start (on-end :free) channels)
+(defmethod initialize-instance :after ((voice voice) &rest args &key source effects channels (on-end :free) &allow-other-keys)
   (flet ((free (_) (declare (ignore _))
            (with-server (*server* :synchronize NIL)
              (mixed:free voice)))
@@ -77,10 +77,11 @@
              (disconnect voice T)
              (mixed:withdraw voice T))))
     (let ((unpacker (allocate-unpacker *server*))
+          (args (removef args :source :effects :channels :on-end))
           (on-end (ecase on-end
                     (:free #'free)
                     (:disconnect #'disconnect))))
-      (mixed:add (make-source-for source :pack (mixed:pack unpacker) :repeat repeat :repeat-start repeat-start :on-end on-end) voice)
+      (mixed:add (apply #'make-source-for source :pack (mixed:pack unpacker) :on-end on-end args) voice)
       (mixed:add unpacker voice)
       (mixed:revalidate unpacker)
       (dolist (effect effects)
