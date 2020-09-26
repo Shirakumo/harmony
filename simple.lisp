@@ -84,11 +84,16 @@
                      (T (ensure-segment source server))))))
     (when reset
       (mixed:seek voice 0))
-    (with-server (server :synchronize synchronize)
-      (mixed:add voice sources)
-      (connect voice T mixer T)
-      (when location (setf (mixed:location voice) location))
-      (when velocity (setf (mixed:velocity voice) velocity)))
+    ;; FIXME: what do we do if the source is already chained but on a different
+    ;;        mixer? Sounds like unexpected behaviour, but I honestly don't know
+    ;;        why you'd ever want to move a voice to a different mixer.
+    ;; KLUDGE: this also seems like a source for race conditions.
+    (unless (chain voice)
+      (with-server (server :synchronize synchronize)
+        (mixed:add voice sources)
+        (connect voice T mixer T)
+        (when location (setf (mixed:location voice) location))
+        (when velocity (setf (mixed:velocity voice) velocity))))
     voice))
 
 (defun create (source &key name (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :disconnect) (volume 1.0) (if-exists :error))
