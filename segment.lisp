@@ -106,15 +106,17 @@
    (on-end :initarg :on-end :initform #'default-source-end :accessor on-end)))
 
 (defmethod (setf mixed:done-p) :around (value (source source))
-  (case (repeat source)
-    ((0 NIL)
-     (call-next-method)
-     (funcall (on-end source) source))
-    ((T)
-     (mixed:seek source (repeat-start source) :by :second))
-    (T
-     (mixed:seek source (repeat-start source) :by :second)
-     (decf (repeat source))))
+  (if value
+      (case (repeat source)
+        ((0 NIL)
+         (call-next-method)
+         (funcall (on-end source) source))
+        ((T)
+         (mixed:seek source (repeat-start source) :by :second))
+        (T
+         (mixed:seek source (repeat-start source) :by :second)
+         (decf (repeat source))))
+      (call-next-method))
   value)
 
 (defmethod mixed:unpacker ((source source))
