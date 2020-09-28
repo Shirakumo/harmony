@@ -65,7 +65,9 @@
     (null (error "No segment given."))
     (T (segment segment-ish server))))
 
-(defun play (source &key name (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :free) location velocity (volume 1.0) (if-exists :error) synchronize reset)
+(defgeneric play (source &key))
+
+(defmethod play (source &key name (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :free) location velocity (volume 1.0) (if-exists :error) synchronize reset)
   (let ((mixer (ensure-segment mixer server))
         (sources (segment :sources server))
         (voice (when name (segment name server NIL))))
