@@ -92,8 +92,9 @@
     ;; KLUDGE: this also seems like a source for race conditions.
     (unless (chain voice)
       (with-server (server :synchronize synchronize)
-        (mixed:add voice sources)
-        (connect voice T mixer T)
+        (unless (chain voice)
+          (mixed:add voice sources)
+          (connect voice T mixer T))
         (when location (setf (mixed:location voice) location))
         (when velocity (setf (mixed:velocity voice) velocity))))
     voice))
