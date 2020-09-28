@@ -7,6 +7,7 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
 (defvar *in-processing-thread* NIL)
+(defvar *in-processing-queue* NIL)
 (defvar *server* NIL)
 
 (defclass server (mixed:chain)
@@ -14,13 +15,15 @@
    (free-buffers :initform () :accessor free-buffers)
    (free-unpackers :initform () :accessor free-unpackers)
    (thread :initform NIL :accessor thread)
-   (queue :initform (make-array 32 :element-type T) :reader queue)
+   (queue :reader queue)
    (samplerate :initform 48000 :initarg :samplerate :accessor samplerate)
    (buffersize :initform NIL :initarg :buffersize :accessor buffersize)
    (name :initform "Harmony")))
 
-(defmethod initialize-instance :after ((server server) &key)
+(defmethod initialize-instance :after ((server server) &key (queue-size 64))
   (setf *server* server)
+  (setf (slot-value server 'queue) (make-array queue-size :element-type T :initial-element NIL))
+  (setf (svref (queue server) 0) 1)
   (unless (buffersize server)
     (setf (buffersize server) (floor (samplerate server) 100))))
 
@@ -136,7 +139,7 @@
 (defmethod mixed:end ((server server))
   (when (thread server)
     ;; Clear the queue
-    (setf (svref (queue server) 0) 0)
+    (setf (svref (queue server) 0) 1)
     (fill (queue server) NIL :start 1)
     ;; Wait until our processing thread is shut down
     (unless *in-processing-thread*
@@ -179,16 +182,17 @@
          (loop while (thread server)
                do (with-simple-restart (continue "Continue with fingers crossed.")
                     ;; Loop until we can successfully clear the queue.
-                    (loop with i = 0
+                    (loop with *in-processing-queue* = T
+                          with i = 1
                           for end = (svref queue 0)
-                          while (< 0 end)
+                          while (< 1 end)
                           ;; Loop until we've reached the end of the queue.
                           do (loop while (< i end)
-                                   for task = (svref queue (1+ i))
+                                   for task = (svref queue i)
                                    do (run-task server task)
-                                      (setf (svref queue (1+ i)) NIL)
+                                      (setf (svref queue i) NIL)
                                       (incf i))
-                          until (atomics:cas (svref queue 0) end 0))
+                          until (atomics:cas (svref queue 0) end 1))
                     ;; KLUDGE: without this attempting a full GC on SBCL
                     ;;         will cause it to lock up indefinitely. Bad!
                     (#+sbcl sb-sys:without-gcing
@@ -201,24 +205,34 @@
   (flet ((push-function (function)
            ;; Loop until there's space available and until we actually update the queue.
            (loop with queue = (queue server)
-                 for old = (svref (queue server) 0)
-                 do (if (<= (length queue) old)
-                        (bt:thread-yield)
-                        (when (atomics:cas (svref queue 0) old (1+ old))
-                          (setf (svref queue (1+ old)) function)
-                          (return))))))
-    (if (or (not synchronize) *in-processing-thread*)
-        (push-function function)
-        (let* ((lock (bt:make-lock))
-               (monitor (bt:make-condition-variable))
-               (values-list ()))
-          (bt:with-lock-held (lock)
-            (push-function (lambda ()
-                             (unwind-protect
-                                  (setf values-list (multiple-value-list (funcall function)))
-                               (bt:condition-notify monitor))))
-            (bt:condition-wait monitor lock :timeout timeout)
-            (values-list values-list))))))
+                 for fill = (svref (queue server) 0)
+                 do (if (< fill (length queue))
+                        (when (atomics:cas (svref queue 0) fill (1+ fill))
+                          (setf (svref queue fill) function)
+                          (return))
+                        ;; Drop the event on the floor.
+                        (restart-case
+                            (progn (warn "Mixing queue is full.")
+                                   (return))
+                          (abort ()
+                            (return))
+                          (continue ()
+                            (bt:thread-yield)))))))
+    (cond (*in-processing-queue*
+           (funcall function))
+          ((or (not synchronize) *in-processing-thread*)
+           (push-function function))
+          (T
+           (let* ((lock (bt:make-lock))
+                  (monitor (bt:make-condition-variable))
+                  (values-list ()))
+             (bt:with-lock-held (lock)
+               (push-function (lambda ()
+                                (unwind-protect
+                                     (setf values-list (multiple-value-list (funcall function)))
+                                  (bt:condition-notify monitor))))
+               (bt:condition-wait monitor lock :timeout timeout)
+               (values-list values-list)))))))
 
 (defmacro with-server ((&optional (server '*server*) &rest args &key synchronize timeout) &body body)
   (declare (ignore synchronize timeout))
