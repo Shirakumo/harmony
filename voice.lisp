@@ -80,7 +80,8 @@
          (disconnect (_) (declare (ignore _))
            (with-server (*server* :synchronize NIL)
              (disconnect voice T)
-             (mixed:withdraw voice T))))
+             (mixed:withdraw voice T)
+             (mixed:seek voice 0))))
     (let ((unpacker (allocate-unpacker *server*))
           (args (removef args :source :effects :channels :on-end))
           (on-end (ecase on-end
