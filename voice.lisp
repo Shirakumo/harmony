@@ -182,7 +182,8 @@
   voice)
 
 (defmethod stop ((voice voice))
-  (with-server (*server* :synchronize NIL)
-    (disconnect voice T)
-    (mixed:withdraw voice T))
+  (when (chain voice)
+    (with-server (*server* :synchronize NIL)
+      (disconnect voice T)
+      (mixed:withdraw voice T)))
   voice)
