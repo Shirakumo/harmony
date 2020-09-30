@@ -77,7 +77,7 @@
 
 (defmethod mixed:add :before ((segment segment) (chain mixed:chain))
   (when (chain segment)
-    (error "Segment~%  ~a~%  is already present on chain~%  ~a~%cannot add it to~%  ~a"
+    (cerror "Do it anyway." "Segment~%  ~a~%is already present on chain~%  ~a~%cannot add it to~%  ~a"
            segment (chain segment) chain)))
 
 (defmethod mixed:add :after ((segment segment) (chain mixed:chain))
