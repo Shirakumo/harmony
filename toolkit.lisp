@@ -70,3 +70,59 @@
         for found = (member key keys)
         unless found collect key
         unless found collect val))
+
+(defun set-process-priority (&optional (priority :normal))
+  #+windows
+  (cffi:foreign-funcall "SetPriorityClass"
+                        :pointer (cffi:foreign-funcall "GetCurrentProcess" :pointer)
+                        :uint16 (ecase priority
+                                  (:idle     #x00000040)
+                                  (:low      #x00004000)
+                                  (:normal   #x00000020)
+                                  (:high     #x00000080)
+                                  (:realtime #x00000100))
+                        :bool)
+  #+unix
+  (cffi:foreign-funcall "setpriority"
+                        :int 0 :uint32 0 :int
+                        (ecase priority
+                          (:idle      19)
+                          (:low        5)
+                          (:normal     0)
+                          (:high      -5)
+                          (:realtime -20))
+                        :int))
+
+(defun set-thread-priority (&optional (priority :normal))
+  #+windows
+  (cffi:foreign-funcall "SetThreadPriority"
+                        :pointer (cffi:foreign-funcall "GetCurrentThread" :pointer)
+                        :int (ecase priority
+                               (:idle    -15)
+                               (:low      -1)
+                               (:normal    0)
+                               (:high      2)
+                               (:realtime 15))
+                        :bool)
+  #+linux ;; Turns out linux violates the posix spec and niceness is the way to go.
+  (set-process-priority priority)
+  #+(and unix (not linux))
+  (cffi:with-foreign-objects ((policy :int)
+                              (param :int))
+    (cffi:foreign-funcall "pthread_getschedparam"
+                          :pointer (cffi:foreign-funcall "pthread_self" :pointer)
+                          :pointer policy
+                          :pointer param
+                          :int)
+    (let ((policy (cffi:mem-ref policy :int)))
+      (setf (cffi:mem-ref param :int) (ecase priority
+                                        (:idle      1)
+                                        (:low      40)
+                                        (:normal   50)
+                                        (:high     60)
+                                        (:realtime 99)))
+      (cffi:foreign-funcall "pthread_setschedparam"
+                            :pointer (cffi:foreign-funcall "pthread_self" :pointer)
+                            :int policy
+                            :pointer param
+                            :int))))

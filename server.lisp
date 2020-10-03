@@ -103,9 +103,12 @@
     (error "~a is already running." server)))
 
 (defmethod mixed:start ((server server))
+  (set-process-priority :high)
   (call-next-method)
   (setf (thread server) T)
-  (let ((thread (bt:make-thread (lambda () (run server))
+  (let ((thread (bt:make-thread (lambda ()
+                                  (set-thread-priority :high)
+                                  (run server))
                                 :name (format NIL "~a processing thread" server)
                                 :initial-bindings `((*standard-output* . ,*standard-output*)
                                                     (*error-output* . ,*error-output*)
