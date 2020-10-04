@@ -179,7 +179,7 @@
            (go repeat))))))
 
 (defmethod run ((server server))
-  (declare (optimize speed))
+  (declare (optimize speed (safety 1)))
   (let ((queue (queue server))
         (*in-processing-thread* T)
         (*server* server)
@@ -207,11 +207,12 @@
       (mixed:end server)
       (setf (thread server) NIL))))
 
-(defmethod call-in-mixing-context (function (server server) &key (synchronize T) timeout)
+(defmethod call-in-mixing-context ((function function) (server server) &key (synchronize T) timeout)
+  (declare (optimize speed))
   (flet ((push-function (function)
            ;; Loop until there's space available and until we actually update the queue.
-           (loop with queue = (queue server)
-                 for fill = (svref (queue server) 0)
+           (loop with queue of-type simple-vector = (queue server)
+                 for fill of-type (unsigned-byte 32) = (svref (queue server) 0)
                  do (if (< fill (length queue))
                         (when (atomics:cas (svref queue 0) fill (1+ fill))
                           (setf (svref queue fill) function)
