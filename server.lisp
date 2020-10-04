@@ -179,6 +179,7 @@
            (go repeat))))))
 
 (defmethod run ((server server))
+  (declare (optimize speed))
   (let ((queue (queue server))
         (*in-processing-thread* T)
         (*server* server))
@@ -188,7 +189,7 @@
                     ;; Loop until we can successfully clear the queue.
                     (loop with *in-processing-queue* = T
                           with i = 1
-                          for end = (svref queue 0)
+                          for end = (the (unsigned-byte 32) (svref queue 0))
                           while (< 1 end)
                           ;; Loop until we've reached the end of the queue.
                           do (loop while (< i end)
@@ -201,7 +202,7 @@
                     ;;         will cause it to lock up indefinitely. Bad!
                     (#+sbcl sb-sys:without-gcing
                      #-sbcl progn
-                      (mixed:mix server))))
+                     (mixed:mix server))))
       (mixed:end server)
       (setf (thread server) NIL))))
 
