@@ -182,7 +182,8 @@
   (declare (optimize speed))
   (let ((queue (queue server))
         (*in-processing-thread* T)
-        (*server* server))
+        (*server* server)
+        (handle (mixed:handle server)))
     (unwind-protect
          (loop while (thread server)
                do (with-simple-restart (continue "Continue with fingers crossed.")
@@ -202,7 +203,7 @@
                     ;;         will cause it to lock up indefinitely. Bad!
                     (#+sbcl sb-sys:without-gcing
                      #-sbcl progn
-                     (mixed:mix server))))
+                     (mixed-cffi:segment-mix handle))))
       (mixed:end server)
       (setf (thread server) NIL))))
 

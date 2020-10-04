@@ -8,6 +8,7 @@
 (defpackage #:org.shirakumo.fraf.harmony
   (:local-nicknames
    (#:mixed #:org.shirakumo.fraf.mixed)
+   (#:mixed-cffi #:org.shirakumo.fraf.mixed.cffi)
    (#:atomics #:org.shirakumo.atomics))
   (:use #:cl)
   ;; segment.lisp
