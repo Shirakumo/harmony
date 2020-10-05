@@ -24,6 +24,8 @@
                   proto)
                  ((= min-inputs max-inputs 1)
                   (let ((bundle (mixed:make-bundle channels)))
+                    (when (getf (rest init) :name)
+                      (setf (slot-value bundle 'name) (getf (rest init) :name)))
                     (setf (aref (mixed:segments bundle) 0) proto)
                     (loop for i from 1 below channels
                           do (setf (aref (mixed:segments bundle) i) (apply #'make-instance init)))
