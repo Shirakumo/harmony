@@ -37,7 +37,6 @@
       (let ((convert (mixed:make-channel-convert :in source-channels :out channels)))
         (connect convert T packer T)
         (mixed:add convert chain)))
-    (mixed:match-channel-order packer (mixed:channel-order drain))
     (format *error-output* "[Harmony] Will use ~a for output (~ax~a @ ~akHz)~%"
             (string (class-name (class-of drain))) channels (mixed:encoding packer) (mixed:samplerate packer))
     (add-to chain packer drain)))
@@ -61,6 +60,9 @@
         (setf last effect)
         (add-to server last)))
     (connect last T (segment 0 output) T)
+    (let ((segments (mixed:segments output)))
+      (mixed:match-channel-order (aref segments (- (length segments) 2))
+                                 (mixed:channel-order (aref segments (- (length segments) 1)))))
     (add-to server output)))
 
 (defun maybe-start-simple-server (&rest initargs)
