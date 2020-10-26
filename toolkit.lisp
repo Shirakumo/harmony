@@ -47,6 +47,12 @@
         (aref (mixed:segments chain) idx)
         (when errorp (error "No segment at index~%  ~d" idx)))))
 
+(defmethod segment ((name symbol) (chain mixed:chain) &optional (errorp T))
+  (or (loop for segment across (mixed:segments chain)
+            do (when (eql name (name segment))
+                 (return segment)))
+      (when errorp (error "No segment with name~%  ~s" name))))
+
 (defun find-symbol* (package name)
   (loop (restart-case
             (return (or (and (find-package (string package))
