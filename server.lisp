@@ -48,9 +48,10 @@
 (defmethod free-unpacker (unpacker (server server))
   (disconnect unpacker T)
   (mixed:withdraw unpacker T)
-  (mixed:end unpacker)
   (mixed:clear (mixed:pack unpacker))
-  (push* unpacker (slot-value server 'free-unpackers)))
+  (when (mixed:handle unpacker)
+    (mixed:end unpacker)
+    (push* unpacker (slot-value server 'free-unpackers))))
 
 (defmethod segment (name (server (eql T)) &optional (errorp T))
   (segment name *server* errorp))
