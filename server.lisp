@@ -184,7 +184,9 @@
   (let ((queue (queue server))
         (*in-processing-thread* T)
         (*server* server)
-        (handle (mixed:handle server)))
+        (handle (mixed:handle server))
+        (counter 0))
+    (declare (type (unsigned-byte 8) counter))
     (unwind-protect
          (loop while (thread server)
                do (with-simple-restart (continue "Continue with fingers crossed.")
@@ -202,9 +204,12 @@
                           until (atomics:cas (svref queue 0) end 1))
                     ;; KLUDGE: without this attempting a full GC on SBCL
                     ;;         will cause it to lock up indefinitely. Bad!
-                    (#+sbcl sb-sys:without-gcing
-                     #-sbcl progn
-                     (mixed-cffi:segment-mix handle))))
+                    (incf counter)
+                    #+sbcl
+                    (when (< 10 counter)
+                      (setf counter 0)
+                      (sb-sys:without-gcing))
+                    (mixed-cffi:segment-mix handle)))
       (mixed:end server)
       (setf (thread server) NIL))))
 
