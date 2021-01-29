@@ -85,6 +85,7 @@
                         (rec segment))
                       (mixed:free segment))))
     (rec server))
+  (mixed:clear server)
   (clrhash (segment-map server))
   (loop for buffer = (pop (free-buffers server))
         while buffer do (mixed:free buffer))
