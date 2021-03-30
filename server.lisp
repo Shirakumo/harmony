@@ -111,7 +111,7 @@
   (let ((thread (bt:make-thread (lambda ()
                                   (set-thread-priority :high)
                                   (run server))
-                                :name (format NIL "~a processing thread" server)
+                                :name "harmony"
                                 :initial-bindings `((*standard-output* . ,*standard-output*)
                                                     (*error-output* . ,*error-output*)
                                                     (*query-io* . ,*query-io*)
