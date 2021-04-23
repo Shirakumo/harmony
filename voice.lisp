@@ -73,7 +73,9 @@
       (ecase type ;; static deferral. Not great, but can't do it otherwise with ASDF.
         (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123 cl-mixed-mpg123))
         (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav cl-mixed-wav))
-        (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac cl-mixed-flac))))))
+        (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac cl-mixed-flac))
+        (:ogg (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))
+        (:oga (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))))))
 
 (defmethod initialize-instance :after ((voice voice) &rest args &key source effects channels (on-end :free) &allow-other-keys)
   (flet ((free (_) (declare (ignore _))
