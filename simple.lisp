@@ -79,7 +79,7 @@
 
 (defgeneric play (source &key))
 
-(defmethod play (source &key name (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :free) location velocity (volume 1.0) (if-exists :error) synchronize reset)
+(defmethod play (source &key name (class 'voice) (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :free) location velocity (volume 1.0) (if-exists :error) synchronize reset)
   (let ((mixer (ensure-segment mixer server))
         (sources (segment :sources server))
         (voice (when name (segment name server NIL))))
@@ -92,9 +92,9 @@
        (setf voice (etypecase source
                      (voice source)
                      ((or segment pathname)
-                      (create source :name name :mixer mixer :effects effects :server server
-                                     :repeat repeat :repeat-start repeat-start :on-end on-end
-                                     :volume volume :if-exists if-exists))
+                      (create source :name name :class class :mixer mixer :effects effects
+                                     :server server :repeat repeat :repeat-start repeat-start
+                                     :on-end on-end :volume volume :if-exists if-exists))
                      (T (ensure-segment source server))))))
     (when reset
       (mixed:seek voice 0))
@@ -111,7 +111,7 @@
         (when velocity (setf (mixed:velocity voice) velocity))))
     voice))
 
-(defun create (source &key name (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :disconnect) (volume 1.0) (if-exists :error))
+(defun create (source &key name (class 'voice) (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :disconnect) (volume 1.0) (if-exists :error))
   (let ((mixer (ensure-segment mixer server))
         (voice (when name (segment name server NIL))))
     (when voice
@@ -131,9 +131,9 @@
          (return-from create voice))
         ((NIL)
          (return-from create NIL))))
-    (let ((voice (make-instance 'voice :source source :name name :effects effects
-                                       :repeat repeat :repeat-start repeat-start
-                                       :on-end on-end :channels (mixed:channels mixer))))
+    (let ((voice (make-instance class :source source :name name :effects effects
+                                      :repeat repeat :repeat-start repeat-start
+                                      :on-end on-end :channels (mixed:channels mixer))))
       ;; Allocate buffers and start segment now while we're still synchronous to catch errors
       ;; and avoid further latency/allocation in the mixing thread.
       (loop for i from 0 below (length (mixed:outputs voice))
