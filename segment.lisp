@@ -103,7 +103,8 @@
 (stealth-mixin:define-stealth-mixin source (segment) mixed:source
   ((repeat :initarg :repeat :initform 0 :accessor repeat)
    (repeat-start :initarg :repeat-start :initform 0 :accessor repeat-start)
-   (on-end :initarg :on-end :initform #'default-source-end :accessor on-end)))
+   (on-end :initarg :on-end :initform #'default-source-end :accessor on-end)
+   (on-frame-change :initarg :on-frame-change :initform #'identity :accessor on-frame-change)))
 
 (defmethod (setf mixed:done-p) :around (value (source source))
   (if value
@@ -118,6 +119,9 @@
          (decf (repeat source))))
       (call-next-method))
   value)
+
+(defmethod (setf mixed:frame-position) :before (new (source source))
+  (funcall (on-frame-change source) source new))
 
 (defmethod mixed:unpacker ((source source))
   (to (mixed:pack source)))

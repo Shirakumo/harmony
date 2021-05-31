@@ -85,13 +85,15 @@
            (with-server (*server* :synchronize NIL)
              (disconnect voice T)
              (mixed:withdraw voice T)
-             (mixed:seek voice 0))))
+             (mixed:seek voice 0)))
+         (on-frame-change (seg pos)
+           (frame-change voice (mixed:frame-position seg) pos)))
     (let ((unpacker (allocate-unpacker *server*))
           (args (removef args :source :effects :channels :on-end))
           (on-end (ecase on-end
                     (:free #'free)
                     (:disconnect #'disconnect))))
-      (mixed:add (apply #'make-source-for source :pack (mixed:pack unpacker) :on-end on-end args) voice)
+      (mixed:add (apply #'make-source-for source :pack (mixed:pack unpacker) :on-end on-end :on-frame-change #'on-frame-change args) voice)
       (mixed:add unpacker voice)
       (mixed:revalidate unpacker)
       (dolist (effect effects)
@@ -120,6 +122,9 @@
 (defmethod mixed:add :before ((segment segment) (voice voice))
   (when (< 1 (length (mixed:segments voice)))
     (connect (voice-end voice) T segment T)))
+
+(defmethod frame-change ((voice voice) old new)
+  )
 
 (defmethod source ((voice voice))
   (aref (mixed:segments voice) 0))
@@ -184,6 +189,9 @@
 (defmethod mixed:seek ((voice voice) position &rest args)
   (apply #'mixed:seek (source voice) position args)
   voice)
+
+(defmethod mixed:samplerate ((voice voice))
+  (mixed:samplerate (aref (mixed:segments voice) 1)))
 
 (defmethod stop ((voice voice))
   (when (chain voice)
