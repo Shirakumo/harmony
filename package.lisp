@@ -14,7 +14,6 @@
   ;; environment.lisp
   (:export
    #:environment
-   #:segments
    #:state
    #:active-p
    #:music-segment
