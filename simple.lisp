@@ -111,7 +111,7 @@
         (when velocity (setf (mixed:velocity voice) velocity))))
     voice))
 
-(defun create (source &key name (class 'voice) (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :disconnect) (volume 1.0) (if-exists :error))
+(defun create (source &rest args &key name (class 'voice) (mixer :effect) (server *server*) (on-end :disconnect) (volume 1.0) (if-exists :error) &allow-other-keys)
   (let ((mixer (ensure-segment mixer server))
         (voice (when name (segment name server NIL))))
     (when voice
@@ -131,15 +131,16 @@
          (return-from create voice))
         ((NIL)
          (return-from create NIL))))
-    (let ((voice (make-instance class :source source :name name :effects effects
-                                      :repeat repeat :repeat-start repeat-start
-                                      :on-end on-end :channels (mixed:channels mixer))))
+    (let* ((args (loop for (k v) on args by #'cddr
+                       for valid = (not (member k '(:class :mixer :server :on-end :volume :if-exists)))
+                       when valid collect k when valid collect v))
+           (voice (apply #'make-instance class :source source :on-end on-end :channels (mixed:channels mixer) args)))
       ;; Allocate buffers and start segment now while we're still synchronous to catch errors
       ;; and avoid further latency/allocation in the mixing thread.
       (loop for i from 0 below (length (mixed:outputs voice))
             do (setf (mixed:output i voice) (allocate-buffer server)))
-      (when name
-        (setf (segment name server) voice))
+      (when (name voice)
+        (setf (segment (name voice) server) voice))
       (mixed:start voice)
       (setf (mixed:volume voice) volume)
       voice)))
