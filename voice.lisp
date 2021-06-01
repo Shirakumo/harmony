@@ -86,13 +86,19 @@
              (disconnect voice T)
              (mixed:withdraw voice T)
              (mixed:seek voice 0)))
+         (track-end (source)
+           (track-end voice source))
+         (call (_) (declare (ignore _))
+           (funcall on-end voice))
          (on-frame-change (seg pos)
            (frame-change voice (mixed:frame-position seg) pos)))
     (let ((unpacker (allocate-unpacker *server*))
           (args (removef args :source :effects :channels :on-end))
-          (on-end (ecase on-end
-                    (:free #'free)
-                    (:disconnect #'disconnect))))
+          (on-end (etypecase on-end
+                    ((eql :free) #'free)
+                    ((eql :disconnect) #'disconnect)
+                    ((eql :call-track-end) #'track-end)
+                    (function #'call))))
       (mixed:add (apply #'make-source-for source :pack (mixed:pack unpacker) :on-end on-end :on-frame-change #'on-frame-change args) voice)
       (mixed:add unpacker voice)
       (mixed:revalidate unpacker)
@@ -124,6 +130,9 @@
     (connect (voice-end voice) T segment T)))
 
 (defmethod frame-change ((voice voice) old new)
+  )
+
+(defmethod track-end ((voice voice) source)
   )
 
 (defmethod source ((voice voice))
@@ -190,8 +199,14 @@
   (apply #'mixed:seek (source voice) position args)
   voice)
 
+(defmethod mixed:frame-position ((voice voice))
+  (mixed:frame-position (source voice)))
+
 (defmethod mixed:samplerate ((voice voice))
   (mixed:samplerate (aref (mixed:segments voice) 1)))
+
+(defmethod active-p ((voice voice))
+  (not (null (chain voice))))
 
 (defmethod stop ((voice voice))
   (when (chain voice)
