@@ -11,6 +11,14 @@
    (#:mixed-cffi #:org.shirakumo.fraf.mixed.cffi)
    (#:atomics #:org.shirakumo.atomics))
   (:use #:cl)
+  ;; environment.lisp
+  (:export
+   #:environment
+   #:segments
+   #:state
+   #:active-p
+   #:music-segment
+   #:transition)
   ;; segment.lisp
   (:export
    #:buffer

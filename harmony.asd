@@ -20,6 +20,7 @@
                (:file "segment")
                (:file "voice")
                (:file "simple")
+               (:file "environment")
                (:file "documentation"))
   :defsystem-depends-on (:trivial-features)
   :depends-on (:cl-mixed
