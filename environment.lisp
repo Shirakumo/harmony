@@ -29,9 +29,9 @@
                                  :on-end :call-track-end
                                  :if-exists :ignore
                                  :volume 0.0
-                                 :environment environment
                                  (rest source))
             do (setf (aref segments i) segment)
+               (setf (environment segment) environment)
                (setf (gethash source source-table) segment))
       (setf (segments environment) segments)
       (loop for (state . tracks) in sets
@@ -47,6 +47,12 @@
 (defmethod mixed:end ((environment environment))
   (loop for segment across (segments environment)
         do (stop segment)))
+
+(defmethod mixed:free ((environment environment))
+  (loop for segment across (segments environment)
+        do (mixed:free segment))
+  (setf (segments environment) #())
+  (clrhash (segment-sets environment)))
 
 (defmethod (setf state) :before (state (environment environment))
   (unless (eql state (state environment))

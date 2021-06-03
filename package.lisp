@@ -110,4 +110,9 @@
    #:voices
    #:clear
    #:started-p
-   #:with-server))
+   #:with-server
+   #:environment
+   #:state
+   #:active-p
+   #:music-segment
+   #:transition))
