@@ -61,18 +61,18 @@
 
 (defgeneric make-source-for-path-type (pathname type &rest initargs)
   (:method (source type &rest initargs)
-    (macrolet ((maybe-make-drain (package system)
+    (macrolet ((maybe-make-drain (package system &optional (name 'source))
                  `(apply #'make-instance
                          (handler-bind (#+quicklisp
                                         (error (lambda (e)
                                                  (declare (ignore e))
                                                  (ql:quickload ,(string system))
                                                  (invoke-restart 'retry))))
-                           (lazy-symbol ,package source))
+                           (lazy-symbol ,package ,name))
                          :file source initargs)))
       (ecase type ;; static deferral. Not great, but can't do it otherwise with ASDF.
         (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123 cl-mixed-mpg123))
-        (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav cl-mixed-wav))
+        (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav cl-mixed-wav in-memory-source))
         (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac cl-mixed-flac))
         (:ogg (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))
         (:oga (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))))))
