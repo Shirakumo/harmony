@@ -68,6 +68,11 @@
             (T
              (transition (aref new-set 0) 1.0))))))
 
+(defmethod transition ((environment environment) (to real) &key (in 1.0))
+  (loop for segment across (segments environment)
+        do (when (active-p segment)
+             (transition segment to :in in))))
+
 (defclass music-segment (voice)
   ((fade-rate :initform 0.0 :accessor fade-rate)
    (target-fade :initform 0.0 :accessor target-fade)
@@ -139,14 +144,20 @@
     (setf (slot-value thing 'mixed:frame-position) position)))
 
 (defmethod transition ((segment music-segment) (environment environment) &key (sync T))
-  (transition segment 0.0)
-  (when (state environment)
-    (let* ((index (next-index environment))
-           (set (gethash (state environment) (segment-sets environment)))
-           (next (aref set index)))
-      (transition next 1.0)
-      (when sync (%sync next segment))
-      (setf (next-index environment) (mod (1+ index) (length set))))))
+  (let ((next segment))
+    (if (state environment)
+        (let* ((index (next-index environment))
+               (set (gethash (state environment) (segment-sets environment))))
+          (setf next (aref set index))
+          (transition next 1.0)
+          (when sync (%sync next segment))
+          (setf (next-index environment) (mod (1+ index) (length set))))
+        (setf next NIL))
+    (cond ((eq next segment)
+           (let ((source (source segment)))
+             (mixed:seek source (repeat-start source) :by :second)))
+          (next
+           (transition segment 0.0)))))
 
 (defmethod transition ((segment music-segment) (to real) &key (in 1.0))
   (unless (active-p segment)
