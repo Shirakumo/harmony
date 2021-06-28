@@ -23,13 +23,13 @@
       (loop for source in sources
             for i from 0
             for initargs = (if (listp source) source (list source))
-            for segment = (apply #'create (first source)
+            for segment = (apply #'create (first initargs)
                                  :class 'music-segment
                                  :mixer :music
                                  :on-end :call-track-end
                                  :if-exists :ignore
                                  :volume 0.0
-                                 (rest source))
+                                 (rest initargs))
             do (setf (aref segments i) segment)
                (setf (environment segment) environment)
                (setf (gethash source source-table) segment))
@@ -46,7 +46,8 @@
 
 (defmethod mixed:end ((environment environment))
   (loop for segment across (segments environment)
-        do (stop segment)))
+        do (stop segment))
+  (setf (state environment) NIL))
 
 (defmethod mixed:free ((environment environment))
   (loop for segment across (segments environment)
@@ -56,16 +57,26 @@
 
 (defmethod (setf state) :before (state (environment environment))
   (unless (eql state (state environment))
-    (let ((old (find T (segments environment) :key #'active-p))
+    (let ((old (loop for segment across (segments environment)
+                     when (active-p segment) collect segment))
           (new-set (or (gethash state (segment-sets environment)))))
-      (setf (next-index environment) 0)
       (cond ((null state)
-             (when old (transition old 0.0)))
+             (dolist (segment old)
+               (transition segment 0.0)))
             ((null new-set)
              (error "No segment set named~%  ~s~%in~%  ~s" state environment))
             (old
-             (setf (pending-transition old) environment))
+             (setf (next-index environment) 0)
+             ;; If we have multiple ones, find the next one with a positive fade rate.
+             (or (dolist (segment old)
+                   (when (<= 0.0 (fade-rate segment))
+                     (setf (pending-transition segment) environment)
+                     (return T)))
+                 (progn
+                   (setf (next-index environment) 1)
+                   (transition (aref new-set 0) 1.0))))
             (T
+             (setf (next-index environment) 1)
              (transition (aref new-set 0) 1.0))))))
 
 (defmethod transition ((environment environment) (to real) &key (in 1.0))
@@ -153,11 +164,10 @@
           (when sync (%sync next segment))
           (setf (next-index environment) (mod (1+ index) (length set))))
         (setf next NIL))
-    (cond ((eq next segment)
-           (let ((source (source segment)))
-             (mixed:seek source (repeat-start source) :by :second)))
-          (next
-           (transition segment 0.0)))))
+    (let ((source (source segment)))
+      (mixed:seek source (repeat-start source) :by :second))
+    (when (and next (not (eq next segment)))
+      (transition segment 0.0))))
 
 (defmethod transition ((segment music-segment) (to real) &key (in 1.0))
   (unless (active-p segment)
@@ -170,7 +180,8 @@
     segment))
 
 (defmethod transition ((from music-segment) (to music-segment) &key (in 1.0) (volume 1.0) sync)
-  (when sync (%sync to from))
-  (transition from 0.0 :in in)
+  (unless (eq from to)
+    (when sync (%sync to from))
+    (transition from 0.0 :in in))
   (transition to volume :in in)
   to)
