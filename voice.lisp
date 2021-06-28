@@ -38,7 +38,7 @@
   ())
 
 (defmethod print-object ((voice voice) stream)
-  (print-unreadable-object (voice stream :type T)
+  (print-unreadable-object (voice stream :type T :identity (null (name voice)))
     (format stream "~@[~a ~]" (name voice))
     (let ((source (source voice)))
       (cond ((mixed:done-p source)
