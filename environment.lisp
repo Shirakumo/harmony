@@ -61,15 +61,18 @@
                      when (active-p segment) collect segment))
           (new-set (or (gethash state (segment-sets environment)))))
       (cond ((null state)
+             ;; We're quitting, so fade everything out.
              (dolist (segment old)
                (transition segment 0.0)))
             ((null new-set)
              (error "No segment set named~%  ~s~%in~%  ~s" state environment))
             (old
-             (setf (next-index environment) 0)
-             ;; If we have multiple ones, find the next one with a positive fade rate.
+             ;; If we have multiple ones, find the next one with a positive fade rate,
+             ;; as it is the one currently being faded in. Attach our transition to that.
              (or (dolist (segment old)
-                   (when (<= 0.0 (fade-rate segment))
+                   (when (and (<= 0.0 (fade-rate segment))
+                              (< 0.0 (mixed:volume segment)))
+                     (setf (next-index environment) 0)
                      (setf (pending-transition segment) environment)
                      (return T)))
                  (progn
@@ -142,34 +145,30 @@
 
 (defmethod track-end ((segment music-segment) source)
   (let ((env (environment segment)))
-    (if env
-        (transition segment env :sync NIL)
-        (mixed:seek source (repeat-start source) :by :second))))
+    (mixed:seek source (repeat-start source) :by :second)
+    (when env
+      (transition segment env :sync NIL))))
 
 (declaim (inline %sync))
 (defun %sync (thing with)
   ;; IMPORTANT: we **have** to manually bypass mixed:seek heer in order to
   ;;            avoid triggering FRAME-CHANGE
-  (let ((position (mixed:frame-position with)))
+  (let* ((thing (source thing))
+         (with (source with))
+         (position (mixed:frame-position with)))
     (mixed:seek-to-frame thing position)
     (setf (slot-value thing 'mixed:frame-position) position)))
 
-(defmethod transition ((segment music-segment) (environment environment) &key (sync T))
-  (let ((next segment))
-    (if (state environment)
-        (let* ((index (next-index environment))
-               (set (gethash (state environment) (segment-sets environment))))
-          (setf next (aref set index))
-          (transition next 1.0)
-          (when sync (%sync next segment))
-          (setf (next-index environment) (mod (1+ index) (length set))))
-        (setf next NIL))
-    (let ((source (source segment)))
-      (mixed:seek source (repeat-start source) :by :second))
-    (when (and next (not (eq next segment)))
-      (transition segment 0.0))))
+(defmethod transition ((segment music-segment) (environment environment) &key (sync T) (in 5.0))
+  (if (state environment)
+      (let* ((index (next-index environment))
+             (set (gethash (state environment) (segment-sets environment)))
+             (next (aref set index)))
+        (transition segment next :in in :sync sync)
+        (setf (next-index environment) (mod (1+ index) (length set))))
+      (transition segment 0.0)))
 
-(defmethod transition ((segment music-segment) (to real) &key (in 1.0))
+(defmethod transition ((segment music-segment) (to real) &key (in 5.0))
   (unless (active-p segment)
     (play segment :mixer :music)
     (setf (mixed:volume segment) 0.0))
@@ -179,7 +178,7 @@
     (setf (fade-rate segment) (float rate 1f0))
     segment))
 
-(defmethod transition ((from music-segment) (to music-segment) &key (in 1.0) (volume 1.0) sync)
+(defmethod transition ((from music-segment) (to music-segment) &key (in 5.0) (volume 1.0) sync)
   (unless (eq from to)
     (when sync (%sync to from))
     (transition from 0.0 :in in))

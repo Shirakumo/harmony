@@ -46,7 +46,7 @@
             ((null (mixed:frame-count source))
              (write-string "STREAM" stream))
             (T
-             (format stream "~2d%" (floor (* (/ (mixed:byte-position source) (mixed:framesize source) (mixed:frame-count source)) 100))))))))
+             (format stream "~2d%" (floor (* (/ (mixed:frame-position source) (mixed:frame-count source)) 100))))))))
 
 (defgeneric make-source-for (source &rest initargs)
   (:method ((source pathname) &rest initargs)
@@ -195,6 +195,9 @@
   (let ((buffer (mixed:output 0 voice)))
     (setf (mixed:input-velocity buffer (to buffer)) velocity)))
 
+(defmethod mixed:seek-to-frame ((voice voice) frame)
+  (mixed:seek-to-frame (source voice) frame))
+
 (defmethod mixed:seek ((voice voice) position &rest args)
   (apply #'mixed:seek (source voice) position args)
   voice)
@@ -212,5 +215,21 @@
   (when (chain voice)
     (with-server (*server* :synchronize NIL)
       (disconnect voice T)
-      (mixed:withdraw voice T)))
+      (mixed:withdraw voice T)
+      (clear-buffers voice)))
   voice)
+
+(defun clear-buffers (thing)
+  (etypecase thing
+    (mixed:chain
+     (loop for element across (mixed:segments thing)
+           do (clear-buffers element)))
+    (mixed:segment
+     (loop for buffer across (mixed:inputs thing)
+           do (when buffer (mixed:clear buffer)))
+     (loop for buffer across (mixed:outputs thing)
+           do (when buffer (mixed:clear buffer))))
+    (mixed:buffer
+     (mixed:clear thing))
+    (mixed:pack
+     (mixed:clear thing))))
