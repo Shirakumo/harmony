@@ -161,11 +161,11 @@
 
 (defmethod transition ((segment music-segment) (environment environment) &key (sync T) (in 5.0))
   (if (state environment)
-      (let* ((index (next-index environment))
-             (set (gethash (state environment) (segment-sets environment)))
+      (let* ((set (gethash (state environment) (segment-sets environment)))
+             (index (mod (next-index environment) (length set)))
              (next (aref set index)))
         (transition segment next :in in :sync sync)
-        (setf (next-index environment) (mod (1+ index) (length set))))
+        (setf (next-index environment) (1+ index)))
       (transition segment 0.0)))
 
 (defmethod transition ((segment music-segment) (to real) &key (in 5.0))
