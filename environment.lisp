@@ -76,7 +76,7 @@
                      (setf (pending-transition segment) environment)
                      (return T)))
                  (progn
-                   (setf (next-index environment) 1)
+                   (setf (next-index environment) (mod 1 (length new-set)))
                    (transition (aref new-set 0) 1.0))))
             (T
              (setf (next-index environment) 1)
