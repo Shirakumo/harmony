@@ -37,8 +37,8 @@
       (let ((convert (mixed:make-channel-convert :in source-channels :out channels)))
         (connect convert T packer T)
         (mixed:add convert chain)))
-    (format *error-output* "[Harmony] Will use ~a for output (~ax~a @ ~akHz)~%"
-            (string (class-name (class-of drain))) channels (mixed:encoding packer) (mixed:samplerate packer))
+    (format *error-output* "~&[Harmony] Will use ~s for output (~ax~a @ ~akHz)~%"
+            (class-name (class-of drain)) channels (mixed:encoding packer) (mixed:samplerate packer))
     (add-to chain packer drain)))
 
 (defun make-simple-server (&key (name "Harmony") (samplerate mixed:*default-samplerate*) (latency 0.01) effects (output-channels 2))
