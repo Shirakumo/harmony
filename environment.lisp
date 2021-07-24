@@ -55,37 +55,48 @@
   (setf (segments environment) #())
   (clrhash (segment-sets environment)))
 
-(defmethod (setf state) :before (state (environment environment))
-  (unless (eql state (state environment))
-    (let ((old (loop for segment across (segments environment)
-                     when (active-p segment) collect segment))
-          (new-set (or (gethash state (segment-sets environment)))))
-      (cond ((null state)
-             ;; We're quitting, so fade everything out.
-             (dolist (segment old)
-               (transition segment 0.0)))
-            ((null new-set)
-             (error "No segment set named~%  ~s~%in~%  ~s" state environment))
-            (old
-             ;; If we have multiple ones, find the next one with a positive fade rate,
-             ;; as it is the one currently being faded in. Attach our transition to that.
-             (or (dolist (segment old)
-                   (when (and (<= 0.0 (fade-rate segment))
-                              (< 0.0 (mixed:volume segment)))
-                     (setf (next-index environment) 0)
-                     (setf (pending-transition segment) environment)
-                     (return T)))
-                 (progn
-                   (setf (next-index environment) (mod 1 (length new-set)))
-                   (transition (aref new-set 0) 1.0))))
-            (T
-             (setf (next-index environment) 1)
-             (transition (aref new-set 0) 1.0))))))
+(defmethod (setf state) (state (environment environment))
+  (transition environment state))
 
 (defmethod transition ((environment environment) (to real) &key (in 1.0))
   (loop for segment across (segments environment)
         do (when (active-p segment)
              (transition segment to :in in))))
+
+(defmethod transition ((environment environment) (state symbol) &key (in 1.0) (error T))
+  (unless (eql state (state environment))
+    (restart-case
+        (let ((old (loop for segment across (segments environment)
+                         when (active-p segment) collect segment))
+              (new-set (or (gethash state (segment-sets environment)))))
+          (cond ((null state)
+                 ;; We're quitting, so fade everything out.
+                 (dolist (segment old)
+                   (transition segment 0.0 :in in)))
+                ((null new-set)
+                 (if error
+                     (error "No segment set named~%  ~s~%in~%  ~s" state environment)
+                     (continue)))
+                (old
+                 ;; If we have multiple ones, find the next one with a positive fade rate,
+                 ;; as it is the one currently being faded in. Attach our transition to that.
+                 (or (dolist (segment old)
+                       (when (and (<= 0.0 (fade-rate segment))
+                                  (< 0.0 (mixed:volume segment)))
+                         (setf (next-index environment) 0)
+                         (setf (pending-transition segment) environment)
+                         (return T)))
+                     (progn
+                       (setf (next-index environment) (mod 1 (length new-set)))
+                       (transition (aref new-set 0) 1.0 :in in))))
+                (T
+                 (setf (next-index environment) 1)
+                 (transition (aref new-set 0) 1.0 :in in)))
+          (setf (slot-value environment 'state) state))
+      (continue (&optional e)
+        :report "Ignore the new state."
+        (declare (ignore e))
+        NIL))))
 
 (defclass music-segment (voice)
   ((fade-rate :initform 0.0 :accessor fade-rate)
