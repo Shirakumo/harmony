@@ -8,24 +8,25 @@
 
 (defun detect-platform-drain ()
   (let (#+windows (version (cffi:foreign-funcall "GetVersion" :int32)))
-    (cond #+bsd
-          ((probe-file "/dev/dsp")
-           'org.shirakumo.fraf.mixed.oss:drain)
-          #+windows
-          ((<= 6 (ldb (byte 8 0) version))  ; WASAPI since Vista (6.0)
-           'org.shirakumo.fraf.mixed.wasapi:drain)
-          #+windows
-          (T
-           'org.shirakumo.fraf.mixed.winmm:drain)
-          #+linux
-          ((org.shirakumo.fraf.mixed.pulse:pulse-present-p)
-           'org.shirakumo.fraf.mixed.pulse:drain)
-          #+linux
-          (T
-           'org.shirakumo.fraf.mixed.alsa:drain)
-          #+darwin
-          (T
-           'org.shirakumo.fraf.mixed.coreaudio:drain))))
+    (or (cond #+bsd
+              ((probe-file "/dev/dsp")
+               'org.shirakumo.fraf.mixed.oss:drain)
+              #+windows
+              ((<= 6 (ldb (byte 8 0) version)) ; WASAPI since Vista (6.0)
+               'org.shirakumo.fraf.mixed.wasapi:drain)
+              #+windows
+              (T
+               'org.shirakumo.fraf.mixed.winmm:drain)
+              #+linux
+              ((org.shirakumo.fraf.mixed.pulse:pulse-present-p)
+               'org.shirakumo.fraf.mixed.pulse:drain)
+              #+linux
+              (T
+               'org.shirakumo.fraf.mixed.alsa:drain)
+              #+darwin
+              (T
+               'org.shirakumo.fraf.mixed.coreaudio:drain))
+        'org.shirakumo.fraf.mixed.dummy:drain)))
 
 (defun construct-output (&key (drain (detect-platform-drain)) (source-channels 2) (target-channels source-channels) (server *server*) (program-name (name server)))
   (let* ((packer (mixed:make-packer :channels target-channels :samplerate (samplerate server)))
