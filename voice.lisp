@@ -179,6 +179,30 @@
 (defmethod (setf mixed:done-p) (value (voice voice))
   (setf (mixed:done-p (source voice)) value))
 
+(defmethod mixed:min-distance ((voice voice))
+  (let ((buffer (mixed:output 0 voice)))
+    (mixed:input-min-distance buffer (to buffer))))
+
+(defmethod (setf mixed:min-distance) (min-distance (voice voice))
+  (let ((buffer (mixed:output 0 voice)))
+    (setf (mixed:input-min-distance buffer (to buffer)) min-distance)))
+
+(defmethod mixed:max-distance ((voice voice))
+  (let ((buffer (mixed:output 0 voice)))
+    (mixed:input-max-distance buffer (to buffer))))
+
+(defmethod (setf mixed:max-distance) (max-distance (voice voice))
+  (let ((buffer (mixed:output 0 voice)))
+    (setf (mixed:input-max-distance buffer (to buffer)) max-distance)))
+
+(defmethod mixed:rolloff ((voice voice))
+  (let ((buffer (mixed:output 0 voice)))
+    (mixed:input-rolloff buffer (to buffer))))
+
+(defmethod (setf mixed:rolloff) (rolloff (voice voice))
+  (let ((buffer (mixed:output 0 voice)))
+    (setf (mixed:input-rolloff buffer (to buffer)) rolloff)))
+
 (defmethod mixed:location ((voice voice))
   (let ((buffer (mixed:output 0 voice)))
     (mixed:input-location buffer (to buffer))))
