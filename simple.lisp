@@ -163,6 +163,30 @@
       (loop until (= 0 (length (mixed:segments sources)))
             do (mixed:free (aref (mixed:segments sources) 0))))))
 
+(defmethod mixed:min-distance ((server server))
+  (mixed:min-distance (segment :effect server)))
+
+(defmethod (setf mixed:min-distance) (min-distance (server server))
+  (setf (mixed:min-distance (segment :effect server)) min-distance))
+
+(defmethod mixed:max-distance ((server server))
+  (mixed:max-distance (segment :effect server)))
+
+(defmethod (setf mixed:max-distance) (max-distance (server server))
+  (setf (mixed:max-distance (segment :effect server)) max-distance))
+
+(defmethod mixed:rolloff ((server server))
+  (mixed:rolloff (segment :effect server)))
+
+(defmethod (setf mixed:rolloff) (rolloff (server server))
+  (setf (mixed:rolloff (segment :effect server)) rolloff))
+
+(defmethod mixed:attenuation ((server server))
+  (mixed:attenuation (segment :effect server)))
+
+(defmethod (setf mixed:attenuation) (attenuation (server server))
+  (setf (mixed:attenuation (segment :effect server)) attenuation))
+
 (defmethod mixed:location ((server server))
   (mixed:location (segment :effect server)))
 
