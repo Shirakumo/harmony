@@ -57,6 +57,11 @@
     (error "Cannot connect a segment with more than one output to a space mixer; dangling buffers."))
   (connect from 0 to T))
 
+(defmethod connect ((from segment) (all (eql T)) (to mixed:plane-mixer) (_all (eql T)))
+  (when (< 1 (getf (mixed:info from) :outputs))
+    (error "Cannot connect a segment with more than one output to a space mixer; dangling buffers."))
+  (connect from 0 to T))
+
 (defmethod disconnect ((from segment) from-loc &key (direction :output))
   (let ((buffer (ecase direction
                   (:output (mixed:output from-loc from))
