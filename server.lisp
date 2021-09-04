@@ -18,7 +18,8 @@
    (queue :reader queue)
    (samplerate :initform 48000 :initarg :samplerate :accessor samplerate)
    (buffersize :initform NIL :initarg :buffersize :accessor buffersize)
-   (name :initform "Harmony")))
+   (name :initform "Harmony")
+   (paused :initform NIL :accessor paused-p)))
 
 (defmethod initialize-instance :after ((server server) &key (queue-size 64))
   (setf *server* server)
@@ -201,7 +202,9 @@
                                       (setf (svref queue i) NIL)
                                       (incf i))
                           until (atomics:cas (svref queue 0) end 1))
-                    (mixed-cffi:segment-mix handle)
+                    (if (paused-p server)
+                        (sleep 0.01)
+                        (mixed-cffi:segment-mix handle))
                     ;; KLUDGE: without this attempting a full GC on SBCL
                     ;;         will cause it to lock up indefinitely. Bad!
                     #+sbcl
