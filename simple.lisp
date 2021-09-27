@@ -6,31 +6,55 @@
 
 (in-package #:org.shirakumo.fraf.harmony)
 
+(defun resolve-drain-type (drain &optional (errorp T))
+  (flet ((find-drain (package)
+           (or (and (find-package package)
+                    (find-symbol (string '#:drain) package))
+               (and errorp (error "Drain ~s is not loaded." package)))))
+    (case drain
+      (:alsa (find-drain :org.shirakumo.fraf.mixed.alsa))
+      (:coreaudio (find-drain :org.shirakumo.fraf.mixed.coreaudio))
+      (:dummy (find-drain :org.shirakumo.fraf.mixed.dummy))
+      (:jack (find-drain :org.shirakumo.fraf.mixed.jack))
+      (:oss (find-drain :org.shirakumo.fraf.mixed.oss))
+      (:out123 (find-drain :org.shirakumo.fraf.mixed.out123))
+      (:pulse (find-drain :org.shirakumo.fraf.mixed.pulse))
+      (:sdl2 (find-drain :org.shirakumo.fraf.mixed.sdl2))
+      (:wasapi (find-drain :org.shirakumo.fraf.mixed.wasapi))
+      (:winmm (find-drain :org.shirakumo.fraf.mixed.winmm))
+      (:xaudio2 (find-drain :org.shirakumo.fraf.mixed.xaudio2))
+      (:default (resolve-drain-type (detect-platform-drain)))
+      (T (if (subtypep drain 'mixed:drain)
+             drain
+             (error "~s is not a known drain type" drain))))))
+
 (defun detect-platform-drain ()
-  (let (#+windows (version (cffi:foreign-funcall "GetVersion" :int32)))
-    (or (cond #+bsd
-              ((probe-file "/dev/dsp")
-               'org.shirakumo.fraf.mixed.oss:drain)
-              #+windows
-              ((<= 6 (ldb (byte 8 0) version)) ; WASAPI since Vista (6.0)
-               'org.shirakumo.fraf.mixed.wasapi:drain)
-              #+windows
-              (T
-               'org.shirakumo.fraf.mixed.winmm:drain)
-              #+linux
-              ((org.shirakumo.fraf.mixed.pulse:pulse-present-p)
-               'org.shirakumo.fraf.mixed.pulse:drain)
-              #+linux
-              (T
-               'org.shirakumo.fraf.mixed.alsa:drain)
-              #+darwin
-              (T
-               'org.shirakumo.fraf.mixed.coreaudio:drain))
-        'org.shirakumo.fraf.mixed.dummy:drain)))
+  (macrolet ((try (drain &optional predicate)
+               `(let ((type (resolve-drain-type ,drain NIL)))
+                  ,(if predicate
+                       `(when (and type ,predicate) type)
+                       'type)))
+             (c (package function &rest args)
+               `(funcall (or (and (find-package ,(string package))
+                                  (find-symbol ,(string function) ,(string package)))
+                             (constantly NIL))
+                         ,@args)))
+    (or (try :jack (c org.shirakumo.fraf.mixed.jack jack-present-p))
+        (try :sdl2)
+        (try :out123)
+        #+bsd (try :oss (probe-file "/dev/dsp"))
+        #+windows (try :wasapi (<= 6 (ldb (byte 8 0) (cffi:foreign-funcall "GetVersion" :int32))))
+        #+windows (try :xaudio2)
+        #+windows (try :winmm)
+        #+linux (try :pulse (c org.shirakumo.fraf.mixed.pulse pulse-present-p))
+        #+linux (try :alsa)
+        #+linux (try :oss)
+        #+darwin (try :coreaudio)
+        (try :dummy))))
 
 (defun construct-output (&key (drain (detect-platform-drain)) (source-channels 2) (target-channels source-channels) (server *server*) (program-name (name server)))
   (let* ((packer (mixed:make-packer :channels target-channels :samplerate (samplerate server)))
-         (drain (make-instance drain :pack (mixed:pack packer) :program-name program-name))
+         (drain (make-instance (resolve-drain-type drain) :pack (mixed:pack packer) :program-name program-name))
          (channels (mixed:channels packer))
          (chain (make-instance 'mixed:chain :name :output)))
     (mixed:revalidate packer)
