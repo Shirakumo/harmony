@@ -54,7 +54,7 @@
 
 (defun construct-output (&key (drain (detect-platform-drain)) (source-channels 2) (target-channels source-channels) (server *server*) (program-name (name server)))
   (let* ((packer (mixed:make-packer :channels target-channels :samplerate (samplerate server)))
-         (drain (make-instance (resolve-drain-type drain) :pack (mixed:pack packer) :program-name program-name))
+         (drain (make-instance (resolve-drain-type drain) :pack (mixed:pack packer) :name :drain :program-name program-name))
          (channels (mixed:channels packer))
          (chain (make-instance 'mixed:chain :name :output)))
     (mixed:revalidate packer)
