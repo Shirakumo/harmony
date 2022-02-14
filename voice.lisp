@@ -82,6 +82,8 @@
          (maybe-make-drain org.shirakumo.fraf.mixed.mpt cl-mixed-mpt))))))
 
 (defmethod initialize-instance :after ((voice voice) &rest args &key source effects channels (on-end :free) &allow-other-keys)
+  ;; FIXME: This is not correct if the subsequent effects change the processing speed.
+  ;;        In that case we can end too early, while stuff might still be queued up in the effects.
   (flet ((free (_) (declare (ignore _))
            (with-server (*server* :synchronize NIL)
              (mixed:free voice)))
