@@ -82,8 +82,6 @@
          (maybe-make-drain org.shirakumo.fraf.mixed.mpt cl-mixed-mpt))))))
 
 (defmethod initialize-instance :after ((voice voice) &rest args &key source effects channels (on-end :free) &allow-other-keys)
-  ;; FIXME: This is not correct if the subsequent effects change the processing speed.
-  ;;        In that case we can end too early, while stuff might still be queued up in the effects.
   (flet ((free (_) (declare (ignore _))
            (with-server (*server* :synchronize NIL)
              (mixed:free voice)))
@@ -105,7 +103,12 @@
                     ((eql :disconnect) #'disconnect)
                     ((eql :call-track-end) #'track-end)
                     (function #'call))))
-      (mixed:add (apply #'make-source-for source :pack (mixed:pack unpacker) :on-end on-end :on-frame-change #'on-frame-change args) voice)
+      (flet ((on-end (arg)
+               ;; KLUDGE: we have to defer the ending until all output samples have been drained.
+               (if (= 0 (mixed:available-read (mixed:output 0 voice)))
+                   (funcall on-end arg)
+                   (setf (mixed:done-p voice) NIL))))
+        (mixed:add (apply #'make-source-for source :pack (mixed:pack unpacker) :on-end #'on-end :on-frame-change #'on-frame-change args) voice))
       (mixed:add unpacker voice)
       (mixed:revalidate unpacker)
       (dolist (effect effects)
