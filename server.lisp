@@ -187,13 +187,15 @@
         (*in-processing-thread* T)
         (*server* server)
         (handle (mixed:handle server)))
+    (declare (type simple-vector queue))
+    (declare (type cffi:foreign-pointer handle))
     (unwind-protect
          (loop while (thread server)
                do (with-simple-restart (continue "Continue with fingers crossed.")
                     ;; Loop until we can successfully clear the queue.
                     (loop with *in-processing-queue* = T
-                          with i = 1
-                          for end = (the (unsigned-byte 32) (svref queue 0))
+                          with i of-type (unsigned-byte 32) = 1
+                          for end of-type (unsigned-byte 32) = (the (unsigned-byte 32) (svref queue 0))
                           while (< 1 end)
                           ;; Loop until we've reached the end of the queue.
                           do (loop while (< i end)
@@ -215,7 +217,7 @@
       (setf (thread server) NIL))))
 
 (defmethod call-in-mixing-context ((function function) (server server) &key (synchronize T) timeout)
-  (declare (optimize speed))
+  (declare (optimize speed (safety 1)))
   (flet ((push-function (function)
            ;; Loop until there's space available and until we actually update the queue.
            (loop with queue of-type simple-vector = (queue server)
