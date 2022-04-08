@@ -47,9 +47,9 @@
         (aref (mixed:segments chain) idx)
         (when errorp (error "No segment at index~%  ~d" idx)))))
 
-(defmethod segment ((name symbol) (chain mixed:chain) &optional (errorp T))
+(defmethod segment (name (chain mixed:chain) &optional (errorp T))
   (or (loop for segment across (mixed:segments chain)
-            do (when (eql name (name segment))
+            do (when (equal name (name segment))
                  (return segment)))
       (when errorp (error "No segment with name~%  ~s" name))))
 

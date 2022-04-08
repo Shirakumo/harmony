@@ -57,7 +57,7 @@
 (defmethod segment (name (server (eql T)) &optional (errorp T))
   (segment name *server* errorp))
 
-(defmethod segment ((name symbol) (server server) &optional (errorp T))
+(defmethod segment (name (server server) &optional (errorp T))
   (or (gethash name (segment-map server))
       (when errorp (error "No such segment ~s" name))))
 
