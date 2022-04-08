@@ -253,3 +253,57 @@
 (defmacro with-server ((&optional (server '*server*) &rest args &key synchronize timeout) &body body)
   (declare (ignore synchronize timeout))
   `(call-in-mixing-context (lambda () ,@body) ,server ,@args))
+
+(defun dot-server (&key (server *server*) (file #p "~/server.dot"))
+  (let ((table (make-hash-table :test 'eq))
+        (index 0))
+    (with-open-file (stream file :direction :output :if-exists :supersede)
+      (format stream "~&digraph server {~%")
+      (format stream "~&  node [shape=record];~%")
+      (labels ((traverse (thing)
+                 (when thing
+                   (unless (gethash thing table)
+                     (setf (gethash thing table) (format NIL "S_~d" (incf index)))
+                     (typecase thing
+                       ((or mixed:chain mixed:bundle)
+                        (loop for child across (mixed:segments thing)
+                              do (traverse child)))
+                       (mixed:segment
+                        (format stream "~&  ~a [label = ~s];" (gethash thing table)
+                                (format NIL "~a~@[ ~a~] ~a" (type-of thing) (name thing) index))
+                        (loop for buffer across (mixed:inputs thing)
+                              do (traverse buffer))
+                        (loop for buffer across (mixed:outputs thing)
+                              do (traverse buffer))
+                        (typecase thing
+                          ((or mixed:packer mixed:unpacker)
+                           (traverse (mixed:pack thing)))))
+                       ((or mixed:buffer mixed:pack)
+                        (format stream "~&  ~a [label = ~s];" (gethash thing table)
+                                (format NIL "~a ~a" (type-of thing) index)))
+                       (null
+                        (format stream "~&  ~a [label = \"(nil)\"];" (gethash thing table))))))))
+        (traverse server))
+      (labels ((traverse (thing)
+                 (typecase thing
+                   ((or mixed:chain mixed:bundle)
+                    (format stream "~&  subgraph cluster~a {~%" (gethash thing table))
+                    (format stream "~&  label = ~s;"
+                            (format NIL "~a~@[ ~a~] ~a" (type-of thing) (name thing) index))
+                    (loop for child across (mixed:segments thing)
+                          do (traverse child))
+                    (format stream "~&  }~%"))
+                   (mixed:segment
+                    (loop for buffer across (mixed:inputs thing)
+                          when buffer
+                          do (format stream "~&  ~a -> ~a;" (gethash buffer table) (gethash thing table)))
+                    (loop for buffer across (mixed:outputs thing)
+                          when buffer
+                          do (format stream "~&  ~a -> ~a;" (gethash thing table) (gethash buffer table)))
+                    (typecase thing
+                      ((or mixed:packer mixed:source)
+                       (format stream "~&  ~a -> ~a;" (gethash thing table) (gethash (mixed:pack thing) table)))
+                      ((or mixed:unpacker mixed:drain)
+                       (format stream "~&  ~a -> ~a;" (gethash (mixed:pack thing) table) (gethash thing table))))))))
+        (traverse server))
+      (format stream "~&}~%"))))

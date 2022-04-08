@@ -49,7 +49,8 @@
    #:run-task
    #:run
    #:call-in-mixing-context
-   #:with-server)
+   #:with-server
+   #:dot-server)
   ;; simple.lisp
   (:export
    #:detect-platform-drain
