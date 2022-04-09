@@ -24,6 +24,13 @@
   (print-unreadable-object (segment stream :type T)
     (format stream "~@[~s~]" (name segment))))
 
+(defmethod (setf mixed:pack) :after ((buffer buffer) (segment segment))
+  (typecase segment
+    ((or mixed:source mixed:packer)
+     (setf (from buffer) segment))
+    ((or mixed:drain mixed:unpacker)
+     (setf (to buffer) segment))))
+
 (defmethod (setf mixed:output-field) :after ((buffer buffer) (field (eql :buffer)) (location integer) (segment segment))
   (setf (from buffer) segment)
   (setf (from-location buffer) location))
