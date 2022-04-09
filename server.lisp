@@ -254,11 +254,12 @@
   (declare (ignore synchronize timeout))
   `(call-in-mixing-context (lambda () ,@body) ,server ,@args))
 
-(defun dot-server (&key (server *server*) (file #p "~/server.dot"))
+(defun dot-server (&key (server *server*) (file #p "~/server.dot") (convert "svg"))
   (let ((table (make-hash-table :test 'eq))
         (index 0))
     (with-open-file (stream file :direction :output :if-exists :supersede)
       (format stream "~&digraph server {~%")
+      (format stream "~&  graph [splines=ortho];~%")
       (format stream "~&  node [shape=record];~%")
       (labels ((traverse (thing)
                  (when thing
@@ -277,14 +278,13 @@
                               do (traverse buffer))
                         (typecase thing
                           ((or mixed:packer mixed:unpacker)
-                           (traverse (mixed:pack thing)))))
-                       ((or mixed:buffer mixed:pack)
-                        (format stream "~&  ~a [label = ~s];" (gethash thing table)
-                                (format NIL "~a ~a" (type-of thing) index)))
-                       (null
-                        (format stream "~&  ~a [label = \"(nil)\"];" (gethash thing table))))))))
+                           (traverse (mixed:pack thing))))))))))
         (traverse server))
-      (labels ((traverse (thing)
+      (labels ((connect (from to buffer)
+                 (when (and from to)
+                   (format stream "~&  ~a -> ~a [label=~s];" (gethash from table) (gethash to table)
+                           (format NIL "~a ~a" (type-of buffer) (subseq (gethash buffer table) 2)))))
+               (traverse (thing)
                  (typecase thing
                    ((or mixed:chain mixed:bundle)
                     (format stream "~&  subgraph cluster~a {~%" (gethash thing table))
@@ -296,14 +296,16 @@
                    (mixed:segment
                     (loop for buffer across (mixed:inputs thing)
                           when buffer
-                          do (format stream "~&  ~a -> ~a;" (gethash buffer table) (gethash thing table)))
-                    (loop for buffer across (mixed:outputs thing)
-                          when buffer
-                          do (format stream "~&  ~a -> ~a;" (gethash thing table) (gethash buffer table)))
+                          do (connect (from buffer) thing buffer))
                     (typecase thing
                       ((or mixed:packer mixed:source)
-                       (format stream "~&  ~a -> ~a;" (gethash thing table) (gethash (mixed:pack thing) table)))
+                       (connect thing (to (mixed:pack thing)) (mixed:pack thing)))
                       ((or mixed:unpacker mixed:drain)
-                       (format stream "~&  ~a -> ~a;" (gethash (mixed:pack thing) table) (gethash thing table))))))))
+                       (connect (from (mixed:pack thing)) thing (mixed:pack thing))))))))
         (traverse server))
-      (format stream "~&}~%"))))
+      (format stream "~&}~%"))
+    (when convert
+      (uiop:run-program (list "dot"
+                              (uiop:native-namestring file)
+                              (format NIL "-T~a" convert)
+                              "-o" (uiop:native-namestring (make-pathname :type convert :defaults file)))))))
