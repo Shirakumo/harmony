@@ -289,7 +289,8 @@
                    ((or mixed:chain mixed:bundle)
                     (format stream "~&  subgraph cluster~a {~%" (gethash thing table))
                     (format stream "~&  label = ~s;"
-                            (format NIL "~a~@[ ~a~] ~a" (type-of thing) (name thing) index))
+                            (format NIL "~a~@[ ~a~] ~a" (type-of thing) (name thing)
+                                    (subseq (gethash thing table) 2)))
                     (loop for child across (mixed:segments thing)
                           do (traverse child))
                     (format stream "~&  }~%"))
