@@ -181,7 +181,7 @@
 
 (defmethod transition ((segment music-segment) (to real) &key (in 5.0))
   (unless (active-p segment)
-    (play segment :mixer :music)
+    (play segment :mixer :music :reset T)
     (setf (mixed:volume segment) 0.0))
   (let* ((samples-per-step (round (* (mixed:samplerate segment) in)))
          (rate (/ (- to (mixed:volume segment)) samples-per-step)))
