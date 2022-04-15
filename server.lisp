@@ -235,7 +235,7 @@
                             (return))
                           (continue ()
                             (bt:thread-yield)))))))
-    (cond (*in-processing-queue*
+    (cond ((or *in-processing-queue* (null (thread server)))
            (funcall function))
           ((or (not synchronize) *in-processing-thread*)
            (push-function function))

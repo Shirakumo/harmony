@@ -123,7 +123,8 @@
     (mixed:withdraw voice T)
     (when (name voice)
       (setf (segment (name voice) *server*) NIL))
-    (disconnect voice T)))
+    (when (and (mixer voice) (mixed:handle (mixer voice)))
+      (disconnect voice T))))
 
 (defmethod mixed:free :after ((voice voice))
   (when (< 0 (length (mixed:segments voice)))
@@ -132,7 +133,8 @@
     (loop for i from 2 below (length (mixed:segments voice))
           for segment = (aref (mixed:segments voice) i)
           do (disconnect segment T)
-             (mixed:free segment))))
+             (mixed:free segment))
+    (setf (fill-pointer (mixed:segments voice)) 0)))
 
 (defmethod mixed:add :before ((segment segment) (voice voice))
   (when (< 1 (length (mixed:segments voice)))
@@ -146,6 +148,11 @@
 
 (defmethod source ((voice voice))
   (aref (mixed:segments voice) 0))
+
+(defmethod mixer ((voice voice))
+  (let ((output (mixed:output 0 voice)))
+    (when output
+      (to output))))
 
 (defmethod mixed:unpacker ((voice voice))
   (aref (mixed:segments voice) 1))
