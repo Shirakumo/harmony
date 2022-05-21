@@ -35,7 +35,8 @@
    #:source
    #:repeat
    #:repeat-start
-   #:on-end)
+   #:on-end
+   #:on-frame-change)
   ;; server.lisp
   (:export
    #:*server*
@@ -68,6 +69,7 @@
    #:voice
    #:make-source-for
    #:make-source-for-path-type
+   #:track-end
    #:source
    #:stop))
 

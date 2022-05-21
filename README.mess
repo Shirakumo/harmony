@@ -1,5 +1,26 @@
 ## About Harmony
 Harmony is a library that provides you with audio processing tools as well as an audio server to play back music, sfx, and so forth. It is most suited for use in a game engine, but may feasibly also used for more advanced things such as a DAW.
 
+## Quick Start
+To get running with a usable setup in no time flat, simply load harmony, an appropriate drain extension from cl-mixed, and some extension to play a file:
+
+:: common lisp
+(ql:quickload '(harmony cl-mixed-mpg123 #+linux cl-mixed-pulse #+darwin cl-mixed-coreaudio #+windows cl-mixed-wasapi #+bsd cl-mixed-oss))
+::
+
+Then start a server:
+
+:: common lisp
+(org.shirakumo.fraf.harmony:maybe-start-simple-server)
+::
+
+And we can play some stuff back:
+
+:: common lisp
+(org.shirakumo.fraf.harmony:play #p"~/my-music.mp3" :mixer :music)
+::
+
+The returned voice instance can be controlled with functions like ``stop`` and ``mixed:volume``.
+
 ## Also See
 - "cl-mixed"(https://shirakumo.github.io/cl-mixed) For the mixing and sound processing library.
