@@ -5,7 +5,11 @@ Harmony is a library that provides you with audio processing tools as well as an
 To get running with a usable setup in no time flat, simply load harmony, an appropriate drain extension from cl-mixed, and some extension to play a file:
 
 :: common lisp
-(ql:quickload '(harmony cl-mixed-mpg123 #+linux cl-mixed-pulse #+darwin cl-mixed-coreaudio #+windows cl-mixed-wasapi #+bsd cl-mixed-oss))
+(ql:quickload '(harmony cl-mixed-mpg123
+                #+linux cl-mixed-pulse
+                #+darwin cl-mixed-coreaudio
+                #+windows cl-mixed-wasapi
+                #+bsd cl-mixed-oss))
 ::
 
 Then start a server:
@@ -20,7 +24,34 @@ And we can play some stuff back:
 (org.shirakumo.fraf.harmony:play #p"~/my-music.mp3" :mixer :music)
 ::
 
-The returned voice instance can be controlled with functions like ``stop`` and ``mixed:volume``.
+The returned ``voice`` instance can be controlled with functions like ``stop`` and ``mixed:volume``. Please see the documentation of the ``voice`` class for more hints on possible interactions. For one more quick illustration of Harmony's capabilities, let's restart the playback, but now with a lowpass filter applied:
+
+:: common lisp
+(org.shirakumo.fraf.harmony:stop *)
+(org.shirakumo.fraf.harmony:play #p"~/my-music.mp3" :mixer :music :effects '((mixed:biquad-filter :filter :lowpass :frequency 400)))
+::
+
+There's a lot more that can be done, such as chaining multiple filters, controlling the amount of mixers, applying effects to entire mixers, looping playback, horizontal mixing, and more.
+
+## Environments
+Environments are a way to handle music environments and horizontal mixing. To define a horizontal mixing environment, simply create an ``environment`` instance, passing the desired environment sets as ``:sets``:
+
+:: common lisp
+(make-instance 'org.shirakumo.fraf.harmony:environment
+  :sets '((:normal #p"normal-track.mp3" #p"normal-track-calm")
+          (:intense #p"intense-track.mp3")))
+::
+
+This defines an environment with two sets, ``:normal`` and ``:intense``. When the normal set is playing, it will loop through ``normal-track`` and ``normal-track-calm``. When the intense set is playing, it will loop through ``intense-track``.
+
+You can activate a set by using ``transition``:
+
+:: common lisp
+(org.shirakumo.fraf.harmony:transition * :normal)
+(org.shirakumo.fraf.harmony:transition ** :intense :in 10.0)
+::
+
+If you'd like more fine-grained control over the segments that are being played back, you can also manually construct ``music-segment`` instances and use the ``transition`` function to fade between ``music-segment``s or change their volumes.
 
 ## Also See
 - "cl-mixed"(https://shirakumo.github.io/cl-mixed) For the mixing and sound processing library.
