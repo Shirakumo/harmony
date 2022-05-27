@@ -125,7 +125,7 @@ See BUFFER")
 
 See BUFFER")
   
-  (function segment
+  (type segment
     "Superclass for MIXED:SEGMENT
 
 Keeps track of an extra name and the chain on which the segment is
@@ -242,12 +242,12 @@ See SOURCE"))
 
 ;; server.lisp
 (docs:define-docs
-  (function *server*
+  (variable *server*
     "References the currently active SERVER instance, if any.
 
 See SERVER")
   
-  (function server
+  (type server
     "Class encapsulating a audio rendering server.
 
 An audio server keeps track of buffers allocations, chains, segments,
