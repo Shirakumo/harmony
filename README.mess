@@ -33,6 +33,8 @@ The returned ``voice`` instance can be controlled with functions like ``stop`` a
 
 There's a lot more that can be done, such as chaining multiple filters, controlling the amount of mixers, applying effects to entire mixers, looping playback, horizontal mixing, and more.
 
+The default ``play`` method as shown above will always allocate the necessary objects once called, and free them once playback is finished. This can involve disk access and other slow operations. If you need your playback to occur with as little delay as possible, you should instead first use ``create`` to allocate your voice with the appropriate settings, and then ``play`` once desired. When initialised, via ``create``, the same voice can also be re-played multiple times, but must be manually ``free``d once no longer needed.
+
 ## Environments
 Environments are a way to handle music environments and horizontal mixing. To define a horizontal mixing environment, simply create an ``environment`` instance, passing the desired environment sets as ``:sets``:
 
