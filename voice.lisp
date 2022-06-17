@@ -86,6 +86,8 @@
            (with-server (*server* :synchronize NIL)
              (mixed:free voice)))
          (disconnect (_) (declare (ignore _))
+           ;; NOTE: Pretty sure these WITH-SERVERs are unnecessary, as ON-END should only be called from
+           ;;       within the mixing thread.
            (with-server (*server* :synchronize NIL)
              (disconnect voice T)
              (mixed:withdraw voice T)
