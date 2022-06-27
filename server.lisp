@@ -102,6 +102,26 @@
   (when (name segment)
     (setf (segment (name segment) server) NIL)))
 
+(defmethod mixed:device ((server server))
+  (mixed:device (segment :drain (segment :output server))))
+
+(defmethod (setf mixed:device) (value (server server))
+  (let* ((drain (segment :drain (segment :output server)))
+         (convert (segment :upmix (segment :output server)))
+         (packer (segment :packer (segment :output server)))
+         (prev (mixed:device server))
+         (count (mixed:channels drain)))
+    (call-in-mixing-context
+     (lambda ()
+       (handler-case
+           (prog1 (setf (mixed:device drain) value)
+             (when (/= count (mixed:channels drain))
+               (setf (mixed:channel-count-out convert) (mixed:channels drain))
+               (connect convert T packer T)))
+         (error ()
+           (setf (mixed:device server) prev))))
+     server :synchronize T)))
+
 (defmethod mixed:start :before ((server server))
   (when (started-p server)
     (error "~a is already running." server)))
