@@ -116,10 +116,12 @@
        (handler-case
            (prog1 (setf (mixed:device drain) value)
              (when (/= count (mixed:channels drain))
+               (mixed:end packer)
                (disconnect convert T :direction :output)
                (mixed::revalidate packer)
                (setf (mixed:channel-count-out convert) (mixed:channels drain))
-               (connect convert T packer T)))
+               (connect convert T packer T)
+               (mixed:start packer)))
          (error (e)
            (format *error-output* "~&Failed to switch output device: ~a~%" e)
            (setf (mixed:device drain) prev))))
