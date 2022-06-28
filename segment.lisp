@@ -13,7 +13,7 @@
    (to-location :initform NIL :accessor to-location)))
 
 (defmethod print-object ((buffer buffer) stream)
-  (print-unreadable-object (buffer stream :type T)
+  (print-unreadable-object (buffer stream :type T :identity T)
     (format stream "~a <-> ~a" (from buffer) (to buffer))))
 
 (stealth-mixin:define-stealth-mixin segment () mixed:segment
