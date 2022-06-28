@@ -75,9 +75,9 @@
                   (:input (mixed:input from-loc from)))))
     (when buffer
       (when (from buffer)
-        (setf (mixed:output (from-location buffer) (from buffer)) NIL))
+        (ignore-errors (setf (mixed:output (from-location buffer) (from buffer)) NIL)))
       (when (to buffer)
-        (setf (mixed:input (to-location buffer) (to buffer)) NIL))
+        (ignore-errors (setf (mixed:input (to-location buffer) (to buffer)) NIL)))
       (free-buffer buffer *server*))))
 
 (defmethod disconnect ((from segment) (all (eql T)) &key (direction :output))
