@@ -189,9 +189,9 @@
     (setf (fade-rate segment) (float rate 1f0))
     segment))
 
-(defmethod transition ((from music-segment) (to music-segment) &key (in 5.0) (volume 1.0) sync)
+(defmethod transition ((from music-segment) (to music-segment) &key (in 5.0) volume sync)
   (unless (eq from to)
     (when sync (%sync to from))
     (transition from 0.0 :in in))
-  (transition to volume :in in)
+  (transition to (or volume (mixed:volume from)) :in in)
   to)
