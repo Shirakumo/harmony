@@ -156,9 +156,14 @@
 
 (defmethod track-end ((segment music-segment) source)
   (let ((env (environment segment)))
-    (mixed:seek source (repeat-start source) :by :second)
-    (when env
-      (transition segment env :sync NIL))))
+    (cond (env
+           (mixed:seek source (repeat-start source) :by :second)
+           (transition segment env :sync NIL))
+          ((<= (or (repeat segment) 0) 0)
+           (with-server (*server* :synchronize NIL)
+             (disconnect segment T)
+             (mixed:withdraw segment T)
+             (mixed:seek segment 0))))))
 
 (declaim (inline %sync))
 (defun %sync (thing with)
