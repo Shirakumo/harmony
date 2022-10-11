@@ -267,13 +267,17 @@
           (T
            (let* ((lock (bt:make-lock))
                   (monitor (bt:make-condition-variable))
-                  (values-list ()))
+                  (values-list ())
+                  (done NIL))
              (bt:with-lock-held (lock)
                (push-function (lambda ()
                                 (unwind-protect
                                      (setf values-list (multiple-value-list (funcall function)))
+                                  (setf done T)
                                   (bt:condition-notify monitor))))
-               (bt:condition-wait monitor lock :timeout timeout)
+               (loop until done
+                     do (unless (bt:condition-wait monitor lock :timeout (or timeout 1))
+                          (bt:acquire-lock lock)))
                (values-list values-list)))))))
 
 (defmacro with-server ((&optional (server '*server*) &rest args &key synchronize timeout) &body body)
