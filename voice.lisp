@@ -75,10 +75,8 @@
         (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123 cl-mixed-mpg123))
         (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav cl-mixed-wav in-memory-source))
         (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac cl-mixed-flac))
-        (:ogg (with-server () ;; KLUDGE: Something is interfering between the vorbis playback and vorbis open
-                (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis)))
-        (:oga (with-server ()
-                (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis)))
+        (:ogg (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))
+        (:oga (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))
         ((:mptm :mod :s3m :xm :it :669 :amf :ams :c67 :dbm :digi :dmf :dsm :dtm :far
           :imf :ice :j2b :m15 :mdl :med :mms :mt2 :mtm :nst :okt :plm :psm :pt36 :ptm
           :sfx :sfx2 :st26 :stk :stm :stp :ult :wow :gdm :mo3 :oxm :umx :xpk :ppm :mmcmp)
