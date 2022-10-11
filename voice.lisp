@@ -40,13 +40,14 @@
 (defmethod print-object ((voice voice) stream)
   (print-unreadable-object (voice stream :type T :identity (null (name voice)))
     (format stream "~@[~a ~]" (name voice))
-    (let ((source (source voice)))
-      (cond ((mixed:done-p source)
-             (write-string "DONE" stream))
-            ((null (mixed:frame-count source))
-             (write-string "STREAM" stream))
-            (T
-             (format stream "~2d%" (floor (* (/ (mixed:frame-position source) (mixed:frame-count source)) 100))))))))
+    (ignore-errors
+     (let ((source (source voice)))
+       (cond ((mixed:done-p source)
+              (write-string "DONE" stream))
+             ((null (mixed:frame-count source))
+              (write-string "STREAM" stream))
+             (T
+              (format stream "~2d%" (floor (* (/ (mixed:frame-position source) (mixed:frame-count source)) 100)))))))))
 
 (defgeneric make-source-for (source &rest initargs)
   (:method ((source pathname) &rest initargs)
