@@ -277,7 +277,7 @@
                                   (bt:condition-notify monitor))))
                (loop until done
                      do (unless (bt:condition-wait monitor lock :timeout (or timeout 1))
-                          (ignore-errors (bt:acquire-lock lock))))
+                          (bt:acquire-lock lock)))
                (values-list values-list)))))))
 
 (defmacro with-server ((&optional (server '*server*) &rest args &key synchronize timeout) &body body)
