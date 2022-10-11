@@ -21,7 +21,7 @@
    (chain :initform NIL :accessor chain)))
 
 (defmethod print-object ((segment segment) stream)
-  (print-unreadable-object (segment stream :type T)
+  (print-unreadable-object (segment stream :type T :identity (null (name segment)))
     (format stream "~@[~s~]" (name segment))))
 
 (defmethod (setf mixed:pack) :after ((buffer buffer) (segment segment))
