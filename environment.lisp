@@ -16,6 +16,7 @@
 
 (defmethod shared-initialize :after ((environment environment) slots &key (sets NIL sets-p))
   (when sets-p
+    ;; FIXME: do not reallocate matching segments
     (clrhash (segment-sets environment))
     (let* ((sources (delete-duplicates (loop for set in sets append (rest set)) :test #'equal))
            (source-table (make-hash-table :test 'equal))
@@ -33,7 +34,10 @@
             do (setf (aref segments i) segment)
                (setf (environment segment) environment)
                (setf (gethash source source-table) segment))
-      (setf (segments environment) segments)
+      (let ((existing (segments environment)))
+        (setf (segments environment) segments)
+        (loop for segment across existing
+              do (mixed:free segment)))
       (loop for (state . tracks) in sets
             for arr = (make-array (length tracks))
             do (loop for source in tracks
