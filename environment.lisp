@@ -140,7 +140,7 @@
     (when transition
       (when (funcall (the function (transition-fun segment)) old new)
         (setf (pending-transition segment) NIL)
-        (transition segment transition))))
+        (transition segment transition :sync T))))
   (let ((rate (fade-rate segment))
         (samples (- new old)))
     (declare (type single-float rate))
@@ -188,9 +188,9 @@
         (setf (next-index environment) (1+ index)))
       (transition segment 0.0)))
 
-(defmethod transition ((segment music-segment) (to real) &key (in 5.0))
+(defmethod transition ((segment music-segment) (to real) &key (in 5.0) (reset T))
   (unless (active-p segment)
-    (play segment :mixer :music :reset T)
+    (play segment :mixer :music :reset reset)
     (setf (mixed:volume segment) 0.0))
   (let* ((samples-per-step (round (* (mixed:samplerate segment) in)))
          (rate (/ (- to (mixed:volume segment)) samples-per-step)))
@@ -199,8 +199,8 @@
     segment))
 
 (defmethod transition ((from music-segment) (to music-segment) &key (in 5.0) volume sync)
+  (transition to (or volume (mixed:volume from)) :in in :reset (null sync))
   (unless (eq from to)
     (when sync (%sync to from))
     (transition from 0.0 :in in))
-  (transition to (or volume (mixed:volume from)) :in in)
   to)
