@@ -16,34 +16,40 @@
 
 (defmethod shared-initialize :after ((environment environment) slots &key (sets NIL sets-p))
   (when sets-p
-    ;; FIXME: do not reallocate matching segments
-    (clrhash (segment-sets environment))
     (let* ((sources (delete-duplicates (loop for set in sets append (rest set)) :test #'equal))
            (source-table (make-hash-table :test 'equal))
-           (segments (make-array (length sources))))
+           (segments (make-array (length sources)))
+           (existing (segments environment))
+           (segment-sets (make-hash-table :test 'eql)))
       (loop for source in sources
             for i from 0
             for initargs = (if (listp source) source (list source))
-            for segment = (apply #'create (first initargs)
-                                 :class 'music-segment
-                                 :mixer :music
-                                 :on-end :call-track-end
-                                 :if-exists :ignore
-                                 :volume 0.0
-                                 (rest initargs))
+            for name = (getf (rest initargs) :name)
+            for segment = (or (when name (find name existing :key #'name))
+                              ;; KLUDGE: ^ the only currently reliable way we have of identifying
+                              ;;           existing segments is by comparing names, which may not
+                              ;;           be provided at all, missing existing equivalent segs.
+                              (apply #'create (first initargs)
+                                     :class 'music-segment
+                                     :mixer :music
+                                     :on-end :call-track-end
+                                     :if-exists :ignore
+                                     :volume 0.0
+                                     (rest initargs)))
             do (setf (aref segments i) segment)
                (setf (environment segment) environment)
                (setf (gethash source source-table) segment))
-      (let ((existing (segments environment)))
-        (setf (segments environment) segments)
-        (loop for segment across existing
-              do (mixed:free segment)))
       (loop for (state . tracks) in sets
             for arr = (make-array (length tracks))
             do (loop for source in tracks
                      for i from 0
                      do (setf (aref arr i) (gethash source source-table)))
-               (setf (gethash state (segment-sets environment)) arr)))))
+               (setf (gethash state segment-sets) arr))
+      (setf (segments environment) segments)
+      (setf (segment-sets environment) segment-sets)
+      (loop for segment across existing
+            do (unless (find segment segments)
+                 (mixed:free segment))))))
 
 (defmethod active-p ((environment environment))
   (not (null (state environment))))
