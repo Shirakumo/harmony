@@ -81,8 +81,8 @@
               (new-set (or (gethash state (segment-sets environment)))))
           (cond ((null state)
                  ;; We're quitting, so fade everything out.
-                 (dolist (segment old)
-                   (transition segment 0.0 :in in)))
+                 (loop for segment across (segments environment)
+                       do (transition segment 0.0 :in in)))
                 ((null new-set)
                  (if error
                      (error "No segment set named~%  ~s~%in~%  ~s" state environment)
