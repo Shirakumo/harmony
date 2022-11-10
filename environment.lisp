@@ -70,8 +70,11 @@
 
 (defmethod transition ((environment environment) (to real) &key (in 1.0))
   (loop for segment across (segments environment)
-        do (when (active-p segment)
-             (transition segment to :in in))))
+        do (when (and (active-p segment)
+                      (<= 0.0 (fade-rate segment))
+                      (< 0.0 (mixed:volume segment)))
+             (transition segment to :in in)
+             (return T))))
 
 (defmethod transition ((environment environment) (state symbol) &key (in 1.0) (error T))
   (unless (eql state (state environment))
