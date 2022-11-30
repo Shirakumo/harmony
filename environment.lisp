@@ -83,6 +83,7 @@
           (cond ((null state)
                  ;; We're quitting, so fade everything out.
                  (loop for segment across (segments environment)
+                       unless (fading-out-p segment)
                        do (transition segment 0.0 :in in)))
                 ((null new-set)
                  (if error
@@ -183,7 +184,7 @@
   (let* ((thing (source thing))
          (with (source with))
          (position (mixed:frame-position with)))
-    (mixed:seek-to-frame thing position)
+    (mixed:seek-to-frame thing (mod position (mixed:frame-count thing)))
     (setf (slot-value thing 'mixed:frame-position) position)))
 
 (defmethod transition ((segment music-segment) (environment environment) &key (sync T) (in 5.0))
@@ -191,7 +192,7 @@
       (let* ((set (gethash (state environment) (segment-sets environment)))
              (index (mod (next-index environment) (length set)))
              (next (aref set index)))
-        (transition segment next :in in :sync sync)
+        (transition segment next :in in :sync sync :volume (max (mixed:volume segment) 1.0))
         (setf (next-index environment) (1+ index)))
       (transition segment 0.0)))
 
@@ -206,9 +207,10 @@
     segment))
 
 (defmethod transition ((from music-segment) (to music-segment) &key (in 5.0) volume sync)
+  (unless (eq from to)
+    (when sync (%sync to from)))
   (transition to (or volume (mixed:volume from)) :in in :reset (null sync))
   (unless (eq from to)
-    (when sync (%sync to from))
     (transition from 0.0 :in in))
   to)
 
