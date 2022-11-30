@@ -253,6 +253,12 @@
 (defmethod mixed:frame-position ((voice voice))
   (mixed:frame-position (source voice)))
 
+(defmethod mixed:frame-count ((voice voice))
+  (mixed:frame-count (source voice)))
+
+(defmethod mixed:duration ((voice voice))
+  (mixed:duration (source voice)))
+
 (defmethod mixed:samplerate ((voice voice))
   (mixed:samplerate (aref (mixed:segments voice) 1)))
 
