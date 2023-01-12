@@ -77,7 +77,8 @@
   NIL)
 
 (defmethod mixed:free :before ((server server))
-  (mixed:end server))
+  (ignore-errors
+   (mixed:end server)))
 
 (defmethod mixed:free :after ((server server))
   (labels ((rec (chain)
