@@ -6,6 +6,7 @@ To get running with a usable setup in no time flat, simply load harmony, an appr
 
 :: common lisp
 (ql:quickload '(harmony cl-mixed-mpg123
+                #+android cl-mixed-aaudio
                 #+linux cl-mixed-pulse
                 #+darwin cl-mixed-coreaudio
                 #+windows cl-mixed-wasapi

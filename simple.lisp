@@ -12,6 +12,7 @@
                     (find-symbol (string '#:drain) package))
                (and errorp (error "Drain ~s is not loaded." package)))))
     (case drain
+      (:aaudio (find-drain :org.shirakumo.fraf.mixed.aaudio))
       (:alsa (find-drain :org.shirakumo.fraf.mixed.alsa))
       (:coreaudio (find-drain :org.shirakumo.fraf.mixed.coreaudio))
       (:dummy (find-drain :org.shirakumo.fraf.mixed.dummy))
@@ -46,6 +47,7 @@
         #+windows (try :wasapi (<= 6 (ldb (byte 8 0) (cffi:foreign-funcall "GetVersion" :int32))))
         #+windows (try :xaudio2)
         #+windows (try :winmm)
+        #+linux (try :aaudio)
         #+linux (try :pulse (c org.shirakumo.fraf.mixed.pulse pulse-present-p))
         #+linux (try :alsa)
         #+linux (try :oss)
