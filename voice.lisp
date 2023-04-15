@@ -77,6 +77,7 @@
         (:flac (maybe-make-drain org.shirakumo.fraf.mixed.flac cl-mixed-flac))
         (:ogg (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))
         (:oga (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))
+        (:opus (maybe-make-drain org.shirakumo.fraf.mixed.opus cl-mixed-opus))
         ((:mptm :mod :s3m :xm :it :669 :amf :ams :c67 :dbm :digi :dmf :dsm :dtm :far
           :imf :ice :j2b :m15 :mdl :med :mms :mt2 :mtm :nst :okt :plm :psm :pt36 :ptm
           :sfx :sfx2 :st26 :stk :stm :stp :ult :wow :gdm :mo3 :oxm :umx :xpk :ppm :mmcmp)
