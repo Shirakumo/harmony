@@ -125,10 +125,11 @@
       (T
        (setf voice (etypecase source
                      (voice source)
-                     ((or segment pathname)
+                     ((or source pathname)
                       (create source :name name :class class :mixer mixer :effects effects
                                      :server server :repeat repeat :repeat-start repeat-start
                                      :on-end on-end :volume volume :if-exists if-exists))
+                     (segment source)
                      (T (ensure-segment source server))))))
     (when reset
       (mixed:seek voice 0))
