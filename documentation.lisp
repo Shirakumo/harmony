@@ -484,7 +484,9 @@ If RESET is non-NIL, the voice is seeked to the first sample.
 If a new voice has to be created, it is done via CREATE, passing along
 the matching arguments.
 
-Returns the VOICE representing the SOURCE.
+Returns the VOICE representing the SOURCE if SOURCE is a
+voice-descriptor or segment of type SOURCE. If it is another kind of
+segment, the segment is returned instead.
 
 See VOICE
 See WITH-SERVER
