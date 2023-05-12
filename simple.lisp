@@ -242,3 +242,8 @@
 
 (defmethod stop ((server server))
   (mixed:end server))
+
+(defmethod stop ((segment segment))
+  (with-server (*server* :synchronize NIL)
+    (disconnect segment T)
+    (mixed:withdraw segment T)))
