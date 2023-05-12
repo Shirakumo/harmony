@@ -116,7 +116,7 @@
   ((repeat :initarg :repeat :initform 0 :accessor repeat)
    (repeat-start :initarg :repeat-start :initform 0 :accessor repeat-start)
    (on-end :initarg :on-end :initform #'default-source-end :accessor on-end)
-   (on-frame-change :initarg :on-frame-change :initform #'identity :accessor on-frame-change)))
+   (on-frame-change :initarg :on-frame-change :initform (constantly nil) :accessor on-frame-change)))
 
 (defmethod (setf mixed:done-p) :around (value (source source))
   (if value
