@@ -12,7 +12,7 @@
   ((segments :initform #() :accessor segments)
    (segment-sets :initform (make-hash-table :test 'eql) :accessor segment-sets)
    (next-index :initform 0 :accessor next-index)
-   (state :initform NIL :accessor state)))
+   (state :initform NIL :reader state)))
 
 (defmethod shared-initialize :after ((environment environment) slots &key (sets NIL sets-p))
   (declare (ignorable slots))
