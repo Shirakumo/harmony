@@ -15,6 +15,7 @@
    (state :initform NIL :accessor state)))
 
 (defmethod shared-initialize :after ((environment environment) slots &key (sets NIL sets-p))
+  (declare (ignorable slots))
   (when sets-p
     (let* ((sources (delete-duplicates (loop for set in sets append (rest set)) :test #'equal))
            (source-table (make-hash-table :test 'equal))
@@ -121,6 +122,7 @@
   (apply #'call-next-method segment :on-end :call-track-end args))
 
 (defmethod shared-initialize :after ((segment music-segment) slots &key transition-points transition-interval (transition-offset 0))
+  (declare (ignorable slots))
   (when transition-points
     (let ((points (make-array (length transition-points) :element-type '(unsigned-byte 32) :initial-contents transition-points)))
       (setf (transition-fun segment)
