@@ -10,15 +10,10 @@
 (defvar *in-processing-queue* NIL)
 (defvar *server* NIL)
 
-#+ccl
-(defstruct (%ref (:constructor make-%ref (%ref))
-                 (:conc-name NIL))
-  %ref)
-
 (defclass server (mixed:chain)
   ((segment-map :initform (make-hash-table :test 'equal) :reader segment-map)
-   (free-buffers :initform #-ccl () #+ccl (make-%ref ()) :accessor free-buffers)
-   (free-unpackers :initform #-ccl () #+ccl (make-%ref ()) :accessor free-unpackers)
+   (free-buffers :initform #-ccl () #+ccl (vector ()) :accessor free-buffers)
+   (free-unpackers :initform #-ccl () #+ccl (vector ()) :accessor free-unpackers)
    (thread :initform NIL :accessor thread)
    (queue :reader queue)
    (samplerate :initform 48000 :initarg :samplerate :accessor samplerate)
@@ -39,12 +34,12 @@
 
 (defmethod allocate-buffer ((server server))
   (or (pop* #-ccl (slot-value server 'free-buffers)
-            #+ccl (%ref (slot-value server 'free-buffers)))
+            #+ccl (svref (slot-value server 'free-buffers) 0))
       (mixed:make-buffer (buffersize server))))
 
 (defmethod allocate-unpacker ((server server))
   (or (pop* #-ccl (slot-value server 'free-unpackers)
-            #+ccl (%ref (slot-value server 'free-unpackers)))
+            #+ccl (svref (slot-value server 'free-unpackers) 0))
       (mixed:make-unpacker :frames (buffersize server) :samplerate (samplerate server))))
 
 (defmethod free-buffer (buffer (server server))
@@ -52,7 +47,7 @@
   (setf (to buffer) NIL)
   (mixed:clear buffer)
   (push* buffer #-ccl (slot-value server 'free-buffers)
-                #+ccl (%ref (slot-value server 'free-buffers))))
+                #+ccl (svref (slot-value server 'free-buffers) 0)))
 
 (defmethod free-unpacker (unpacker (server server))
   (disconnect unpacker T)
@@ -61,7 +56,7 @@
   (when (mixed:handle unpacker)
     (mixed:end unpacker)
     (push* unpacker #-ccl (slot-value server 'free-unpackers)
-                    #+ccl (%ref (slot-value server 'free-unpackers)))))
+                    #+ccl (svref (slot-value server 'free-unpackers) 0))))
 
 (defmethod segment (name (server (eql T)) &optional (errorp T))
   (segment name *server* errorp))
@@ -100,10 +95,10 @@
   (mixed:clear server)
   (clrhash (segment-map server))
   (loop for buffer = (pop #-ccl (free-buffers server)
-                          #+ccl (%ref (free-buffers server)))
+                          #+ccl (svref (free-buffers server) 0))
         while buffer do (mixed:free buffer))
   (loop for unpacker = (pop #-ccl (free-unpackers server)
-                            #+ccl (%ref (free-unpackers server)))
+                            #+ccl (svref (free-unpackers server) 0))
         while unpacker do (mixed:free unpacker)))
 
 (defmethod mixed:add :after ((segment mixed:segment) (server server))
