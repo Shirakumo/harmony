@@ -145,9 +145,11 @@
     (connect (voice-end voice) T segment T)))
 
 (defmethod frame-change ((voice voice) old new)
+  (declare (ignorable old new))
   )
 
 (defmethod track-end ((voice voice) source)
+  (declare (ignorable source))
   )
 
 (defmethod source ((voice voice))
