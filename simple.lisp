@@ -50,9 +50,9 @@
         #+darwin (try :coreaudio)
         (try :dummy))))
 
-(defun construct-output (&key (drain (detect-platform-drain)) (source-channels 2) (target-channels source-channels) (server *server*) (program-name (name server)) device)
+(defun construct-output (&key (drain (detect-platform-drain)) (source-channels 2) (target-channels source-channels) (samplerate (samplerate *server*)) (program-name (name *server*)) device)
   (let* ((type (resolve-drain-type drain))
-         (packer (mixed:make-packer :channels target-channels :samplerate (samplerate server)))
+         (packer (mixed:make-packer :channels target-channels :samplerate samplerate))
          (drain (if (subtypep type 'mixed:device-drain)
                     (make-instance type :pack (mixed:pack packer) :name :drain :program-name program-name :device device)
                     (make-instance type :pack (mixed:pack packer) :name :drain :program-name program-name)))
@@ -73,7 +73,8 @@
   (let* ((server (make-instance 'server :name name :samplerate samplerate :buffersize (ceiling (* latency samplerate))))
          (sources (make-instance 'mixed:chain :name :sources))
          (master (make-instance 'mixed:basic-mixer :name :master :channels 2))
-         (output (construct-output :drain drain :server server :source-channels 2 :target-channels output-channels :device device)))
+         (output (construct-output :drain drain :samplerate samplerate :program-name name
+                                   :source-channels 2 :target-channels output-channels :device device)))
     (add-to server sources)
     (flet ((add-effects (source effects)
              (dolist (effect effects source)
