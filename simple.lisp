@@ -25,6 +25,7 @@
              (error "~s is not a known drain type" drain))))))
 
 (defun detect-platform-drain ()
+  (mixed:init)
   (macrolet ((try (drain &optional predicate)
                `(let ((type (resolve-drain-type ,drain NIL)))
                   ,(if predicate
@@ -70,6 +71,7 @@
 
 (defun make-simple-server (&key (name "Harmony") (samplerate mixed:*default-samplerate*) (drain (detect-platform-drain)) device (latency 0.01)
                                 (output-channels 2) effects (mixers '(:music :speech (:effect mixed:space-mixer))))
+  (mixed:init)
   (let* ((server (make-instance 'server :name name :samplerate samplerate :buffersize (ceiling (* latency samplerate))))
          (sources (make-instance 'mixed:chain :name :sources))
          (master (make-instance 'mixed:basic-mixer :name :master :channels 2))
