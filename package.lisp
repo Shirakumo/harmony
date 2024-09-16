@@ -97,6 +97,8 @@
    #:volume
    #:location
    #:velocity
+   #:direction
+   #:up
    #:play
    #:create
    #:stop
