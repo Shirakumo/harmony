@@ -147,23 +147,25 @@
     (setf (thread server) thread))
   server)
 
-(defmethod mixed:volume ((name symbol))
-  (mixed:volume (segment name *server*)))
+(defmacro define-name-alias (function)
+  `(progn
+     (defmethod ,function ((name symbol))
+       (,function (segment name *server*)))
 
-(defmethod (setf mixed:volume) (value (name symbol))
-  (setf (mixed:volume (segment name *server*)) value))
+     (defmethod (setf ,function) (value (name symbol))
+       (setf (,function (segment name *server*)) value))))
 
-(defmethod mixed:location ((name symbol))
-  (mixed:location (segment name *server*)))
-
-(defmethod (setf mixed:location) (location (name symbol))
-  (setf (mixed:location (segment name *server*)) location))
-
-(defmethod mixed:velocity ((name symbol))
-  (mixed:velocity (segment name *server*)))
-
-(defmethod (setf mixed:velocity) (velocity (name symbol))
-  (setf (mixed:velocity (segment name *server*)) velocity))
+(define-name-alias mixed:volume)
+(define-name-alias mixed:location)
+(define-name-alias mixed:velocity)
+(define-name-alias mixed:direction)
+(define-name-alias mixed:up)
+(define-name-alias mixed:soundspeed)
+(define-name-alias mixed:doppler-factor)
+(define-name-alias mixed:min-distance)
+(define-name-alias mixed:max-distance)
+(define-name-alias mixed:rolloff)
+(define-name-alias mixed:attenuation)
 
 (defmethod started-p ((server server))
   (and (thread server)
