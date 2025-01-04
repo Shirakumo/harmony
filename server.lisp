@@ -27,6 +27,8 @@
     (format stream "~s~@[~* running~]" (name server) (started-p server))))
 
 (defmethod allocate-buffer ((server server))
+  ;; FIXME: Some segments need a different buffer size (buffer-size-hint),
+  ;;        we should really respect that if possible.
   (or (pop* #-ccl (slot-value server 'free-buffers)
             #+ccl (svref (slot-value server 'free-buffers) 0))
       (mixed:make-buffer (buffersize server))))
