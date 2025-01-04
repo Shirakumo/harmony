@@ -67,51 +67,13 @@
    #:source
    #:stop))
 
-(defpackage #:org.shirakumo.fraf.harmony.user
-  (:use #:org.shirakumo.fraf.mixed #:org.shirakumo.fraf.harmony)
-  (:shadowing-import-from #:org.shirakumo.fraf.harmony
-    #:buffer #:segment #:source #:repeat #:connect #:from #:to #:clear)
-  (:shadowing-import-from #:org.shirakumo.fraf.mixed #:chain)
-  (:export
-   #:start
-   #:end
-   #:free
-   #:add
-   #:withdraw
-   #:output
-   #:outputs
-   #:input
-   #:inputs
-   #:input-field
-   #:output-field
-   #:field
-   #:segment
-   #:segments
-   #:seek
-   #:frame-count
-   #:frame-position
-   #:repeat
-   #:repeat-start
-   #:done-p
-   #:bypass
-   #:volume
-   #:location
-   #:velocity
-   #:direction
-   #:up
-   #:play
-   #:create
-   #:stop
-   #:*server*
-   #:server
-   #:make-simple-server
-   #:maybe-start-simple-server
-   #:voices
-   #:clear
-   #:started-p
-   #:with-server
-   #:environment
-   #:state
-   #:active-p
-   #:music-segment
-   #:transition))
+(unless (find-package '#:org.shirakumo.fraf.harmony.user)
+  (defpackage #:org.shirakumo.fraf.harmony.user
+    (:use #:org.shirakumo.fraf.mixed #:org.shirakumo.fraf.harmony)
+    (:shadowing-import-from #:org.shirakumo.fraf.harmony
+                            #:buffer #:segment #:source #:repeat #:connect #:from #:to #:clear)
+    (:shadowing-import-from #:org.shirakumo.fraf.mixed #:chain)))
+
+(let ((symbols ()))
+  (do-symbols (symb '#:org.shirakumo.fraf.harmony.user) (push symb symbols))
+  (export symbols '#:org.shirakumo.fraf.harmony.user))
