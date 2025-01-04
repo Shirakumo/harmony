@@ -100,8 +100,10 @@
          (output (construct-output :drain drain :samplerate samplerate :program-name name
                                    :source-channels 2 :target-channels output-channels :device device)))
     (when source
-      (add-to sources (construct-input :source source :samplerate samplerate :program-name name
-                                       :source-channels input-channels :device source-device)))
+      (let ((source (construct-input :source source :samplerate samplerate :program-name name
+                                     :source-channels input-channels :device source-device)))
+        (add-to sources source)
+        (setf (segment (name source) server) source)))
     (add-to server sources)
     (flet ((add-effects (source effects)
              (dolist (effect effects source)
