@@ -399,16 +399,40 @@ See the cl-mixed extensions for supported systems.")
 This function will compose a server with a mixing graph, ready for
 use.
 
-DEVICE is a hint passed on to the output drain to select a specific
-output device. Usually a string of some kind, though the semantics are
-drain-dependent.
+NAME is the name of the program as it may appear in the operating
+system's mixer.
+
+SAMPLERATE is the global samplerate used by the pipeline.
 
 LATENCY (in seconds) is used to compute the standard buffer
 size. Setting this to 0.02 or so should be safe.
 
+DRAIN should be the type of output drain to construct. If T is given,
+an appropriate drain for the current platform is detected
+automatically.
+
+DEVICE is a hint passed on to the output drain to select a specific
+output device. Usually a string of some kind, though the semantics are
+drain-dependent.
+
 OUTPUT-CHANNELS is the number of channels of the internal mixing
 hierarchy. Note that the drain may still perform conversion to upmix
 or downmix regardless of this setting.
+
+SOURCE, if given, should be the type of output drain to construct. If
+T is given, an appropriate source for the current platform is detected
+automatically. Note that if you construct a source, its device chain
+is added to the :SOURCES chain and named :INPUT. It is *not* connected
+to anything, however, and will stall out immediately unless you
+connect it to something to consume the samples. For a basic loopback,
+you can connect it to one of the mixers, for instance.
+
+SOURCE-DEVICE is a hint passed on to the input source to select a
+specific input device. Usually a string of some kind, though the
+semantics are source-dependent.
+
+INPUT-CHANNELS is the number of channels the input should have,
+typically one.
 
 EFFECTS is a list of effects specs:
 
