@@ -167,6 +167,24 @@
 (define-name-alias mixed:rolloff)
 (define-name-alias mixed:attenuation)
 
+(defmethod mixed:add (source (target symbol))
+  (mixed:add source (segment target *server* T)))
+
+(defmethod mixed:add ((source symbol) target)
+  (mixed:add (segment source *server* T) target))
+
+(defmethod mixed:withdraw (source (target symbol))
+  (mixed:withdraw source (segment target *server* T)))
+
+(defmethod mixed:withdraw ((source symbol) target)
+  (mixed:withdraw (segment source *server* T) target))
+
+(defmethod connect ((source symbol) source-location drain drain-location)
+  (connect (segment source *server* T) source-location drain drain-location))
+
+(defmethod disconnect ((segment symbol) location &rest args &key &allow-other-keys)
+  (apply #'disconnect (segment segment *server* T) location args))
+
 (defmethod started-p ((server server))
   (and (thread server)
        (or (null (bt:threadp (thread server)))
