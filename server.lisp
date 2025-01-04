@@ -10,7 +10,7 @@
    (free-unpackers :initform #-ccl () #+ccl (vector ()) :accessor free-unpackers)
    (thread :initform NIL :accessor thread)
    (queue :reader queue)
-   (samplerate :initform 48000 :initarg :samplerate :accessor samplerate)
+   (samplerate :initform 48000 :initarg :samplerate :accessor samplerate :reader mixed:samplerate)
    (buffersize :initform NIL :initarg :buffersize :accessor buffersize)
    (name :initform "Harmony")
    (paused :initform NIL :accessor paused-p)))
