@@ -21,7 +21,7 @@
         #+windows (try :xaudio2)
         #+windows (try :winmm)
         #+linux (try :aaudio)
-        #+linux (try :pipewire (c org.shirakumo.fraf.mix.pipewire pipewire-present-p))
+        #+linux (try :pipewire (c org.shirakumo.fraf.mixed.pipewire pipewire-present-p))
         #+linux (try :pulse (c org.shirakumo.fraf.mixed.pulse pulse-present-p))
         #+linux (try :alsa)
         #+linux (try :oss)
