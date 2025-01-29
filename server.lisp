@@ -136,10 +136,13 @@
 
 (defmethod mixed:start ((server server))
   (set-process-priority :high)
-  (call-next-method)
   (setf (thread server) T)
   (let ((thread (bt:make-thread (lambda ()
                                   (set-thread-priority :high)
+                                  ;; KLUDGE: have to call mixed_start here to ensure we're in the same thread
+                                  ;;         as the main loop. This makes error propagation a hassle though...
+                                  (mixed::with-error-on-failure ()
+                                    (org.shirakumo.fraf.mixed.cffi:segment-start (mixed:handle server)))
                                   (run server))
                                 :name "harmony"
                                 :initial-bindings `((*standard-output* . ,*standard-output*)
