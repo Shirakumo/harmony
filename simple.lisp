@@ -59,9 +59,9 @@
 (defun detect-platform-source ()
   (detect-platform-segment 'mixed:source))
 
-(defun construct-input (&key (name :input) (source T) (source-channels 1) (target-channels source-channels) (samplerate (samplerate *server*)) (program-name (name *server*)) device)
+(defun construct-input (&key (name :input) (source T) (source-channels 1) (target-channels source-channels) (samplerate (samplerate *server*)) (program-name (name *server*)) device (frames (truncate samplerate 100)))
   (let* ((type (resolve-segment-type 'mixed:source (if (eql T source) (detect-platform-source) source)))
-         (unpacker (mixed:make-unpacker :channels target-channels :samplerate samplerate))
+         (unpacker (mixed:make-unpacker :channels target-channels :samplerate samplerate :frames frames))
          (source (if (subtypep type 'mixed:device-source)
                      (make-instance type :pack (mixed:pack unpacker) :program-name program-name :device device)
                      (make-instance type :pack (mixed:pack unpacker) :program-name program-name)))
@@ -74,9 +74,9 @@
               (class-name (class-of source)) channels (mixed:encoding unpacker) (mixed:samplerate unpacker))
       (add-to chain source unpacker convert))))
 
-(defun construct-output (&key (name :output) (drain T) (source-channels 2) (target-channels source-channels) (samplerate (samplerate *server*)) (program-name (name *server*)) device)
+(defun construct-output (&key (name :output) (drain T) (source-channels 2) (target-channels source-channels) (samplerate (samplerate *server*)) (program-name (name *server*)) device (frames (truncate samplerate 100)))
   (let* ((type (resolve-segment-type 'mixed:drain (if (eql T drain) (detect-platform-drain) drain)))
-         (packer (mixed:make-packer :channels target-channels :samplerate samplerate))
+         (packer (mixed:make-packer :channels target-channels :samplerate samplerate :frames frames))
          (drain (if (subtypep type 'mixed:device-drain)
                     (make-instance type :pack (mixed:pack packer) :name :drain :program-name program-name :device device)
                     (make-instance type :pack (mixed:pack packer) :name :drain :program-name program-name)))
@@ -100,10 +100,12 @@
          (sources (make-instance 'mixed:chain :name :sources))
          (master (make-instance 'mixed:basic-mixer :name :master :channels 2))
          (output (construct-output :drain drain :samplerate samplerate :program-name name
-                                   :source-channels 2 :target-channels output-channels :device device)))
+                                   :source-channels 2 :target-channels output-channels :device device
+                                   :frames (buffersize server))))
     (when source
       (let ((source (construct-input :source source :samplerate samplerate :program-name name
-                                     :source-channels input-channels :device source-device)))
+                                     :source-channels input-channels :device source-device
+                                     :frames (buffersize server))))
         (add-to sources source)
         (setf (segment (name source) server) source)))
     (add-to server sources)
