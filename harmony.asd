@@ -21,9 +21,10 @@
                :atomics
                :bordeaux-threads
                :stealth-mixin
-               (:feature :windows :cl-mixed-wasapi)
-               (:feature :windows :cl-mixed-winmm)
-               (:feature :linux :cl-mixed-alsa)
-               (:feature :linux :cl-mixed-pulse)
-               (:feature :darwin :cl-mixed-coreaudio)
-               (:feature :bsd :cl-mixed-oss)))
+               (:feature (:and (:not :harmony-no-extensions) :windows (:not :harmony-no-wasapi)) :cl-mixed-wasapi)
+               (:feature (:and (:not :harmony-no-extensions) :windows (:not :harmony-no-winmm)) :cl-mixed-winmm)
+               (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-alsa)) :cl-mixed-alsa)
+               (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-pulse)) :cl-mixed-pulse)
+               (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-pipewire)) :cl-mixed-pipewire)
+               (:feature (:and (:not :harmony-no-extensions) :darwin (:not :harmony-no-coreaudio)) :cl-mixed-coreaudio)
+               (:feature (:and (:not :harmony-no-extensions) :bsd (:not :harmony-no-oss)) :cl-mixed-oss)))
