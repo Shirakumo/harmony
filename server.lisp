@@ -355,6 +355,7 @@
         (traverse server))
       (format stream "~&}~%"))
     (when convert
+      #+asdf
       (uiop:run-program (list "dot"
                               (uiop:native-namestring file)
                               (format NIL "-T~a" convert)
