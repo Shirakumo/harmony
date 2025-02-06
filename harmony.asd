@@ -27,4 +27,5 @@
                (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-pulse)) :cl-mixed-pulse)
                (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-pipewire)) :cl-mixed-pipewire)
                (:feature (:and (:not :harmony-no-extensions) :darwin (:not :harmony-no-coreaudio)) :cl-mixed-coreaudio)
-               (:feature (:and (:not :harmony-no-extensions) :bsd (:not :harmony-no-oss)) :cl-mixed-oss)))
+               (:feature (:and (:not :harmony-no-extensions) :bsd (:not :harmony-no-oss)) :cl-mixed-oss)
+               (:feature (:and (:not :harmony-no-extensions) :nx (:not :harmony-no-nxau)) :cl-mixed-nxau)))
