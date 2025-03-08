@@ -281,6 +281,8 @@
                         ;; Drop the event on the floor.
                         (restart-case
                             (progn (warn "Mixing queue is full.")
+                                   (unless (started-p server)
+                                     (mixed:start server))
                                    (return))
                           (abort ()
                             (return))
