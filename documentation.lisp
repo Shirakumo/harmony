@@ -352,7 +352,7 @@ If SYNCHRONIZE is T, this function will not return until the FUNCTION
 has executed. In this case, the FUNCTION's return values will be
 returned from this function. If SYNCHRONIZE is T and TIMEOUT is given,
 the call will only block until at most TIMEOUT has passed, after which
-NIL is returned.
+NIL is returned as primary value and :TIMEOUT as secondary value.
 
 If this function is called within the processing of the task queue,
 the FUNCTION may be called immediately and synchronously.

@@ -1,5 +1,9 @@
 (in-package #:org.shirakumo.fraf.harmony)
 
+(define-condition mixing-queue-full (error)
+  ((server :initarg :server :reader server))
+  (:report (lambda (c s) (format s "The mixing queue is full. The server is likely stalled out somehow."))))
+
 (defvar *in-processing-thread* NIL)
 (defvar *in-processing-queue* NIL)
 (defvar *server* NIL)
@@ -152,6 +156,25 @@
     (setf (thread server) thread))
   server)
 
+(defun stop-processing-thread (server)
+  ;; Wait until our processing thread is shut down
+  (unless *in-processing-thread*
+    (let ((thread (thread server)))
+      (setf (thread server) NIL)
+      (restart-case
+          (loop for i from 0
+                while (bt:thread-alive-p thread)
+                do (sleep 0.01)
+                   (when (= i 100)
+                     (with-simple-restart (continue "Continue waiting.")
+                       (error "~a's thread is not shutting down." server))))
+        (abort ()
+          :report "Attempt to forcibly terminate the thread."
+          (bt:destroy-thread thread))
+        (ignore ()
+          :report "Return and ignore the running thread."))
+      thread)))
+
 (defmacro define-name-alias (function)
   `(progn
      (defmethod ,function ((name symbol))
@@ -200,23 +223,6 @@
     ;; Clear the queue
     (setf (svref (queue server) 0) 1)
     (fill (queue server) NIL :start 1)
-    ;; Wait until our processing thread is shut down
-    (unless *in-processing-thread*
-      (let ((thread (thread server)))
-        (setf (thread server) NIL)
-        (restart-case
-            (loop for i from 0
-                  while (bt:thread-alive-p thread)
-                  do (sleep 0.01)
-                     (when (= i 100)
-                       (with-simple-restart (continue "Continue waiting.")
-                         (error "~a's thread is not shutting down." server))))
-          (abort ()
-            :report "Attempt to forcibly terminate the thread."
-            (bt:destroy-thread thread))
-          (ignore ()
-            :report "Return and ignore the running thread."))
-        thread))
     ;; Call the sequence end.
     (call-next-method))
   server)
@@ -268,41 +274,63 @@
       (mixed:end server)
       (setf (thread server) NIL))))
 
+(declaim (notinline handle-full-mixing-queue))
+(defun handle-full-mixing-queue (server)
+  (restart-case
+      (error 'mixing-queue-full :server server)
+    (continue ()
+      :report "Continue waiting"
+      (bt:thread-yield))
+    (restart ()
+      :report "Restart the server forcibly."
+      :test (lambda () (not *in-processing-thread*))
+      (stop-processing-thread server)
+      (mixed:start server))
+    (clear-queue ()
+      :report "Clear the queue forcibly."
+      (loop for fill = (svref (queue server) 0)
+            until (atomics:cas (svref (queue server) 0) fill 0)))))
+
+(declaim (inline push-mixing-queue))
+(defun push-mixing-queue (function server)
+  ;; Loop until there's space available and until we actually update the queue.
+  (loop with queue of-type simple-vector = (queue server)
+        for fill of-type (unsigned-byte 32) = (svref (queue server) 0)
+        do (if (< fill (length queue))
+               (when (atomics:cas (svref queue 0) fill (1+ fill))
+                 (setf (svref queue fill) function)
+                 (return))
+               (restart-case (handle-full-mixing-queue server)
+                 (abort () (return))))))
+
 (defmethod call-in-mixing-context ((function function) (server server) &key (synchronize T) timeout)
   (declare (optimize speed (safety 1)))
-  (flet ((push-function (function)
-           ;; Loop until there's space available and until we actually update the queue.
-           (loop with queue of-type simple-vector = (queue server)
-                 for fill of-type (unsigned-byte 32) = (svref (queue server) 0)
-                 do (if (< fill (length queue))
-                        (when (atomics:cas (svref queue 0) fill (1+ fill))
-                          (setf (svref queue fill) function)
-                          (return))
-                        ;; Drop the event on the floor.
-                        (restart-case
-                            (progn (warn "Mixing queue is full.")
-                                   (unless (started-p server)
-                                     (mixed:start server))
-                                   (return))
-                          (abort ()
-                            (return))
-                          (continue ()
-                            (bt:thread-yield)))))))
-    (cond ((or *in-processing-queue* (null (thread server)))
-           (funcall function))
-          ((or (not synchronize) *in-processing-thread*)
-           (push-function function))
-          (T
-           (let* ((lock (bt:make-lock))
-                  (monitor (bt:make-condition-variable))
-                  (values-list ()))
-             (bt:with-lock-held (lock)
-               (push-function (lambda ()
-                                (unwind-protect
-                                     (setf values-list (multiple-value-list (funcall function)))
-                                  (bt:condition-notify monitor))))
-               (bt:condition-wait monitor lock :timeout timeout)
-               (values-list values-list)))))))
+  (cond ((or *in-processing-queue* (null (thread server)))
+         (funcall function))
+        ((or (not synchronize) *in-processing-thread*)
+         (push-mixing-queue function server))
+        (T
+         (let* ((lock (bt:make-lock))
+                (monitor (bt:make-condition-variable))
+                (values-list #1='#:NO-VALUE)
+                (wait (etypecase timeout
+                        (null 0.5)
+                        (real (float timeout 0f0)))))
+           (bt:with-lock-held (lock)
+             (push-mixing-queue 
+              (lambda ()
+                (unwind-protect
+                     (setf values-list (multiple-value-list (funcall function)))
+                  (bt:condition-notify monitor)))
+              server))
+           (loop (bt:with-lock-held (lock)
+                   (bt:condition-wait monitor lock :timeout wait))
+                 (cond ((not (eq values-list #1#))
+                        (return (values-list values-list)))
+                       (timeout
+                        (return (values NIL :timeout)))
+                       (T
+                        (bt:thread-yield))))))))
 
 (defmacro with-server ((&optional (server '*server*) &rest args &key synchronize timeout) &body body)
   (declare (ignore synchronize timeout))

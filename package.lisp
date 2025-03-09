@@ -33,6 +33,7 @@
    #:on-frame-change)
   ;; server.lisp
   (:export
+   #:mixing-queue-full
    #:*server*
    #:server
    #:allocate-buffer
