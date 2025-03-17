@@ -223,6 +223,7 @@
     ;; Clear the queue
     (setf (svref (queue server) 0) 1)
     (fill (queue server) NIL :start 1)
+    (stop-processing-thread server)
     ;; Call the sequence end.
     (call-next-method))
   server)
@@ -271,7 +272,8 @@
                     (when (or sb-impl::*gc-pending*
                               sb-impl::*stop-for-gc-pending*)
                       (sb-unix::receive-pending-interrupt))))
-      (mixed:end server)
+      (when (mixed:handle server)
+        (mixed:end server))
       (setf (thread server) NIL))))
 
 (declaim (notinline handle-full-mixing-queue))
