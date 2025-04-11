@@ -57,14 +57,12 @@
 (defgeneric make-source-for-path-type (pathname type &rest initargs)
   (:method (source type &rest initargs)
     (macrolet ((maybe-make-drain (package system &optional (name 'source))
-                 `(apply #'make-instance
-                         (handler-bind (#+quicklisp
-                                        (error (lambda (e)
-                                                 (declare (ignore e))
-                                                 (ql:quickload ,(string system))
-                                                 (invoke-restart 'retry))))
-                           (lazy-symbol ,package ,name))
-                         :file source initargs)))
+                 `(progn
+                    (unless (find-package ',package)
+                      #+quicklisp (ql:quickload ,(string system))
+                      #-quicklisp (error "Can't load~%  ~a~%as the required format system~%  ~a~%is not loaded."
+                                         pathname ',system))
+                    (apply #'make-instance (lazy-symbol ,package ,name) :file source initargs))))
       (ecase type ;; static deferral. Not great, but can't do it otherwise with ASDF.
         (:mp3 (maybe-make-drain org.shirakumo.fraf.mixed.mpg123 cl-mixed-mpg123))
         (:wav (maybe-make-drain org.shirakumo.fraf.mixed.wav cl-mixed-wav in-memory-source))
