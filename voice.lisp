@@ -73,10 +73,20 @@
         (:oga (maybe-make-drain org.shirakumo.fraf.mixed.vorbis cl-mixed-vorbis))
         (:opus (maybe-make-drain org.shirakumo.fraf.mixed.opus cl-mixed-opus))
         (:qoa (maybe-make-drain org.shirakumo.fraf.mixed.qoa cl-mixed-qoa))
-        ((:mptm :mod :s3m :xm :it :669 :amf :ams :c67 :dbm :digi :dmf :dsm :dtm :far
-          :imf :ice :j2b :m15 :mdl :med :mms :mt2 :mtm :nst :okt :plm :psm :pt36 :ptm
-          :sfx :sfx2 :st26 :stk :stm :stp :ult :wow :gdm :mo3 :oxm :umx :xpk :ppm :mmcmp)
-         (maybe-make-drain org.shirakumo.fraf.mixed.mpt cl-mixed-mpt))))))
+        ((:669 :abk :amf :ams :arch :asylum :c67 :chip :coco :dbm :digi
+          :dmf :dsm :dt :dtm :emod :far :flt :fnk :gal4 :gal5 :gdm :hmn
+          :ice :imf :ims :it :j2b :liq :m15 :masi :masi16 :mdl :med :med2
+          :med3 :med4 :mfp :mgt :mmcmp :mmd1 :mmd3 :mms :mo3 :mod :mptm
+          :mt2 :mtm :muse :no :nst :okt :oxm :plm :ppm :psm :pt3 :pt36
+          :ptm :pw :rtm :s3m :sfx :sfx2 :st :st26 :stim :stk :stm :stp
+          :stx :sym :ult :umx :wow :xm :xmf :xpk)
+         (or (cond ((find-package '#:org.shirakumo.fraf.mixed.xmp)
+                    (ignore-errors (maybe-make-drain org.shirakumo.fraf.mixed.xmp cl-mixed-xmp)))
+                   ((find-package '#:org.shirakumo.fraf.mixed.mpt)
+                    (ignore-errors (maybe-make-drain org.shirakumo.fraf.mixed.mpt cl-mixed-mpt))))
+             (ignore-errors (maybe-make-drain org.shirakumo.fraf.mixed.xmp cl-mixed-xmp))
+             (ignore-errors (maybe-make-drain org.shirakumo.fraf.mixed.mpt cl-mixed-mpt))
+             (error "Can't know what to do ")))))))
 
 (defmethod initialize-instance :after ((voice voice) &rest args &key source effects channels (on-end :free) &allow-other-keys)
   (flet ((free (_) (declare (ignore _))
