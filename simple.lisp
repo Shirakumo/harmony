@@ -176,7 +176,7 @@
         (when velocity (setf (mixed:velocity voice) velocity))))
     voice))
 
-(defun create (source &rest args &key name (class 'voice) (mixer :effect) (server *server*) (on-end :disconnect) (volume 1.0) (if-exists :error) &allow-other-keys)
+(defun create (source &rest args &key name (class 'voice) (mixer :effect) (server *server*) (on-end :disconnect) volume (if-exists :error) &allow-other-keys)
   (let ((mixer (ensure-segment mixer server))
         (voice (when name (segment name server NIL))))
     (when voice
@@ -207,7 +207,8 @@
       (when (name voice)
         (setf (segment (name voice) server) voice))
       (mixed:start voice)
-      (setf (mixed:volume voice) volume)
+      (when (and volume (/= 1.0 volume))
+        (setf (mixed:volume voice) volume))
       voice)))
 
 (defmethod voices ((server (eql T)))
