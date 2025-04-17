@@ -395,3 +395,14 @@
                               (uiop:native-namestring file)
                               (format NIL "-T~a" convert)
                               "-o" (uiop:native-namestring (make-pathname :type convert :defaults file)))))))
+
+(defmethod describe-object :after ((server server) stream)
+  (format stream "~&~%Pipeline:~%")
+  (org.shirakumo.text-draw:tree
+   server (lambda (element)
+            (typecase element
+              (mixed:chain
+               (coerce (mixed:segments element) 'list))
+              (mixed:bundle
+               (coerce (mixed:segments element) 'list))))
+   :stream stream :max-depth NIL))
