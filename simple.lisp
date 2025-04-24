@@ -143,7 +143,7 @@
 
 (defgeneric play (source &key))
 
-(defmethod play (source &key name (class 'voice) (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :free) location velocity (volume 1.0) (if-exists :error) synchronize reset)
+(defmethod play (source &key name (class 'voice) (mixer :effect) effects (server *server*) repeat (repeat-start 0) (on-end :free) location velocity (spatial-p NIL spatial-pp) (volume 1.0) (if-exists :error) synchronize reset)
   (let ((mixer (ensure-segment mixer server))
         (sources (segment :sources server))
         (voice (when name (segment name server NIL))))
@@ -173,7 +173,8 @@
           (mixed:add voice sources)
           (connect voice T mixer T))
         (when location (setf (mixed:location voice) location))
-        (when velocity (setf (mixed:velocity voice) velocity))))
+        (when velocity (setf (mixed:velocity voice) velocity))
+        (when spatial-pp (setf (spatial-p voice) spatial-p))))
     voice))
 
 (defun create (source &rest args &key name (class 'voice) (mixer :effect) (server *server*) (on-end :disconnect) volume (if-exists :error) &allow-other-keys)

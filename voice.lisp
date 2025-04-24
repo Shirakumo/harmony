@@ -249,6 +249,14 @@
   (with-buffer (buffer voice)
     (setf (mixed:input-velocity buffer (to buffer)) velocity)))
 
+(defmethod spatial-p ((voice voice))
+  (with-buffer (buffer voice)
+    (mixed:input-spatial-p buffer (to buffer))))
+
+(defmethod (setf input-spatial-p) (spatial-p (voice voice))
+  (with-buffer (buffer voice)
+    (setf (mixed:input-spatial-p buffer (to buffer)) velocity)))
+
 (defmethod mixed:seek-to-frame ((voice voice) frame)
   (mixed:seek-to-frame (source voice) frame))
 
