@@ -280,16 +280,21 @@
 (defun handle-full-mixing-queue (server)
   (restart-case
       (error 'mixing-queue-full :server server)
-    (continue ()
+    (continue (&optional condition)
       :report "Continue waiting"
+      (declare (ignore condition))
       (bt:thread-yield))
-    (restart ()
+    (restart (&optional condition)
       :report "Restart the server forcibly."
-      :test (lambda () (not *in-processing-thread*))
+      :test (lambda (&optional condition)
+              (declare (ignore condition))
+              (not *in-processing-thread*))
+      (declare (ignore condition))
       (stop-processing-thread server)
       (mixed:start server))
-    (clear-queue ()
+    (clear-queue (&optional condition)
       :report "Clear the queue forcibly."
+      (declare (ignore condition))
       (loop for fill = (svref (queue server) 0)
             until (atomics:cas (svref (queue server) 0) fill 0)))))
 
