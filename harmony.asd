@@ -25,6 +25,7 @@
                (:feature (:and (:not :harmony-no-extensions) :windows (:not :harmony-no-xaudio2)) :cl-mixed-xaudio2)
                (:feature (:and (:not :harmony-no-extensions) :windows (:not :harmony-no-wasapi)) :cl-mixed-wasapi)
                (:feature (:and (:not :harmony-no-extensions) :windows (:not :harmony-no-winmm)) :cl-mixed-winmm)
+               (:feature (:and (:not :harmony-no-extensions) :android (:not :harmony-no-aaudio)) :cl-mixed-aaudio)
                (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-alsa)) :cl-mixed-alsa)
                (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-pulse)) :cl-mixed-pulse)
                (:feature (:and (:not :harmony-no-extensions) :linux (:not :harmony-no-pipewire)) :cl-mixed-pipewire)
