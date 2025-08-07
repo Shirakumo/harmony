@@ -14,7 +14,7 @@
    (free-unpackers :initform #-ccl () #+ccl (vector ()) :accessor free-unpackers)
    (thread :initform NIL :accessor thread)
    (queue :reader queue)
-   (samplerate :initform 48000 :initarg :samplerate :accessor samplerate :reader mixed:samplerate)
+   (samplerate :initform mixed:*default-samplerate* :initarg :samplerate :accessor samplerate :reader mixed:samplerate)
    (buffersize :initform NIL :initarg :buffersize :accessor buffersize)
    (name :initform "Harmony")
    (paused :initform NIL :accessor paused-p)))
@@ -55,6 +55,7 @@
   (mixed:clear (mixed:pack unpacker))
   (when (mixed:handle unpacker)
     (mixed:end unpacker)
+    (setf (mixed:samplerate unpacker) (samplerate server))
     (push* unpacker #-ccl (slot-value server 'free-unpackers)
                     #+ccl (svref (slot-value server 'free-unpackers) 0))))
 
