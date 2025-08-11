@@ -4,9 +4,9 @@
   :author "Yukari Hafner <shinmera@tymoon.eu>"
   :maintainer "Yukari Hafner <shinmera@tymoon.eu>"
   :description "A common lisp sound server and sound processing library."
-  :homepage "https://Shirakumo.github.io/harmony/"
-  :bug-tracker "https://github.com/Shirakumo/harmony/issues"
-  :source-control (:git "https://github.com/Shirakumo/harmony.git")
+  :homepage "https://shirakumo.org/docs/harmony/"
+  :bug-tracker "https://shirakumo.org/project/harmony/issues"
+  :source-control (:git "https://shirakumo.org/project/harmony.git")
   :serial T
   :components ((:file "package")
                (:file "toolkit")
